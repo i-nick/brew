@@ -4191,7 +4191,7 @@ class Formula
                 You can install them, if desired, with:
                   xcode-select --install
             EOS
-            satisfy { MacOS::CLT.installed? }
+            satisfy { MacOS::CLT.installed? || MacOS::Xcode.installed? }
           end
         end
       when :default_prefix
