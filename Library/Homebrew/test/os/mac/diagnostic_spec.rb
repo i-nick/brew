@@ -81,8 +81,10 @@ RSpec.describe Homebrew::Diagnostic::Checks do
         OS::Mac::SDK.new(MacOSVersion.new("10.14"), "/some/path/MacOSX10.15.sdk", :clt),
       ])
 
-      expect(checks.check_broken_sdks)
-        .to include("SDKs in your Command Line Tools (CLT) installation do not match the SDK folder names")
+      unless OS::Mac::Xcode.installed?
+        expect(checks.check_broken_sdks)
+          .to include("SDKs in your Command Line Tools (CLT) installation do not match the SDK folder names")
+      end
     end
 
     it "triggers when the Xcode SDK version doesn't match the folder name" do

@@ -1170,6 +1170,7 @@ RSpec.describe Formula do
     it "returns false with `only_if: :clt_installed` on macOS", :needs_macos do
       # Pretend CLT is not installed
       allow(MacOS::CLT).to receive(:installed?).and_return(false)
+      allow(MacOS::Xcode).to receive(:installed?).and_return(false)
 
       f = formula "foo" do
         url "foo-1.0"
