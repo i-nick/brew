@@ -231,11 +231,13 @@ module Homebrew
                   Failed to load cask: #{name}
                   #{unreadable_error}
                 EOS
-                opoo package_conflicts_message(name, "formula", cask)
+                opoo package_conflicts_message(name, "formula", cask) unless Context.current.quiet?
               end
               return formula_or_kegs
             elsif cask
-              opoo package_conflicts_message(name, "cask", formula_or_kegs) if formula_or_kegs
+              if formula_or_kegs && !Context.current.quiet?
+                opoo package_conflicts_message(name, "cask", formula_or_kegs)
+              end
               return cask
             end
           end
@@ -423,7 +425,7 @@ module Homebrew
             keg.tab.tap == requested_tap
           end
 
-          raise NoSuchKegFromTapError.new(requested_formula, requested_tap) if kegs.none?
+          raise NoSuchKegError.new(requested_formula, tap: requested_tap) if kegs.none?
         end
 
         raise NoSuchKegError, name if kegs.none?
@@ -490,13 +492,13 @@ module Homebrew
           if package.is_a?(Formula) && (tap = package.tap)
             message += "use #{tap.name}/#{package.name} or "
           end
-          message += "specify the `--formula` flag."
+          message += "specify the `--formula` flag. To silence this message, use the `--cask` flag."
         when Cask::Cask
           message += " For the cask, "
           if (tap = package.tap)
             message += "use #{tap.name}/#{package.token} or "
           end
-          message += "specify the `--cask` flag."
+          message += "specify the `--cask` flag. To silence this message, use the `--formula` flag."
         end
         message.freeze
       end
@@ -519,6 +521,7 @@ module Homebrew
           nil
         end
         return unless available
+        return if Context.current.quiet?
 
         opoo package_conflicts_message(ref, loaded_type, cask)
       end
