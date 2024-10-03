@@ -270,7 +270,7 @@ module Homebrew
         ).returns T.nilable(T.any(T::Array[String], String))
       }
       def retrieve_pull_requests(formula_or_cask, name, version: nil)
-        tap_remote_repo = formula_or_cask.tap&.remote_repo || formula_or_cask.tap&.full_name
+        tap_remote_repo = formula_or_cask.tap&.remote_repository || formula_or_cask.tap&.full_name
         pull_requests = begin
           GitHub.fetch_pull_requests(name, tap_remote_repo, version:)
         rescue GitHub::API::ValidationFailedError => e
@@ -319,7 +319,9 @@ module Homebrew
 
             livecheck_latest = livecheck_result(loaded_formula_or_cask)
 
-            new_version_value = if (livecheck_latest.is_a?(Version) && livecheck_latest >= current_version_value) ||
+            new_version_value = if (livecheck_latest.is_a?(Version) &&
+                                    Livecheck::LivecheckVersion.create(formula_or_cask, livecheck_latest) >=
+                                    Livecheck::LivecheckVersion.create(formula_or_cask, current_version_value)) ||
                                    current_version_value == "latest"
               livecheck_latest
             elsif livecheck_latest.is_a?(String) && livecheck_latest.start_with?("skipped")

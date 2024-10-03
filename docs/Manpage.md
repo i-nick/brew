@@ -499,6 +499,11 @@ Display brief statistics for your Homebrew installation. If a *`formula`* or
 : Open the GitHub source page for *`formula`* and *`cask`* in a browser. To view
   the history locally: `brew log -p` *`formula`* or *`cask`*
 
+`--fetch-manifest`
+
+: Fetch GitHub Packages manifest for extra information when *`formula`* is not
+  installed.
+
 `--json`
 
 : Print a JSON representation. Currently the default value for *`version`* is
@@ -1489,8 +1494,8 @@ dependency for their stable builds.
 
 Display Homebrew's download cache. See also `HOMEBREW_CACHE`.
 
-If *`formula`* is provided, display the file or directory used to cache
-*`formula`*.
+If a *`formula`* or *`cask`* is provided, display the file or directory used to
+cache it.
 
 `--os`
 
@@ -3153,27 +3158,32 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 `--formula`
 
-: `list` Homebrew formula dependencies.
+: `list` or `dump` Homebrew formula dependencies.
 
 `--cask`
 
-: `list` Homebrew cask dependencies.
+: `list` or `dump` Homebrew cask dependencies.
 
 `--tap`
 
-: `list` Homebrew tap dependencies.
+: `list` or `dump` Homebrew tap dependencies.
 
 `--mas`
 
-: `list` Mac App Store dependencies.
+: `list` or `dump` Mac App Store dependencies.
 
 `--whalebrew`
 
-: `list` Whalebrew dependencies.
+: `list` or `dump` Whalebrew dependencies.
 
 `--vscode`
 
-: `list` VSCode extensions.
+: `list` or `dump` VSCode extensions.
+
+`--no-vscode`
+
+: `dump` without VSCode extensions. This is enabled by default if
+  `HOMEBREW_BUNDLE_DUMP_NO_VSCODE` is set.
 
 `--describe`
 

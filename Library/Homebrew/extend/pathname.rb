@@ -469,6 +469,11 @@ class Pathname
     false
   end
 
+  sig { params(_wanted_arch: Symbol).returns(T::Boolean) }
+  def arch_compatible?(_wanted_arch)
+    true
+  end
+
   sig { returns(T::Array[String]) }
   def rpaths
     []
@@ -509,7 +514,7 @@ class Pathname
     # create a RuboCop autocorrect instead soon.
     # This is why monkeypatching is non-ideal (but right solution to get
     # Ruby 3.3 over the line).
-    # odeprecated "rmtree", "FileUtils#rm_r"
+    odeprecated "rmtree", "FileUtils#rm_r"
     FileUtils.rm_r(@path, noop:, verbose:, secure:)
     nil
   end

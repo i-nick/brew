@@ -18,6 +18,10 @@ env:
   HOMEBREW_NO_INSTALL_CLEANUP: 1
   HOMEBREW_VERIFY_ATTESTATIONS: 1
 
+defaults:
+  run:
+    shell: bash -xeuo pipefail {0}
+
 concurrency:
   group: "${{ github.ref }}"
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -77,7 +81,7 @@ jobs:
     name: tap syntax
     needs: syntax
     if: github.repository_owner == 'Homebrew'
-    runs-on: ubuntu-22.04
+    runs-on: macos-14
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -138,7 +142,9 @@ jobs:
     name: formula audit
     needs: syntax
     if: github.repository_owner == 'Homebrew'
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/homebrew/brew:master
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -161,7 +167,7 @@ jobs:
     name: cask audit
     needs: syntax
     if: github.repository_owner == 'Homebrew'
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -222,7 +228,7 @@ jobs:
           - name: update-test (Ubuntu 22.04)
             runs-on: ubuntu-22.04
           - name: update-test (macOS)
-            runs-on: macos-14
+            runs-on: macos-15
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -247,10 +253,10 @@ jobs:
         include:
           - name: tests (online)
             test-flags: --online --coverage
-            runs-on: ubuntu-22.04
+            runs-on: ubuntu-latest
           - name: tests (generic OS)
             test-flags: --generic --coverage
-            runs-on: ubuntu-22.04
+            runs-on: ubuntu-latest
           - name: tests (Ubuntu 22.04)
             test-flags: --coverage
             runs-on: ubuntu-22.04
@@ -260,15 +266,18 @@ jobs:
           - name: tests (macOS 13 x86_64)
             test-flags: --coverage
             runs-on: macos-13
-          - name: tests (macOS 14 arm64)
+          - name: tests (macOS 15 arm64)
             test-flags: --coverage
-            runs-on: macos-14
+            runs-on: macos-15
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@master
         with:
-          core: true
+          # We only test needs_homebrew_core tests on macOS because
+          # homebrew/core is not available by default on GitHub-hosted Ubuntu
+          # runners, and it's expensive to tap it.
+          core: ${{ runner.os == 'macOS' }}
           cask: false
           test-bot: false
 
@@ -328,7 +337,7 @@ jobs:
 
           # Retry multiple times when using BuildPulse to detect and submit
           # flakiness (because rspec-retry is disabled).
-          if [[ -n "${HOMEBREW_BUILDPULSE_ACCESS_KEY_ID}" ]]
+          if [[ -n "${HOMEBREW_BUILDPULSE_ACCESS_KEY_ID-}" ]]
           then
             brew tests ${{ matrix.test-flags }} ||
             brew tests ${{ matrix.test-flags }}
@@ -344,7 +353,7 @@ jobs:
           HOMEBREW_BUILDPULSE_ACCOUNT_ID: 1503512
           HOMEBREW_BUILDPULSE_REPOSITORY_ID: 53238813
 
-      - uses: codecov/codecov-action@e28ff129e5465c2c0dcc6f003fc735cb6ae0c673 # v4.5.0
+      - uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
         with:
           working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
           files: Library/Homebrew/test/coverage/coverage.xml
@@ -356,17 +365,20 @@ jobs:
     needs: syntax
     if: github.repository_owner == 'Homebrew'
     runs-on: ${{ matrix.runs-on }}
+    container: ${{ matrix.container }}
     strategy:
       matrix:
         include:
           - name: test default formula (Ubuntu 22.04)
-            runs-on: ubuntu-22.04
+            runs-on: ubuntu-latest
+            container: ghcr.io/homebrew/ubuntu22.04:master
           - name: test default formula (Ubuntu 20.04)
-            runs-on: ubuntu-20.04
+            runs-on: ubuntu-latest
+            container: ghcr.io/homebrew/ubuntu20.04
           - name: test default formula (macOS 13 x86_64)
             runs-on: macos-13
-          - name: test default formula (macOS 14 arm64)
-            runs-on: macos-14
+          - name: test default formula (macOS 15 arm64)
+            runs-on: macos-15
     env:
       HOMEBREW_TEST_BOT_ANALYTICS: 1
       HOMEBREW_ENFORCE_SBOM: 1

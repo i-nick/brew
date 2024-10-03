@@ -15,10 +15,15 @@ env:
   PKG_APPLE_DEVELOPER_TEAM_ID: ${{ secrets.PKG_APPLE_DEVELOPER_TEAM_ID }}
   HOMEBREW_NO_ANALYTICS_THIS_RUN: 1
   HOMEBREW_NO_ANALYTICS_MESSAGE_OUTPUT: 1
+
+defaults:
+  run:
+    shell: bash -xeuo pipefail {0}
+
 jobs:
   build:
     if: github.repository_owner == 'Homebrew' && github.actor != 'dependabot[bot]'
-    runs-on: macos-latest
+    runs-on: macos-15
     outputs:
       installer_path: "Homebrew-${{ steps.homebrew-version.outputs.version }}.pkg"
     env:
@@ -70,7 +75,7 @@ jobs:
         run: rm -f "${RUNNER_TEMP}/${TEMPORARY_CERTIFICATE_FILE}"
 
       - name: Checkout another Homebrew to brew subdirectory
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4
+        uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938 # v4
         with:
           path: brew
           fetch-depth: 0
@@ -138,6 +143,8 @@ jobs:
           # Apple Silicon
           - runner: macos-14
             name: macos-14-arm64
+          - runner: macos-15
+            name: macos-15-arm64
     steps:
       - name: Download installer from GitHub Actions
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
@@ -183,7 +190,7 @@ jobs:
 
   upload:
     needs: [build, test]
-    runs-on: macos-latest
+    runs-on: macos-15
     permissions:
       # To write assets to GitHub release
       contents: write
@@ -213,3 +220,29 @@ jobs:
         run: gh release upload --repo Homebrew/brew
                                 "${GITHUB_REF//refs\/tags\//}"
                                 "${{ needs.build.outputs.installer_path }}"
+
+  issue:
+    needs: [build, test, upload]
+    if: always() && github.event_name == 'release'
+    runs-on: ubuntu-latest
+    env:
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    permissions:
+      # To create or update issues
+      issues: write
+    steps:
+      - name: Open, update, or close pkg installer issue
+        uses: Homebrew/actions/create-or-update-issue@master
+        with:
+          title: Failed to publish pkg installer
+          body: >
+            The pkg installer workflow [failed](${{ env.RUN_URL }}) for release
+            ${{ github.ref_name }}. No pkg installer was uploaded to the GitHub
+            release.
+          labels: bug,release blocker
+          update-existing: ${{ contains(needs.*.result, 'failure') }}
+          close-existing: ${{ needs.upload.result == 'success' }}
+          close-from-author: github-actions[bot]
+          close-comment: >
+            The pkg installer workflow [succeeded](${{ env.RUN_URL }}) for
+            release ${{ github.ref_name }}. Closing this issue.

@@ -414,10 +414,11 @@ _brew_abv() {
     '--days[How many days of analytics data to retrieve. The value for days must be `30`, `90` or `365`. The default is `30`]' \
     '--debug[Display any debugging information]' \
     '(--installed)--eval-all[Evaluate all available formulae and casks, whether installed or not, to print their JSON. Implied if `HOMEBREW_EVAL_ALL` is set]' \
+    '(--cask --json)--fetch-manifest[Fetch GitHub Packages manifest for extra information when formula is not installed]' \
     '--github[Open the GitHub source page for formula and cask in a browser. To view the history locally: `brew log -p` formula or cask]' \
     '--help[Show this message]' \
     '(--eval-all --all)--installed[Print JSON of formulae that are currently installed]' \
-    '--json[Print a JSON representation. Currently the default value for version is `v1` for formula. For formula and cask use `v2`. See the docs for examples of using the JSON output: https://docs.brew.sh/Querying-Brew]' \
+    '(--fetch-manifest)--json[Print a JSON representation. Currently the default value for version is `v1` for formula. For formula and cask use `v2`. See the docs for examples of using the JSON output: https://docs.brew.sh/Querying-Brew]' \
     '--quiet[Make some output more quiet]' \
     '--variations[Include the variations hash in each formula'\''s JSON output]' \
     '--verbose[Show more verbose analytics data for formula]' \
@@ -425,7 +426,7 @@ _brew_abv() {
     '(--cask)--formula[Treat all named arguments as formulae]' \
     '*::formula:__brew_formulae' \
     - cask \
-    '(--formula)--cask[Treat all named arguments as casks]' \
+    '(--formula --fetch-manifest)--cask[Treat all named arguments as casks]' \
     '*::cask:__brew_casks'
 }
 
@@ -960,7 +961,7 @@ _brew_fetch() {
     '(--cask)--formula[Treat all named arguments as formulae]' \
     '*::formula:__brew_formulae' \
     - cask \
-    '(--HEAD --deps --s --build-bottle --force-bottle --bottle-tag --formula)--cask[Treat all named arguments as casks]' \
+    '(--HEAD --deps -s --build-bottle --force-bottle --bottle-tag --formula)--cask[Treat all named arguments as casks]' \
     '*::cask:__brew_casks'
 }
 
@@ -1065,10 +1066,11 @@ _brew_info() {
     '--days[How many days of analytics data to retrieve. The value for days must be `30`, `90` or `365`. The default is `30`]' \
     '--debug[Display any debugging information]' \
     '(--installed)--eval-all[Evaluate all available formulae and casks, whether installed or not, to print their JSON. Implied if `HOMEBREW_EVAL_ALL` is set]' \
+    '(--cask --json)--fetch-manifest[Fetch GitHub Packages manifest for extra information when formula is not installed]' \
     '--github[Open the GitHub source page for formula and cask in a browser. To view the history locally: `brew log -p` formula or cask]' \
     '--help[Show this message]' \
     '(--eval-all --all)--installed[Print JSON of formulae that are currently installed]' \
-    '--json[Print a JSON representation. Currently the default value for version is `v1` for formula. For formula and cask use `v2`. See the docs for examples of using the JSON output: https://docs.brew.sh/Querying-Brew]' \
+    '(--fetch-manifest)--json[Print a JSON representation. Currently the default value for version is `v1` for formula. For formula and cask use `v2`. See the docs for examples of using the JSON output: https://docs.brew.sh/Querying-Brew]' \
     '--quiet[Make some output more quiet]' \
     '--variations[Include the variations hash in each formula'\''s JSON output]' \
     '--verbose[Show more verbose analytics data for formula]' \
@@ -1076,7 +1078,7 @@ _brew_info() {
     '(--cask)--formula[Treat all named arguments as formulae]' \
     '*::formula:__brew_formulae' \
     - cask \
-    '(--formula)--cask[Treat all named arguments as casks]' \
+    '(--formula --fetch-manifest)--cask[Treat all named arguments as casks]' \
     '*::cask:__brew_casks'
 }
 
@@ -1285,22 +1287,22 @@ _brew_linkage() {
 # brew list
 _brew_list() {
   _arguments \
-    '(--cask --versions --pinned --full-name)--built-from-source[List the formulae compiled from source]' \
+    '(--cask --versions --pinned -l --full-name)--built-from-source[List the formulae compiled from source]' \
     '--debug[Display any debugging information]' \
-    '(--versions --pinned ---installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source --l --r --t)--full-name[Print formulae with fully-qualified names. Unless `--full-name`, `--versions` or `--pinned` are passed, other options (i.e. `-1`, `-l`, `-r` and `-t`) are passed to `ls`(1) which produces the actual output]' \
+    '(--versions --pinned --installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source -l -r -t)--full-name[Print formulae with fully-qualified names. Unless `--full-name`, `--versions` or `--pinned` are passed, other options (i.e. `-1`, `-l`, `-r` and `-t`) are passed to `ls`(1) which produces the actual output]' \
     '--help[Show this message]' \
-    '(--cask --versions --pinned --full-name)--installed-as-dependency[List the formulae installed as dependencies]' \
-    '(--cask --versions --pinned)--installed-on-request[List the formulae installed on request]' \
+    '(--cask --versions --pinned -l --full-name)--installed-as-dependency[List the formulae installed as dependencies]' \
+    '(--cask --versions --pinned -l --full-name)--installed-on-request[List the formulae installed on request]' \
     '(--cask --pinned)--multiple[Only show formulae with multiple versions installed]' \
-    '(--cask --multiple --installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source --1 --l --r --t --full-name)--pinned[List only pinned formulae, or only the specified (pinned) formulae if formula are provided. See also `pin`, `unpin`]' \
-    '(--cask --versions --pinned --full-name)--poured-from-bottle[List the formulae installed from a bottle]' \
+    '(--cask --multiple --installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source -1 -l -r -t --full-name)--pinned[List only pinned formulae, or only the specified (pinned) formulae if formula are provided. See also `pin`, `unpin`]' \
+    '(--cask --versions --pinned -l --full-name)--poured-from-bottle[List the formulae installed from a bottle]' \
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
-    '(--installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source --1 --l --r --t --full-name)--versions[Show the version number for installed formulae, or only the specified formulae if formula are provided]' \
-    '-1[Force output to be one entry per line. This is the default when output is not to a terminal]' \
-    '-l[List formulae and/or casks in long format. Has no effect when a formula or cask name is passed as an argument]' \
-    '-r[Reverse the order of the formulae and/or casks sort to list the oldest entries first. Has no effect when a formula or cask name is passed as an argument]' \
-    '-t[Sort formulae and/or casks by time modified, listing most recently modified first. Has no effect when a formula or cask name is passed as an argument]' \
+    '(--installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source -1 -l -r -t --full-name)--versions[Show the version number for installed formulae, or only the specified formulae if formula are provided]' \
+    '(--versions --pinned)-1[Force output to be one entry per line. This is the default when output is not to a terminal]' \
+    '(--installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source --versions --pinned --full-name)-l[List formulae and/or casks in long format. Has no effect when a formula or cask name is passed as an argument]' \
+    '(--versions --pinned --full-name)-r[Reverse the order of the formulae and/or casks sort to list the oldest entries first. Has no effect when a formula or cask name is passed as an argument]' \
+    '(--versions --pinned --full-name)-t[Sort formulae and/or casks by time modified, listing most recently modified first. Has no effect when a formula or cask name is passed as an argument]' \
     - installed_formula \
     '(--cask)--formula[List only formulae, or treat all named arguments as formulae]' \
     '*::installed_formula:__brew_installed_formulae' \
@@ -1352,13 +1354,13 @@ _brew_log() {
   _arguments \
     '--debug[Display any debugging information]' \
     '--help[Show this message]' \
-    '(--1)--max-count[Print only a specified number of commits]' \
+    '(-1)--max-count[Print only a specified number of commits]' \
     '--oneline[Print only one line per commit]' \
     '--patch[Also print patch from commit]' \
     '--quiet[Make some output more quiet]' \
     '--stat[Also print diffstat from commit]' \
     '--verbose[Make some output more verbose]' \
-    '-1[Print only one commit]' \
+    '(--max-count)-1[Print only one commit]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
     '*::formula:__brew_formulae' \
@@ -1370,22 +1372,22 @@ _brew_log() {
 # brew ls
 _brew_ls() {
   _arguments \
-    '(--cask --versions --pinned --full-name)--built-from-source[List the formulae compiled from source]' \
+    '(--cask --versions --pinned -l --full-name)--built-from-source[List the formulae compiled from source]' \
     '--debug[Display any debugging information]' \
-    '(--versions --pinned ---installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source --l --r --t)--full-name[Print formulae with fully-qualified names. Unless `--full-name`, `--versions` or `--pinned` are passed, other options (i.e. `-1`, `-l`, `-r` and `-t`) are passed to `ls`(1) which produces the actual output]' \
+    '(--versions --pinned --installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source -l -r -t)--full-name[Print formulae with fully-qualified names. Unless `--full-name`, `--versions` or `--pinned` are passed, other options (i.e. `-1`, `-l`, `-r` and `-t`) are passed to `ls`(1) which produces the actual output]' \
     '--help[Show this message]' \
-    '(--cask --versions --pinned --full-name)--installed-as-dependency[List the formulae installed as dependencies]' \
-    '(--cask --versions --pinned)--installed-on-request[List the formulae installed on request]' \
+    '(--cask --versions --pinned -l --full-name)--installed-as-dependency[List the formulae installed as dependencies]' \
+    '(--cask --versions --pinned -l --full-name)--installed-on-request[List the formulae installed on request]' \
     '(--cask --pinned)--multiple[Only show formulae with multiple versions installed]' \
-    '(--cask --multiple --installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source --1 --l --r --t --full-name)--pinned[List only pinned formulae, or only the specified (pinned) formulae if formula are provided. See also `pin`, `unpin`]' \
-    '(--cask --versions --pinned --full-name)--poured-from-bottle[List the formulae installed from a bottle]' \
+    '(--cask --multiple --installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source -1 -l -r -t --full-name)--pinned[List only pinned formulae, or only the specified (pinned) formulae if formula are provided. See also `pin`, `unpin`]' \
+    '(--cask --versions --pinned -l --full-name)--poured-from-bottle[List the formulae installed from a bottle]' \
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
-    '(--installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source --1 --l --r --t --full-name)--versions[Show the version number for installed formulae, or only the specified formulae if formula are provided]' \
-    '-1[Force output to be one entry per line. This is the default when output is not to a terminal]' \
-    '-l[List formulae and/or casks in long format. Has no effect when a formula or cask name is passed as an argument]' \
-    '-r[Reverse the order of the formulae and/or casks sort to list the oldest entries first. Has no effect when a formula or cask name is passed as an argument]' \
-    '-t[Sort formulae and/or casks by time modified, listing most recently modified first. Has no effect when a formula or cask name is passed as an argument]' \
+    '(--installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source -1 -l -r -t --full-name)--versions[Show the version number for installed formulae, or only the specified formulae if formula are provided]' \
+    '(--versions --pinned)-1[Force output to be one entry per line. This is the default when output is not to a terminal]' \
+    '(--installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source --versions --pinned --full-name)-l[List formulae and/or casks in long format. Has no effect when a formula or cask name is passed as an argument]' \
+    '(--versions --pinned --full-name)-r[Reverse the order of the formulae and/or casks sort to list the oldest entries first. Has no effect when a formula or cask name is passed as an argument]' \
+    '(--versions --pinned --full-name)-t[Sort formulae and/or casks by time modified, listing most recently modified first. Has no effect when a formula or cask name is passed as an argument]' \
     - installed_formula \
     '(--cask)--formula[List only formulae, or treat all named arguments as formulae]' \
     '*::installed_formula:__brew_installed_formulae' \
@@ -2213,7 +2215,7 @@ _brew_upgrade() {
     '(--casks --skip-cask-deps --greedy --greedy-latest --greedy-auto-updates --binaries --require-sha --quarantine --appdir --keyboard-layoutdir --colorpickerdir --prefpanedir --qlplugindir --mdimporterdir --dictionarydir --fontdir --servicedir --input-methoddir --internet-plugindir --audio-unit-plugindir --vst-plugindir --vst3-plugindir --screen-saverdir --language)--formula[Treat all named arguments as formulae. If no named arguments are specified, upgrade only outdated formulae]' \
     '*::installed_formula:__brew_installed_formulae' \
     - installed_cask \
-    '(--formulae --build-from-source --interactive --force-bottle --fetch-HEAD --ignore-pinned --keep-tmp --debug-symbols --overwrite)--cask[Treat all named arguments as casks. If no named arguments are specified, upgrade only outdated casks]' \
+    '(--formulae --build-from-source --interactive --force-bottle --fetch-HEAD --keep-tmp --debug-symbols --overwrite)--cask[Treat all named arguments as casks. If no named arguments are specified, upgrade only outdated casks]' \
     '*::installed_cask:__brew_installed_casks'
 }
 
