@@ -24,13 +24,16 @@ require "github_packages"
 
 # @abstract Abstract superclass for all download strategies.
 class AbstractDownloadStrategy
-  extend Forwardable
   include FileUtils
   include Context
   include SystemCommand::Mixin
 
   # Extension for bottle downloads.
   module Pourable
+    extend T::Helpers
+
+    requires_ancestor { AbstractDownloadStrategy }
+
     def stage
       ohai "Pouring #{basename}"
       super

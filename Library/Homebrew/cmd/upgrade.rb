@@ -120,6 +120,10 @@ module Homebrew
 
       sig { override.void }
       def run
+        if args.build_from_source? && args.named.empty?
+          raise ArgumentError, "--build-from-source requires at least one formula"
+        end
+
         formulae, casks = args.named.to_resolved_formulae_to_casks
         # If one or more formulae are specified, but no casks were
         # specified, we want to make note of that so we don't
@@ -153,8 +157,6 @@ module Homebrew
             puts "You're on your own. Failures are expected so don't create any issues, please!"
           end
         end
-
-        Install.perform_preinstall_checks
 
         if formulae.blank?
           outdated = Formula.installed.select do |f|
@@ -211,6 +213,8 @@ module Homebrew
           end
           puts formulae_upgrades.join("\n")
         end
+
+        Install.perform_preinstall_checks_once
 
         Upgrade.upgrade_formulae(
           formulae_to_install,

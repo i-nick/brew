@@ -52,6 +52,12 @@ module Homebrew
     # @api private
     class GhAuthInvalid < RuntimeError; end
 
+    # Raised if attestation verification cannot continue due to `gh`
+    # being incompatible with attestations, typically because it's too old.
+    #
+    # @api private
+    class GhIncompatible < RuntimeError; end
+
     # Returns whether attestation verification is enabled.
     #
     # @api private
@@ -136,6 +142,10 @@ module Homebrew
                                  env: { "GH_TOKEN" => credentials, "GH_HOST" => "github.com" },
                                  secrets: [credentials], print_stderr: false, chdir: HOMEBREW_TEMP)
       rescue ErrorDuringExecution => e
+        if e.status.exitstatus == 1 && e.stderr.include?("unknown command")
+          raise GhIncompatible, "gh CLI is incompatible with attestations"
+        end
+
         # Even if we have credentials, they may be invalid or malformed.
         if e.status.exitstatus == 4 || e.stderr.include?("HTTP 401: Bad credentials")
           raise GhAuthInvalid, "invalid credentials"
@@ -178,6 +188,8 @@ module Homebrew
 
       attestation
     end
+
+    ATTESTATION_MAX_RETRIES = 5
 
     # Verifies the given bottle against a cryptographic attestation of build provenance
     # from homebrew-core's CI, falling back on a "backfill" attestation for older bottles.
@@ -246,6 +258,15 @@ module Homebrew
       end
 
       backfill_attestation
+    rescue InvalidAttestationError
+      @attestation_retry_count ||= T.let(Hash.new(0), T.nilable(T::Hash[Bottle, Integer]))
+      raise if @attestation_retry_count[bottle] >= ATTESTATION_MAX_RETRIES
+
+      sleep_time = 3 ** @attestation_retry_count[bottle]
+      opoo "Failed to verify attestation. Retrying in #{sleep_time}s..."
+      sleep sleep_time if ENV["HOMEBREW_TESTS"].blank?
+      @attestation_retry_count[bottle] += 1
+      retry
     end
   end
 end

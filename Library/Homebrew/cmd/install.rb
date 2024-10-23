@@ -289,12 +289,14 @@ module Homebrew
             only_dependencies: args.only_dependencies?,
             force:             args.force?,
             quiet:             args.quiet?,
+            overwrite:         args.overwrite?,
           )
         end
 
         return if formulae.any? && installed_formulae.empty?
 
-        Install.perform_preinstall_checks(cc: args.cc)
+        Install.perform_preinstall_checks_once
+        Install.check_cc_argv(args.cc)
 
         Install.install_formulae(
           installed_formulae,

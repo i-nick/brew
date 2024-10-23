@@ -1,6 +1,7 @@
 # typed: strict
 # frozen_string_literal: true
 
+require "mktemp"
 require "system_command"
 
 # Module containing all available strategies for unpacking archives.
@@ -157,8 +158,8 @@ module UnpackStrategy
     ).returns(T.untyped)
   }
   def extract_nestedly(to: nil, basename: nil, verbose: false, prioritize_extension: false)
-    Dir.mktmpdir("homebrew-unpack", HOMEBREW_TEMP) do |tmp_unpack_dir|
-      tmp_unpack_dir = Pathname(tmp_unpack_dir)
+    Mktemp.new("homebrew-unpack").run(chdir: false) do |unpack_dir|
+      tmp_unpack_dir = T.must(unpack_dir.tmpdir)
 
       extract(to: tmp_unpack_dir, basename:, verbose:)
 
@@ -182,7 +183,7 @@ module UnpackStrategy
         FileUtils.chmod "u+w", path, verbose:
       end
 
-      Directory.new(tmp_unpack_dir).extract(to:, verbose:)
+      Directory.new(tmp_unpack_dir, move: true).extract(to:, verbose:)
     end
   end
 

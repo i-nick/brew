@@ -379,6 +379,7 @@ class FormulaInstaller
       next unless dep.to_formula.pinned?
       next if dep.satisfied?(inherited_options_for(dep))
       next if dep.build? && pour_bottle?
+      next if dep.test?
 
       pinned_unsatisfied_deps << dep
     end
@@ -1229,7 +1230,7 @@ on_request: installed_on_request?, options:)
       sandbox.deny_write_homebrew_repository
       sandbox.allow_write_cellar(formula)
       sandbox.deny_all_network unless formula.network_access_allowed?(:postinstall)
-      Keg::KEG_LINK_DIRECTORIES.each do |dir|
+      Keg.keg_link_directories.each do |dir|
         sandbox.allow_write_path "#{HOMEBREW_PREFIX}/#{dir}"
       end
       sandbox.run(*args)
@@ -1306,43 +1307,48 @@ on_request: installed_on_request?, options:)
 
     oh1 "Fetching #{Formatter.identifier(formula.full_name)}".strip
 
-    if pour_bottle?(output_warning: true)
+    downloadable_object = downloadable
+    check_attestation = if pour_bottle?(output_warning: true)
       fetch_bottle_tab
+
+      !downloadable_object.cached_download.exist?
     else
       @formula = Homebrew::API::Formula.source_download(formula) if formula.loaded_from_api?
 
       formula.fetch_patches
       formula.resources.each(&:fetch)
+
+      false
     end
-    downloadable.fetch
+    downloadable_object.fetch
 
-    self.class.fetched << formula
-  end
-
-  sig { returns(Downloadable) }
-  def downloadable
-    if (bottle_path = formula.local_bottle_path)
-      Resource::Local.new(bottle_path)
-    elsif pour_bottle?
-      T.must(formula.bottle)
-    else
-      T.must(formula.resource)
-    end
-  end
-
-  sig { void }
-  def pour
     # We skip `gh` to avoid a bootstrapping cycle, in the off-chance a user attempts
     # to explicitly `brew install gh` without already having a version for bootstrapping.
     # We also skip bottle installs from local bottle paths, as these are done in CI
     # as part of the build lifecycle before attestations are produced.
-    if Homebrew::Attestation.enabled? &&
+    if check_attestation &&
+       Homebrew::Attestation.enabled? &&
        formula.tap&.core_tap? &&
        formula.name != "gh" &&
        formula.local_bottle_path.blank?
       ohai "Verifying attestation for #{formula.name}"
       begin
-        Homebrew::Attestation.check_core_attestation T.must(formula.bottle)
+        Homebrew::Attestation.check_core_attestation T.cast(downloadable_object, Bottle)
+      rescue Homebrew::Attestation::GhIncompatible
+        # A small but significant number of users have developer mode enabled
+        # but *also* haven't upgraded in a long time, meaning that their `gh`
+        # version is too old to perform attestations.
+        raise CannotInstallFormulaError, <<~EOS
+          The bottle for #{formula.name} could not be verified.
+
+          This typically indicates an outdated or incompatible `gh` CLI.
+
+          Please confirm that you're running the latest version of `gh`
+          by performing an upgrade before retrying:
+
+            brew update
+            brew upgrade gh
+        EOS
       rescue Homebrew::Attestation::GhAuthInvalid
         # Only raise an error if we explicitly opted-in to verification.
         raise CannotInstallFormulaError, <<~EOS if Homebrew::EnvConfig.verify_attestations?
@@ -1384,6 +1390,28 @@ on_request: installed_on_request?, options:)
       end
     end
 
+    self.class.fetched << formula
+  rescue CannotInstallFormulaError
+    if (cached_download = downloadable_object&.cached_download)&.exist?
+      cached_download.unlink
+    end
+
+    raise
+  end
+
+  sig { returns(Downloadable) }
+  def downloadable
+    if (bottle_path = formula.local_bottle_path)
+      Resource::Local.new(bottle_path)
+    elsif pour_bottle?
+      T.must(formula.bottle)
+    else
+      T.must(formula.resource)
+    end
+  end
+
+  sig { void }
+  def pour
     HOMEBREW_CELLAR.cd do
       downloadable.downloader.stage
     end
@@ -1455,8 +1483,25 @@ on_request: installed_on_request?, options:)
       pattern = /#{s.to_s.tr("_", " ")}/i
       forbidden_licenses.sub!(pattern, s.to_s)
     end
-    forbidden_licenses = forbidden_licenses.split.to_h do |license|
-      [license, SPDX.license_version_info(license)]
+
+    invalid_licenses = []
+    forbidden_licenses = forbidden_licenses.split.each_with_object({}) do |license, hash|
+      unless SPDX.valid_license?(license)
+        invalid_licenses << license
+        next
+      end
+
+      hash[license] = SPDX.license_version_info(license)
+    end
+
+    if invalid_licenses.present?
+      opoo <<~EOS
+        HOMEBREW_FORBIDDEN_LICENSES contains invalid license identifiers: #{invalid_licenses.to_sentence}
+        These licenses will not be forbidden. See the valid SPDX license identifiers at:
+          #{Formatter.url("https://spdx.org/licenses/")}
+        And the licenses for a formula with:
+          brew info <formula>
+      EOS
     end
 
     return if forbidden_licenses.blank?
@@ -1474,7 +1519,7 @@ on_request: installed_on_request?, options:)
         raise CannotInstallFormulaError, <<~EOS
           The installation of #{formula.name} has a dependency on #{dep.name} where all
           its licenses were forbidden by #{owner} in `HOMEBREW_FORBIDDEN_LICENSES`:
-            #{SPDX.license_expression_to_string dep_f.license}.#{owner_contact}
+            #{SPDX.license_expression_to_string dep_f.license}#{owner_contact}
         EOS
       end
     end
@@ -1485,7 +1530,7 @@ on_request: installed_on_request?, options:)
 
     raise CannotInstallFormulaError, <<~EOS
       #{formula.name}'s licenses are all forbidden by #{owner} in `HOMEBREW_FORBIDDEN_LICENSES`:
-        #{SPDX.license_expression_to_string formula.license}.#{owner_contact}
+        #{SPDX.license_expression_to_string formula.license}#{owner_contact}
     EOS
   end
 

@@ -192,8 +192,9 @@ source "${HOMEBREW_LIBRARY}/Homebrew/utils/helpers.sh"
 check-run-command-as-root() {
   [[ "${EUID}" == 0 || "${UID}" == 0 ]] || return
 
-  # Allow Azure Pipelines/GitHub Actions/Docker/Concourse/Kubernetes to do everything as root (as it's normal there)
+  # Allow Azure Pipelines/GitHub Actions/Docker/Podman/Concourse/Kubernetes to do everything as root (as it's normal there)
   [[ -f /.dockerenv ]] && return
+  [[ -f /run/.containerenv ]] && return
   [[ -f /proc/1/cgroup ]] && grep -E "azpl_job|actions_job|docker|garden|kubepods" -q /proc/1/cgroup && return
 
   # Homebrew Services may need `sudo` for system-wide daemons.
@@ -445,13 +446,13 @@ GIT_REVISION=$("${HOMEBREW_GIT}" -C "${HOMEBREW_REPOSITORY}" rev-parse HEAD 2>/d
 # safe fallback in case git rev-parse fails e.g. if this is not considered a safe git directory
 if [[ -z "${GIT_REVISION}" ]]
 then
-  read -r GIT_HEAD <"${HOMEBREW_REPOSITORY}/.git/HEAD" 2>/dev/null
+  read -r GIT_HEAD 2>/dev/null <"${HOMEBREW_REPOSITORY}/.git/HEAD"
   if [[ "${GIT_HEAD}" == "ref: refs/heads/master" ]]
   then
-    read -r GIT_REVISION <"${HOMEBREW_REPOSITORY}/.git/refs/heads/master" 2>/dev/null
+    read -r GIT_REVISION 2>/dev/null <"${HOMEBREW_REPOSITORY}/.git/refs/heads/master"
   elif [[ "${GIT_HEAD}" == "ref: refs/heads/stable" ]]
   then
-    read -r GIT_REVISION <"${HOMEBREW_REPOSITORY}/.git/refs/heads/stable" 2>/dev/null
+    read -r GIT_REVISION 2>/dev/null <"${HOMEBREW_REPOSITORY}/.git/refs/heads/stable"
   fi
   unset GIT_HEAD
 fi
