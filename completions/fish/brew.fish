@@ -134,9 +134,9 @@ end
 
 function __fish_brew_suggest_commands -d "Lists all commands names, including aliases"
     if test -f (brew --cache)/all_commands_list.txt
-        cat (brew --cache)/all_commands_list.txt | \grep -v instal\$
+        cat (brew --cache)/all_commands_list.txt
     else
-        cat (brew --repo)/completions/internal_commands_list.txt | \grep -v instal\$
+        cat (brew --repo)/completions/internal_commands_list.txt
     end
 end
 
@@ -786,6 +786,19 @@ __fish_brew_complete_arg 'generate-cask-api' -l quiet -d 'Make some output more 
 __fish_brew_complete_arg 'generate-cask-api' -l verbose -d 'Make some output more verbose'
 
 
+__fish_brew_complete_cmd 'generate-cask-ci-matrix' 'Generate a GitHub Actions matrix for a given pull request URL or list of cask names'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l cask -d 'Treat all named arguments as cask tokens'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l debug -d 'Display any debugging information'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l help -d 'Show this message'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l new -d 'Run new cask checks'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l quiet -d 'Make some output more quiet'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l skip-install -d 'Skip installing casks'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l syntax-only -d 'Only run syntax checks'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l url -d 'Treat named argument as a pull request URL'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -l verbose -d 'Make some output more verbose'
+__fish_brew_complete_arg 'generate-cask-ci-matrix' -a '(__fish_brew_suggest_casks_all)'
+
+
 __fish_brew_complete_cmd 'generate-formula-api' 'Generate `homebrew/core` API data files for https://formulae.brew.sh'
 __fish_brew_complete_arg 'generate-formula-api' -l debug -d 'Display any debugging information'
 __fish_brew_complete_arg 'generate-formula-api' -l dry-run -d 'Generate API data without writing it to files'
@@ -854,7 +867,6 @@ __fish_brew_complete_arg 'info; and not __fish_seen_argument -l cask -l casks' -
 __fish_brew_complete_arg 'info; and not __fish_seen_argument -l formula -l formulae' -a '(__fish_brew_suggest_casks_all)'
 
 
-__fish_brew_complete_cmd 'instal' 'Install a formula or cask'
 __fish_brew_complete_arg 'instal' -l HEAD -d 'If formula defines it, install the HEAD version, aka. main, trunk, unstable, master'
 __fish_brew_complete_arg 'instal' -l adopt -d 'Adopt existing artifacts in the destination that are identical to those being installed. Cannot be combined with `--force`'
 __fish_brew_complete_arg 'instal' -l appdir -d 'Target location for Applications (default: `/Applications`)'
@@ -1599,7 +1611,6 @@ __fish_brew_complete_arg 'unbottled' -l verbose -d 'Make some output more verbos
 __fish_brew_complete_arg 'unbottled' -a '(__fish_brew_suggest_formulae_all)'
 
 
-__fish_brew_complete_cmd 'uninstal' 'Uninstall a formula or cask'
 __fish_brew_complete_arg 'uninstal' -l cask -d 'Treat all named arguments as casks'
 __fish_brew_complete_arg 'uninstal' -l debug -d 'Display any debugging information'
 __fish_brew_complete_arg 'uninstal' -l force -d 'Delete all installed versions of formula. Uninstall even if cask is not installed, overwrite existing files and ignore errors when removing files'
@@ -1715,7 +1726,6 @@ __fish_brew_complete_arg 'update-python-resources' -l version -d 'Use the specif
 __fish_brew_complete_arg 'update-python-resources' -a '(__fish_brew_suggest_formulae_all)'
 
 
-__fish_brew_complete_cmd 'update-report' 'The Ruby implementation of `brew update`'
 __fish_brew_complete_arg 'update-report' -l auto-update -d 'Run in \'auto-update\' mode (faster, less output)'
 __fish_brew_complete_arg 'update-report' -l debug -d 'Display any debugging information'
 __fish_brew_complete_arg 'update-report' -l force -d 'Treat installed and updated formulae as if they are from the same taps and migrate them anyway'

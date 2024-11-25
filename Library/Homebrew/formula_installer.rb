@@ -84,7 +84,7 @@ class FormulaInstaller
     formula,
     link_keg: false,
     installed_as_dependency: false,
-    installed_on_request: true,
+    installed_on_request: false,
     show_header: false,
     build_bottle: false,
     skip_post_install: false,
@@ -1317,6 +1317,7 @@ on_request: installed_on_request?, options:)
 
       formula.fetch_patches
       formula.resources.each(&:fetch)
+      downloadable_object = downloadable
 
       false
     end
