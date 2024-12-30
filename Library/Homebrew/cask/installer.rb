@@ -134,11 +134,12 @@ on_request: true)
       raise
     end
 
+    sig { void }
     def check_deprecate_disable
       deprecate_disable_type = DeprecateDisable.type(@cask)
       return if deprecate_disable_type.nil?
 
-      message = DeprecateDisable.message(@cask)
+      message = DeprecateDisable.message(@cask).to_s
       message_full = "#{@cask.token} has been #{message}"
 
       case deprecate_disable_type
@@ -280,9 +281,16 @@ on_request: true)
       end
     end
 
+    sig { void }
     def check_requirements
+      check_stanza_os_requirements
       check_macos_requirements
       check_arch_requirements
+    end
+
+    sig { void }
+    def check_stanza_os_requirements
+      nil
     end
 
     def check_macos_requirements
@@ -710,3 +718,5 @@ on_request: true)
     end
   end
 end
+
+require "extend/os/cask/installer"

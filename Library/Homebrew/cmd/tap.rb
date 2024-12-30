@@ -42,7 +42,7 @@ module Homebrew
         switch "--eval-all",
                description: "Evaluate all the formulae, casks and aliases in the new tap to check validity. " \
                             "Implied if `HOMEBREW_EVAL_ALL` is set."
-        switch "--force",
+        switch "-f", "--force",
                description: "Force install core taps even under API mode."
 
         named_args :tap, max: 2
@@ -58,7 +58,7 @@ module Homebrew
         elsif args.no_named?
           puts Tap.installed.sort_by(&:name)
         else
-          tap = Tap.fetch(args.named.first)
+          tap = Tap.fetch(args.named.fetch(0))
           begin
             tap.install clone_target:  args.named.second,
                         custom_remote: args.custom_remote?,
