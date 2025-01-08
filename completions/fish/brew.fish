@@ -610,6 +610,7 @@ __fish_brew_complete_arg 'deps' -l full-name -d 'List dependencies by their full
 __fish_brew_complete_arg 'deps' -l graph -d 'Show dependencies as a directed graph'
 __fish_brew_complete_arg 'deps' -l help -d 'Show this message'
 __fish_brew_complete_arg 'deps' -l include-build -d 'Include `:build` dependencies for formula'
+__fish_brew_complete_arg 'deps' -l include-implicit -d 'Include implicit dependencies used to download and unpack source files'
 __fish_brew_complete_arg 'deps' -l include-optional -d 'Include `:optional` dependencies for formula'
 __fish_brew_complete_arg 'deps' -l include-requirements -d 'Include requirements in addition to dependencies for formula'
 __fish_brew_complete_arg 'deps' -l include-test -d 'Include `:test` dependencies for formula (non-recursive)'
@@ -993,6 +994,7 @@ __fish_brew_complete_arg 'irb' -l verbose -d 'Make some output more verbose'
 
 
 __fish_brew_complete_cmd 'lc' 'Check for newer versions of formulae and/or casks from upstream'
+__fish_brew_complete_arg 'lc' -l autobump -d 'Include packages that are autobumped by BrewTestBot. By default these are skipped'
 __fish_brew_complete_arg 'lc' -l cask -d 'Only check casks'
 __fish_brew_complete_arg 'lc' -l debug -d 'Display any debugging information'
 __fish_brew_complete_arg 'lc' -l eval-all -d 'Evaluate all available formulae and casks, whether installed or not, to check them'
@@ -1068,6 +1070,7 @@ __fish_brew_complete_arg 'list; and not __fish_seen_argument -l formula -l formu
 
 
 __fish_brew_complete_cmd 'livecheck' 'Check for newer versions of formulae and/or casks from upstream'
+__fish_brew_complete_arg 'livecheck' -l autobump -d 'Include packages that are autobumped by BrewTestBot. By default these are skipped'
 __fish_brew_complete_arg 'livecheck' -l cask -d 'Only check casks'
 __fish_brew_complete_arg 'livecheck' -l debug -d 'Display any debugging information'
 __fish_brew_complete_arg 'livecheck' -l eval-all -d 'Evaluate all available formulae and casks, whether installed or not, to check them'
@@ -1812,6 +1815,7 @@ __fish_brew_complete_arg 'uses' -l eval-all -d 'Evaluate all available formulae 
 __fish_brew_complete_arg 'uses' -l formula -d 'Include only formulae'
 __fish_brew_complete_arg 'uses' -l help -d 'Show this message'
 __fish_brew_complete_arg 'uses' -l include-build -d 'Include formulae that specify formula as a `:build` dependency'
+__fish_brew_complete_arg 'uses' -l include-implicit -d 'Include formulae that have formula as an implicit dependency to download and unpack source files'
 __fish_brew_complete_arg 'uses' -l include-optional -d 'Include formulae that specify formula as an `:optional` dependency'
 __fish_brew_complete_arg 'uses' -l include-test -d 'Include formulae that specify formula as a `:test` dependency'
 __fish_brew_complete_arg 'uses' -l installed -d 'Only list formulae and casks that are currently installed'

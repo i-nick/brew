@@ -843,6 +843,7 @@ _brew_deps() {
       --graph
       --help
       --include-build
+      --include-implicit
       --include-optional
       --include-requirements
       --include-test
@@ -1459,6 +1460,7 @@ _brew_lc() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --autobump
       --cask
       --debug
       --eval-all
@@ -1579,6 +1581,7 @@ _brew_livecheck() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --autobump
       --cask
       --debug
       --eval-all
@@ -2841,6 +2844,7 @@ _brew_uses() {
       --formula
       --help
       --include-build
+      --include-implicit
       --include-optional
       --include-test
       --installed

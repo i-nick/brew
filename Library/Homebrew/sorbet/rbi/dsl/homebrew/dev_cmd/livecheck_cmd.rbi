@@ -12,6 +12,9 @@ end
 
 class Homebrew::DevCmd::LivecheckCmd::Args < Homebrew::CLI::Args
   sig { returns(T::Boolean) }
+  def autobump?; end
+
+  sig { returns(T::Boolean) }
   def cask?; end
 
   sig { returns(T::Boolean) }

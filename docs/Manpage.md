@@ -217,6 +217,10 @@ if the installed versions are outdated.
 
 : List dependencies by their full name.
 
+`--include-implicit`
+
+: Include implicit dependencies used to download and unpack source files
+
 `--include-build`
 
 : Include `:build` dependencies for *`formula`*.
@@ -1466,6 +1470,11 @@ dependency for their stable builds.
 : Evaluate all available formulae and casks, whether installed or not, to show
   their dependents.
 
+`--include-implicit`
+
+: Include formulae that have *`formula`* as an implicit dependency to download
+  and unpack source files
+
 `--include-build`
 
 : Include formulae that specify *`formula`* as a `:build` dependency.
@@ -2375,6 +2384,11 @@ from `HOMEBREW_LIVECHECK_WATCHLIST` or `~/.homebrew/livecheck_watchlist.txt`.
 `--extract-plist`
 
 : Enable checking multiple casks with ExtractPlist strategy.
+
+`--autobump`
+
+: Include packages that are autobumped by BrewTestBot. By default these are
+  skipped.
 
 ### `pr-automerge` \[*`options`*\]
 
@@ -3903,6 +3917,11 @@ command execution e.g. `$(cat file)`.
 : Print this text before the installation summary of each successful build.
   
   *Default:* The "Beer Mug" emoji.
+
+`HOMEBREW_LIVECHECK_AUTOBUMP`
+
+: If set, `brew livecheck` will include data for packages that are autobumped by
+  BrewTestBot.
 
 `HOMEBREW_LIVECHECK_WATCHLIST`
 
