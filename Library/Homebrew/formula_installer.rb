@@ -60,6 +60,7 @@ class FormulaInstaller
       show_header:                T::Boolean,
       build_bottle:               T::Boolean,
       skip_post_install:          T::Boolean,
+      skip_link:                  T::Boolean,
       force_bottle:               T::Boolean,
       bottle_arch:                T.nilable(String),
       ignore_deps:                T::Boolean,
@@ -88,6 +89,7 @@ class FormulaInstaller
     show_header: false,
     build_bottle: false,
     skip_post_install: false,
+    skip_link: false,
     force_bottle: false,
     bottle_arch: nil,
     ignore_deps: false,
@@ -120,6 +122,7 @@ class FormulaInstaller
     @build_from_source_formulae = build_from_source_formulae
     @build_bottle = build_bottle
     @skip_post_install = skip_post_install
+    @skip_link = skip_link
     @bottle_arch = bottle_arch
     @formula.force_bottle ||= force_bottle
     @force_bottle = T.let(@formula.force_bottle, T::Boolean)
@@ -193,6 +196,11 @@ class FormulaInstaller
   sig { returns(T::Boolean) }
   def skip_post_install?
     @skip_post_install.present?
+  end
+
+  sig { returns(T::Boolean) }
+  def skip_link?
+    @skip_link.present?
   end
 
   sig { params(output_warning: T::Boolean).returns(T::Boolean) }
@@ -440,7 +448,8 @@ class FormulaInstaller
 
     # Warn if a more recent version of this formula is available in the tap.
     begin
-      if formula.pkg_version < (v = Formulary.factory(formula.full_name, force_bottle: force_bottle?).pkg_version)
+      if !quiet? &&
+         formula.pkg_version < (v = Formulary.factory(formula.full_name, force_bottle: force_bottle?).pkg_version)
         opoo "#{formula.full_name} #{v} is available and more recent than version #{formula.pkg_version}."
       end
     rescue FormulaUnavailableError
@@ -847,6 +856,7 @@ on_request: installed_on_request?, options:)
     audit_installed if Homebrew::EnvConfig.developer?
 
     return if !installed_on_request? || installed_as_dependency?
+    return if quiet?
 
     caveats = Caveats.new(formula)
 
@@ -864,7 +874,15 @@ on_request: installed_on_request?, options:)
     ohai "Finishing up" if verbose?
 
     keg = Keg.new(formula.prefix)
-    link(keg)
+    if skip_link?
+      unless quiet?
+        ohai "Skipping 'link' on request"
+        puts "You can run it manually using:"
+        puts "  brew link #{formula.full_name}"
+      end
+    else
+      link(keg)
+    end
 
     install_service
 
@@ -873,13 +891,15 @@ on_request: installed_on_request?, options:)
     Homebrew::Install.global_post_install
 
     if build_bottle? || skip_post_install?
-      if build_bottle?
-        ohai "Not running 'post_install' as we're building a bottle"
-      elsif skip_post_install?
-        ohai "Skipping 'post_install' on request"
+      unless quiet?
+        if build_bottle?
+          ohai "Not running 'post_install' as we're building a bottle"
+        elsif skip_post_install?
+          ohai "Skipping 'post_install' on request"
+        end
+        puts "You can run it manually using:"
+        puts "  brew postinstall #{formula.full_name}"
       end
-      puts "You can run it manually using:"
-      puts "  brew postinstall #{formula.full_name}"
     else
       formula.install_etc_var
       post_install if formula.post_install_defined?
@@ -1321,6 +1341,7 @@ on_request: installed_on_request?, options:)
     fetch_dependencies
 
     return if only_deps?
+    return if formula.local_bottle_path.present?
 
     oh1 "Fetching #{Formatter.identifier(formula.full_name)}".strip
 
@@ -1347,8 +1368,7 @@ on_request: installed_on_request?, options:)
     if check_attestation &&
        Homebrew::Attestation.enabled? &&
        formula.tap&.core_tap? &&
-       formula.name != "gh" &&
-       formula.local_bottle_path.blank?
+       formula.name != "gh"
       ohai "Verifying attestation for #{formula.name}"
       begin
         Homebrew::Attestation.check_core_attestation T.cast(downloadable_object, Bottle)
