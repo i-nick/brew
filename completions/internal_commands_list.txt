@@ -10,6 +10,7 @@
 -S
 -v
 abv
+alias
 analytics
 audit
 autoremove
@@ -42,7 +43,9 @@ environment
 extract
 fetch
 formula
+formula-analytics
 formulae
+generate-analytics-api
 generate-cask-api
 generate-cask-ci-matrix
 generate-formula-api
@@ -100,6 +103,7 @@ tc
 test
 tests
 typecheck
+unalias
 unbottled
 uninstall
 unlink
@@ -118,3 +122,4 @@ upgrade
 uses
 vendor-gems
 vendor-install
+verify

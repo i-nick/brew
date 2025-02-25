@@ -136,6 +136,8 @@ class GitHubPackages
   IMAGE_MANIFEST_SCHEMA_URI = "https://opencontainers.org/schema/image/manifest"
 
   GITHUB_PACKAGE_TYPE = "homebrew_bottle"
+  private_constant :IMAGE_CONFIG_SCHEMA_URI, :IMAGE_INDEX_SCHEMA_URI, :IMAGE_LAYOUT_SCHEMA_URI,
+                   :IMAGE_MANIFEST_SCHEMA_URI, :GITHUB_PACKAGE_TYPE
 
   def load_schemas!
     schema_uri("content-descriptor",
@@ -350,7 +352,7 @@ class GitHubPackages
       tar_gz_sha256 = write_tar_gz(local_file, blobs)
 
       tab = tag_hash["tab"]
-      architecture = TAB_ARCH_TO_PLATFORM_ARCHITECTURE[tab["arch"].presence || bottle_tag.arch.to_s]
+      architecture = TAB_ARCH_TO_PLATFORM_ARCHITECTURE[tab["arch"].presence || bottle_tag.standardized_arch.to_s]
       raise TypeError, "unknown tab['arch']: #{tab["arch"]}" if architecture.blank?
 
       os = if tab["built_on"].present? && tab["built_on"]["os"].present?
@@ -371,7 +373,7 @@ class GitHubPackages
         os_version ||= OS::LINUX_CI_OS_VERSION
         glibc_version = tab["built_on"]["glibc_version"].presence if tab["built_on"].present?
         glibc_version ||= OS::LINUX_GLIBC_CI_VERSION
-        cpu_variant = tab["oldest_cpu_family"] || Hardware::CPU::INTEL_64BIT_OLDEST_CPU.to_s
+        cpu_variant = tab.dig("built_on", "oldest_cpu_family") || Hardware::CPU::INTEL_64BIT_OLDEST_CPU.to_s
       end
 
       platform_hash = {

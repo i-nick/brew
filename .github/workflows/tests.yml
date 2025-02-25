@@ -40,7 +40,7 @@ jobs:
           test-bot: false
 
       - name: Cache Bundler RubyGems
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f # v4.2.1
         with:
           path: ${{ steps.set-up-homebrew.outputs.gems-path }}
           key: ${{ runner.os }}-rubygems-syntax-${{ steps.set-up-homebrew.outputs.gems-hash }}
@@ -53,7 +53,7 @@ jobs:
         run: brew install shellcheck shfmt
 
       - name: Cache style cache
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f # v4.2.1
         with:
           path: ~/.cache/Homebrew/style
           key: syntax-style-cache-${{ github.sha }}
@@ -92,7 +92,7 @@ jobs:
           test-bot: true
 
       - name: Cache Bundler RubyGems
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f # v4.2.1
         with:
           path: ${{ steps.set-up-homebrew.outputs.gems-path }}
           key: ${{ runner.os }}-rubygems-tap-syntax-${{ steps.set-up-homebrew.outputs.gems-hash }}
@@ -102,7 +102,7 @@ jobs:
         run: brew install-bundler-gems --groups=style
 
       - name: Cache style cache
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f # v4.2.1
         with:
           path: ~/.cache/Homebrew/style
           key: tap-syntax-style-cache-${{ github.sha }}
@@ -113,10 +113,8 @@ jobs:
 
       - name: Set up all Homebrew taps
         run: |
-          brew tap homebrew/aliases
           brew tap homebrew/bundle
           brew tap homebrew/command-not-found
-          brew tap homebrew/formula-analytics
           brew tap homebrew/portable-ruby
           brew tap homebrew/services
 
@@ -129,9 +127,7 @@ jobs:
                      homebrew/services \
                      homebrew/test-bot
 
-          brew style homebrew/aliases \
-                     homebrew/command-not-found \
-                     homebrew/formula-analytics \
+          brew style homebrew/command-not-found \
                      homebrew/portable-ruby
 
       - name: Run brew style on homebrew/cask
@@ -183,9 +179,6 @@ jobs:
       - name: Run brew audit --skip-style on homebrew/cask
         run: |
           brew audit --skip-style --except=version --tap=homebrew/cask
-
-      - name: Generate formula API
-        run: brew generate-formula-api --dry-run
 
       - name: Generate cask API
         run: brew generate-cask-api --dry-run
@@ -286,7 +279,7 @@ jobs:
           test-bot: false
 
       - name: Cache Bundler RubyGems
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f # v4.2.1
         with:
           path: ${{ steps.set-up-homebrew.outputs.gems-path }}
           key: ${{ matrix.runs-on }}-tests-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
@@ -301,7 +294,7 @@ jobs:
         run: mkdir tests
 
       - name: Cache parallel tests log
-        uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f # v4.2.1
         with:
           path: tests
           key: ${{ runner.os }}-${{ matrix.test-flags }}-parallel_runtime_rspec-${{ github.sha }}
@@ -348,14 +341,14 @@ jobs:
           filenames=$(find Library/Homebrew/test/junit -name 'rspec*.xml' -print | tr '\n' ',')
           echo "filenames=${filenames%,}" >> "$GITHUB_OUTPUT"
 
-      - uses: codecov/test-results-action@4e79e65778be1cecd5df25e14af1eafb6df80ea9 # v1.0.2
+      - uses: codecov/test-results-action@5c441a7bcc06f8706cde90192857d337c5dab8a6 # v1.0.4
         with:
           working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
           files: ${{ steps.junit_xml.outputs.filenames }}
           disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - uses: codecov/codecov-action@1e68e06f1dbfde0e4cefc87efeba9e4643565303 # v5.1.2
+      - uses: codecov/codecov-action@13ce06bfc6bbe3ecf90edbbf1bc32fe5978ca1d3 # v5.3.1
         with:
           working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
           files: Library/Homebrew/test/coverage/coverage.xml
@@ -400,3 +393,46 @@ jobs:
       - run: brew install gnu-tar
 
       - run: brew test-bot --only-formulae --only-json-tab --test-default-formula
+
+  test-analytics:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+    needs: syntax
+    if: github.repository_owner == 'Homebrew' && github.event_name != 'push'
+    steps:
+    - name: Set up Homebrew
+      id: set-up-homebrew
+      uses: Homebrew/actions/setup-homebrew@master
+
+    - name: Setup Python
+      uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+      with:
+        python-version-file: ${{ steps.set-up-homebrew.outputs.repository-path }}/Library/Homebrew/formula-analytics/.python-version
+
+    - name: Cache Homebrew Bundler RubyGems
+      id: cache
+      uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f # v4.2.1
+      with:
+        path: ${{ steps.set-up-homebrew.outputs.gems-path }}
+        key: ${{ runner.os }}-rubygems-${{ steps.set-up-homebrew.outputs.gems-hash }}
+        restore-keys: ${{ runner.os }}-rubygems-
+
+    - name: Install Homebrew Bundler RubyGems
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: brew install-bundler-gems
+
+    - run: brew formula-analytics --setup
+
+    - run: brew formula-analytics --install --json --days-ago=2
+      if: github.event.pull_request.head.repo.fork == false && (github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]')
+      env:
+        HOMEBREW_INFLUXDB_TOKEN: ${{ secrets.HOMEBREW_INFLUXDB_READ_TOKEN }}
+
+    - run: brew generate-analytics-api
+      if: github.event.pull_request.head.repo.fork == false && (github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]')
+      env:
+        HOMEBREW_INFLUXDB_TOKEN: ${{ secrets.HOMEBREW_INFLUXDB_READ_TOKEN }}

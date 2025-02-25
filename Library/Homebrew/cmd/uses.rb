@@ -38,8 +38,8 @@ module Homebrew
                description: "Evaluate all available formulae and casks, whether installed or not, to show " \
                             "their dependents."
         switch "--include-implicit",
-               description: "Include formulae that have <formula> as an implicit dependency to " \
-                            "download and unpack source files"
+               description: "Include formulae that have <formula> as an implicit dependency for " \
+                            "downloading and unpacking source files."
         switch "--include-build",
                description: "Include formulae that specify <formula> as a `:build` dependency."
         switch "--include-test",
@@ -94,7 +94,7 @@ module Homebrew
 
       sig {
         params(use_runtime_dependents: T::Boolean, used_formulae: T::Array[T.any(Formula, UnavailableFormula)])
-          .returns(T::Array[Formula])
+          .returns(T::Array[T.any(Formula, CaskDependent)])
       }
       def intersection_of_dependents(use_runtime_dependents, used_formulae)
         recursive = args.recursive?
@@ -122,7 +122,7 @@ module Homebrew
           all = args.eval_all?
 
           if !args.installed? && !(all || Homebrew::EnvConfig.eval_all?)
-            raise UsageError, "`brew uses` needs `--installed` or `--eval-all` passed or `HOMEBREW_EVAL_ALL` set!"
+            raise UsageError, "`brew uses` needs `--installed` or `--eval-all` passed or `$HOMEBREW_EVAL_ALL` set!"
           end
 
           if show_formulae_and_casks || args.formula?
@@ -150,26 +150,30 @@ module Homebrew
 
       sig {
         params(
-          dependents: T::Array[Formula], used_formulae: T::Array[T.any(Formula, UnavailableFormula)],
-          recursive: T::Boolean, includes: T::Array[Symbol], ignores: T::Array[Symbol]
-        ).returns(
-          T::Array[Formula],
-        )
+          dependents:    T::Array[T.any(Formula, CaskDependent)],
+          used_formulae: T::Array[T.any(Formula, UnavailableFormula)],
+          recursive:     T::Boolean,
+          includes:      T::Array[Symbol],
+          ignores:       T::Array[Symbol],
+        ).returns(T::Array[T.any(Formula, CaskDependent)])
       }
       def select_used_dependents(dependents, used_formulae, recursive, includes, ignores)
         dependents.select do |d|
           deps = if recursive
-            recursive_includes(Dependency, d, includes, ignores)
+            recursive_dep_includes(d, includes, ignores)
           else
             select_includes(d.deps, ignores, includes)
           end
 
           used_formulae.all? do |ff|
             deps.any? do |dep|
-              match = begin
+              match = case dep
+              when Dependency
                 dep.to_formula.full_name == ff.full_name if dep.name.include?("/")
-              rescue
+              when Requirement
                 nil
+              else
+                T.absurd(dep)
               end
               next match unless match.nil?
 

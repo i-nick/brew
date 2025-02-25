@@ -1,3 +1,7 @@
+---
+last_review_date: "2025-02-08"
+---
+
 # Homebrew/brew Maintainer Guide
 
 This document describes a few components of the `Homebrew/brew` repository that are useful for maintainers to be aware of, but don't necessarily need to appear in documentation for most users and contributors.
@@ -11,7 +15,7 @@ PRs must meet the following conditions to be merged:
 - Have at least one maintainer approval.
 - Have passing CI (continuous integration). This is a _mandatory_ step. PRs with failing CI should _never_ be merged. See the [CI](#ci) section below for more information about `Homebrew/brew` CI.
 
-If possible, PRs should also have GPG-signed commits (see the private `ops` repository for instructions on setting this up).
+If possible, PRs should also have [signed commits](https://docs.github.com/en/authentication/managing-commit-signature-verification/signing-commits).
 
 ### Automatic approvals
 

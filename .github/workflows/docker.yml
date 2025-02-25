@@ -2,6 +2,9 @@ name: Docker
 
 on:
   pull_request:
+  push:
+    branches:
+      - master
   merge_group:
   release:
     types:
@@ -34,7 +37,9 @@ jobs:
         run: git fetch origin master
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@6524bf65af31da8d45b59e8c27de4bd072b392f5 # v3.8.0
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+        with:
+          cache-binary: false
 
       - name: Determine build attributes
         id: attributes
@@ -72,7 +77,7 @@ jobs:
                 "homebrew/brew:latest"
               )
             fi
-          elif [[ "${GITHUB_EVENT_NAME}" == "merge_group" &&
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" &&
                   "${GITHUB_REF}" == "refs/heads/master" &&
                   "${{ matrix.version }}" == "22.04" ]]; then
             tags+=(
@@ -83,7 +88,7 @@ jobs:
             )
           fi
           if [[ "${{ matrix.version }}" == "18.04" ]]; then
-            # odeprecated: remove this in Homebrew >=4.4
+            # odeprecated: remove this in Homebrew >=4.5
             echo "The homebrew/ubuntu18.04 image is deprecated and will soon be retired. Use homebrew/ubuntu22.04 or homebrew/ubuntu24.04 or homebrew/ubuntu20.04 or homebrew/brew." > .docker-deprecate
           fi
 
@@ -107,7 +112,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build Docker image
-        uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
+        uses: docker/build-push-action@0adf9959216b96bec444f325f1e493d4aa344497 # v6.14.0
         with:
           context: .
           load: true
@@ -136,7 +141,7 @@ jobs:
 
       - name: Deploy the tagged Docker image
         if: steps.attributes.outputs.push == 'true'
-        uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc # v6.11.0
+        uses: docker/build-push-action@0adf9959216b96bec444f325f1e493d4aa344497 # v6.14.0
         with:
           context: .
           push: true

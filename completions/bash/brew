@@ -381,6 +381,23 @@ _brew_abv() {
   __brew_complete_casks
 }
 
+_brew_alias() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --debug
+      --edit
+      --help
+      --quiet
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
 _brew_analytics() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   case "${cur}" in
@@ -799,6 +816,7 @@ _brew_create() {
       --set-version
       --tap
       --verbose
+      --zig
       "
       return
       ;;
@@ -1116,7 +1134,55 @@ _brew_formula() {
   __brew_complete_formulae
 }
 
+_brew_formula_analytics() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --all-core-formulae-json
+      --brew-command-run
+      --brew-command-run-options
+      --brew-test-bot-test
+      --build-error
+      --cask-install
+      --days-ago
+      --debug
+      --help
+      --homebrew-devcmdrun-developer
+      --homebrew-os-arch-ci
+      --homebrew-prefixes
+      --homebrew-versions
+      --install
+      --install-on-request
+      --json
+      --os-version
+      --quiet
+      --setup
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
 _brew_formulae() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --debug
+      --help
+      --quiet
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
+_brew_generate_analytics_api() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   case "${cur}" in
     -*)
@@ -2473,6 +2539,22 @@ _brew_typecheck() {
   __brew_complete_tapped
 }
 
+_brew_unalias() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --debug
+      --help
+      --quiet
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
 _brew_unbottled() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   case "${cur}" in
@@ -2694,6 +2776,7 @@ _brew_update_python_resources() {
       --exclude-packages
       --extra-packages
       --help
+      --ignore-errors
       --ignore-non-pypi-packages
       --install-dependencies
       --package-name
@@ -2897,6 +2980,29 @@ _brew_vendor_install() {
   esac
 }
 
+_brew_verify() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --arch
+      --bottle-tag
+      --debug
+      --deps
+      --force
+      --help
+      --json
+      --os
+      --quiet
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+  __brew_complete_formulae
+}
+
 _brew() {
   local i=1 cmd
 
@@ -2939,6 +3045,7 @@ _brew() {
     -S) _brew__s ;;
     -v) _brew__v ;;
     abv) _brew_abv ;;
+    alias) _brew_alias ;;
     analytics) _brew_analytics ;;
     audit) _brew_audit ;;
     autoremove) _brew_autoremove ;;
@@ -2971,7 +3078,9 @@ _brew() {
     extract) _brew_extract ;;
     fetch) _brew_fetch ;;
     formula) _brew_formula ;;
+    formula-analytics) _brew_formula_analytics ;;
     formulae) _brew_formulae ;;
+    generate-analytics-api) _brew_generate_analytics_api ;;
     generate-cask-api) _brew_generate_cask_api ;;
     generate-cask-ci-matrix) _brew_generate_cask_ci_matrix ;;
     generate-formula-api) _brew_generate_formula_api ;;
@@ -3029,6 +3138,7 @@ _brew() {
     test) _brew_test ;;
     tests) _brew_tests ;;
     typecheck) _brew_typecheck ;;
+    unalias) _brew_unalias ;;
     unbottled) _brew_unbottled ;;
     uninstal) _brew_uninstal ;;
     uninstall) _brew_uninstall ;;
@@ -3049,6 +3159,7 @@ _brew() {
     uses) _brew_uses ;;
     vendor-gems) _brew_vendor_gems ;;
     vendor-install) _brew_vendor_install ;;
+    verify) _brew_verify ;;
     *) ;;
   esac
 }
