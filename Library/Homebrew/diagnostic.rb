@@ -16,10 +16,10 @@ require "system_command"
 module Homebrew
   # Module containing diagnostic checks.
   module Diagnostic
-    def self.missing_deps(formulae, hide = nil)
+    def self.missing_deps(formulae, hide = [])
       missing = {}
       formulae.each do |f|
-        missing_dependencies = f.missing_dependencies(hide:)
+        missing_dependencies = f.missing_dependencies(hide: hide)
         next if missing_dependencies.empty?
 
         yield f.full_name, missing_dependencies if block_given?
@@ -63,7 +63,7 @@ module Homebrew
         end
       end
 
-      sig { params(list: T::Array[String], string: String).returns(String) }
+      sig { params(list: T::Array[T.any(Formula, Pathname, String)], string: String).returns(String) }
       def inject_file_list(list, string)
         list.reduce(string.dup) { |acc, elem| acc << "  #{elem}\n" }
             .freeze
@@ -748,14 +748,12 @@ module Homebrew
 
       def check_for_unlinked_but_not_keg_only
         unlinked = Formula.racks.reject do |rack|
-          if (HOMEBREW_LINKED_KEGS/rack.basename).directory?
-            true
-          else
-            begin
-              Formulary.from_rack(rack).keg_only?
-            rescue FormulaUnavailableError, TapFormulaAmbiguityError
-              false
-            end
+          next true if (HOMEBREW_LINKED_KEGS/rack.basename).directory?
+
+          begin
+            Formulary.from_rack(rack).keg_only?
+          rescue FormulaUnavailableError, TapFormulaAmbiguityError
+            false
           end
         end.map(&:basename)
         return if unlinked.empty?
