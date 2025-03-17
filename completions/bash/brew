@@ -1367,6 +1367,7 @@ _brew_instal() {
       --HEAD
       --adopt
       --appdir
+      --ask
       --audio-unit-plugindir
       --binaries
       --bottle-arch
@@ -1431,6 +1432,7 @@ _brew_install() {
       --HEAD
       --adopt
       --appdir
+      --ask
       --audio-unit-plugindir
       --binaries
       --bottle-arch
@@ -2090,6 +2092,7 @@ _brew_reinstall() {
       __brewcomp "
       --adopt
       --appdir
+      --ask
       --audio-unit-plugindir
       --binaries
       --build-from-source
@@ -2275,6 +2278,28 @@ _brew_search() {
       --quiet
       --repology
       --ubuntu
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
+_brew_services() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --all
+      --debug
+      --file
+      --help
+      --json
+      --max-wait
+      --no-wait
+      --quiet
+      --sudo-service-user
       --verbose
       "
       return
@@ -2869,6 +2894,7 @@ _brew_upgrade() {
     -*)
       __brewcomp "
       --appdir
+      --ask
       --audio-unit-plugindir
       --binaries
       --build-from-source
@@ -3126,6 +3152,7 @@ _brew() {
     ruby) _brew_ruby ;;
     rubydoc) _brew_rubydoc ;;
     search) _brew_search ;;
+    services) _brew_services ;;
     setup-ruby) _brew_setup_ruby ;;
     sh) _brew_sh ;;
     shellenv) _brew_shellenv ;;

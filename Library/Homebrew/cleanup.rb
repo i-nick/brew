@@ -3,7 +3,6 @@
 
 require "utils/bottles"
 
-require "attrable"
 require "formula"
 require "cask/cask_loader"
 
@@ -11,7 +10,8 @@ module Homebrew
   # Helper class for cleaning up the Homebrew cache.
   class Cleanup
     CLEANUP_DEFAULT_DAYS = Homebrew::EnvConfig.cleanup_periodic_full_days.to_i.freeze
-    private_constant :CLEANUP_DEFAULT_DAYS
+    GH_ACTIONS_ARTIFACT_CLEANUP_DAYS = 3
+    private_constant :CLEANUP_DEFAULT_DAYS, :GH_ACTIONS_ARTIFACT_CLEANUP_DAYS
 
     class << self
       sig { params(pathname: Pathname).returns(T::Boolean) }
@@ -68,8 +68,6 @@ module Homebrew
       end
 
       private
-
-      GH_ACTIONS_ARTIFACT_CLEANUP_DAYS = 3
 
       sig { params(pathname: Pathname, scrub: T::Boolean).returns(T::Boolean) }
       def stale_gh_actions_artifact?(pathname, scrub)
@@ -209,11 +207,8 @@ module Homebrew
       end
     end
 
-    extend Attrable
-
     PERIODIC_CLEAN_FILE = (HOMEBREW_CACHE/".cleaned").freeze
 
-    attr_predicate :dry_run?, :scrub?, :prune?
     attr_reader :args, :days, :cache, :disk_cleanup_size
 
     def initialize(*args, dry_run: false, scrub: false, days: nil, cache: HOMEBREW_CACHE)
@@ -226,6 +221,15 @@ module Homebrew
       @cache = cache
       @cleaned_up_paths = Set.new
     end
+
+    sig { returns(T::Boolean) }
+    def dry_run? = @dry_run
+
+    sig { returns(T::Boolean) }
+    def prune? = @prune
+
+    sig { returns(T::Boolean) }
+    def scrub? = @scrub
 
     def self.install_formula_clean!(formula, dry_run: false)
       return if Homebrew::EnvConfig.no_install_cleanup?

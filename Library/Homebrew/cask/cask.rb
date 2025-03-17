@@ -1,7 +1,6 @@
 # typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
-require "attrable"
 require "bundle_version"
 require "cask/cask_loader"
 require "cask/config"
@@ -15,7 +14,6 @@ module Cask
   # An instance of a cask.
   class Cask
     extend Forwardable
-    extend Attrable
     extend APIHashable
     include Metadata
 
@@ -31,8 +29,6 @@ module Cask
 
     attr_reader :sourcefile_path, :source, :default_config, :loader
     attr_accessor :download, :allow_reassignment
-
-    attr_predicate :loaded_from_api?
 
     def self.all(eval_all: false)
       if !eval_all && !Homebrew::EnvConfig.eval_all?
@@ -91,6 +87,9 @@ module Cask
         @default_config
       end
     end
+
+    sig { returns(T::Boolean) }
+    def loaded_from_api? = @loaded_from_api
 
     # An old name for the cask.
     sig { returns(T::Array[String]) }
@@ -412,10 +411,12 @@ module Cask
 
       if @dsl.on_system_blocks_exist?
         begin
-          MacOSVersion::SYMBOLS.keys.product(OnSystem::ARCH_OPTIONS).each do |os, arch|
+          OnSystem::ALL_OS_ARCH_COMBINATIONS.each do |os, arch|
             bottle_tag = ::Utils::Bottles::Tag.new(system: os, arch:)
             next unless bottle_tag.valid_combination?
-            next if depends_on.macos &&
+            next if bottle_tag.linux? && @dsl.os.nil?
+            next if bottle_tag.macos? &&
+                    depends_on.macos &&
                     !@dsl.depends_on_set_in_block? &&
                     !depends_on.macos.allows?(bottle_tag.to_macos_version)
 

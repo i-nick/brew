@@ -147,6 +147,7 @@ class Keg
       share/man/man1 share/man/man2 share/man/man3 share/man/man4
       share/man/man5 share/man/man6 share/man/man7 share/man/man8
       share/zsh share/zsh/site-functions
+      share/pwsh share/pwsh/completions
       var/log
     ].map { |dir| HOMEBREW_PREFIX/dir } + must_exist_subdirectories + [
       HOMEBREW_CACHE,
@@ -354,6 +355,7 @@ class Keg
     when :zsh
       dir = path/"share/zsh/site-functions"
       dir if dir.directory? && dir.children.any? { |f| f.basename.to_s.start_with?("_") }
+    when :pwsh then path/"share/pwsh/completions"
     end
     dir&.directory? && !dir.children.empty?
   end
@@ -564,6 +566,15 @@ class Keg
       next unless manpage.file?
 
       content = manpage.read
+      unless content.valid_encoding?
+        # Occasionally, a manpage might not be encoded as UTF-8. ISO-8859-1 is a
+        # common alternative that's worth trying in this case.
+        content = File.read(manpage, encoding: "ISO-8859-1")
+
+        # If the encoding is still invalid, we can't do anything about it.
+        next unless content.valid_encoding?
+      end
+
       content = content.gsub(generated_regex, "")
       content = content.lines.map do |line|
         next line unless line.start_with?(".TH")

@@ -678,6 +678,11 @@ upgrade *`formula`* if it is already installed but outdated.
 
 : Delete files that already exist in the prefix while linking.
 
+`--ask`
+
+: Ask for confirmation before downloading and installing formulae. Print bottles
+  and dependencies download size and install size.
+
 `--cask`
 
 : Treat all named arguments as casks.
@@ -1076,6 +1081,11 @@ for the reinstalled formulae or, every 30 days, for all formulae.
 
 : Create a Git repository, useful for creating patches to the software.
 
+`--ask`
+
+: Ask for confirmation before downloading and upgrading formulae. Print bottles
+  and dependencies download size, install and net install size.
+
 `--cask`
 
 : Treat all named arguments as casks.
@@ -1172,6 +1182,78 @@ Perform a substring search of cask tokens and formula names for *`text`*. If
 `--ubuntu`
 
 : Search for *`text`* in the given database.
+
+### `services` \[*`subcommand`*\]
+
+Manage background services with macOS' `launchctl`(1) daemon manager or Linux's
+`systemctl`(1) service manager.
+
+If `sudo` is passed, operate on `/Library/LaunchDaemons` or
+`/usr/lib/systemd/system` (started at boot). Otherwise, operate on
+`~/Library/LaunchAgents` or `~/.config/systemd/user` (started at login).
+
+\[`sudo`\] `brew services` \[`list`\] (`--json`) (`--debug`)
+
+: List information about all managed services for the current user (or root).
+  Provides more output from Homebrew and `launchctl`(1) or `systemctl`(1) if run
+  with `--debug`.
+
+\[`sudo`\] `brew services info` (*`formula`*\|`--all`\|`--json`)
+
+: List all managed services for the current user (or root).
+
+\[`sudo`\] `brew services run` (*`formula`*\|`--all`)
+
+: Run the service *`formula`* without registering to launch at login (or boot).
+
+\[`sudo`\] `brew services start` (*`formula`*\|`--all`\|`--file=`)
+
+: Start the service *`formula`* immediately and register it to launch at login
+  (or boot).
+
+\[`sudo`\] `brew services stop` (*`formula`*\|`--all`)
+
+: Stop the service *`formula`* immediately and unregister it from launching at
+  login (or boot).
+
+\[`sudo`\] `brew services kill` (*`formula`*\|`--all`)
+
+: Stop the service *`formula`* immediately but keep it registered to launch at
+  login (or boot).
+
+\[`sudo`\] `brew services restart` (*`formula`*\|`--all`)
+
+: Stop (if necessary) and start the service *`formula`* immediately and register
+  it to launch at login (or boot).
+
+\[`sudo`\] `brew services cleanup`
+
+: Remove all unused services.
+
+`--file`
+
+: Use the service file from this location to `start` the service.
+
+`--sudo-service-user`
+
+: When run as root on macOS, run the service(s) as this user.
+
+`--max-wait`
+
+: Wait at most this many seconds for `stop` to finish stopping a service. Omit
+  this flag or set this to zero (0) seconds to wait indefinitely.
+
+`--all`
+
+: Run *`subcommand`* on all services.
+
+`--json`
+
+: Output as JSON.
+
+`--no-wait`
+
+: Don't wait for `stop` to finish stopping the service.
 
 ### `setup-ruby` \[*`command`* ...\]
 
@@ -1429,6 +1511,11 @@ for the upgraded formulae or, every 30 days, for all formulae.
 `--overwrite`
 
 : Delete files that already exist in the prefix while linking.
+
+`--ask`
+
+: Ask for confirmation before downloading and upgrading formulae. Print bottles
+  and dependencies download size, install and net install size.
 
 `--cask`
 
@@ -2079,10 +2166,10 @@ Summarise contributions to Homebrew repositories.
 `--repositories`
 
 : Specify a comma-separated list of repositories to search. Supported
-  repositories: `brew`, `core`, `cask`, `bundle`, `command-not-found`,
-  `test-bot` and `services`. Omitting this flag, or specifying
-  `--repositories=primary`, searches only the main repositories: brew,core,cask.
-  Specifying `--repositories=all`, searches all repositories.
+  repositories: `brew`, `core`, `cask`, `bundle`, `command-not-found` and
+  `test-bot`. Omitting this flag, or specifying `--repositories=primary`,
+  searches only the main repositories: brew,core,cask. Specifying
+  `--repositories=all`, searches all repositories.
 
 `--from`
 
@@ -3220,7 +3307,7 @@ to one or more of the following environment variables:
 `brew bundle dump`
 
 : Write all installed casks/formulae/images/taps into a `Brewfile` in the
-  current directory.
+  current directory or to a custom file specified with the `--file` option.
 
 `brew bundle cleanup`
 
@@ -3249,6 +3336,18 @@ By default, only Homebrew formula dependencies are listed.
 
 : Edit the `Brewfile` in your editor.
 
+`brew bundle add` *`name`* \[...\]
+
+: Add entries to your `Brewfile`. Adds formulae by default. Use `--cask`,
+  `--tap`, `--whalebrew` or `--vscode` to add the corresponding entry instead.
+
+`brew bundle remove` *`name`* \[...\]
+
+: Remove entries that match `name` from your `Brewfile`. Use `--formula`,
+  `--cask`, `--tap`, `--mas`, `--whalebrew` or `--vscode` to remove only entries
+  of the corresponding type. Passing `--formula` also removes matches against
+  formula aliases and old formula names.
+
 `brew bundle exec` *`command`*
 
 : Run an external command in an isolated build environment based on the
@@ -3271,13 +3370,13 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 `--file`
 
-: Read the `Brewfile` from this location. Use `--file=-` to pipe to
-  stdin/stdout.
+: Read from or write to the `Brewfile` from this location. Use `--file=-` to
+  pipe to stdin/stdout.
 
 `--global`
 
-: Read the `Brewfile` from `$HOMEBREW_BUNDLE_FILE_GLOBAL` (if set),
-  `${XDG_CONFIG_HOME}/homebrew/Brewfile` (if `$XDG_CONFIG_HOME` is set),
+: Read from or write to the `Brewfile` from `$HOMEBREW_BUNDLE_FILE_GLOBAL` (if
+  set), `${XDG_CONFIG_HOME}/homebrew/Brewfile` (if `$XDG_CONFIG_HOME` is set),
   `~/.homebrew/Brewfile` or `~/.Brewfile` otherwise.
 
 `-v`, `--verbose`
@@ -3296,6 +3395,10 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 : `install` runs `brew upgrade` on outdated dependencies, even if
   `$HOMEBREW_BUNDLE_NO_UPGRADE` is set.
+
+`--install`
+
+: Run `install` before continuing to other operations e.g. `exec`.
 
 `-f`, `--force`
 
@@ -3359,78 +3462,6 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 Print instructions for setting up the command-not-found hook for your shell. If
 the output is not to a tty, print the appropriate handler script for your shell.
-
-### `services` \[*`subcommand`*\]
-
-Manage background services with macOS' `launchctl`(1) daemon manager or Linux's
-`systemctl`(1) service manager.
-
-If `sudo` is passed, operate on `/Library/LaunchDaemons` or
-`/usr/lib/systemd/system` (started at boot). Otherwise, operate on
-`~/Library/LaunchAgents` or `~/.config/systemd/user` (started at login).
-
-\[`sudo`\] `brew services` \[`list`\] (`--json`) (`--debug`)
-
-: List information about all managed services for the current user (or root).
-  Provides more output from Homebrew and `launchctl`(1) or `systemctl`(1) if run
-  with `--debug`.
-
-\[`sudo`\] `brew services info` (*`formula`*\|`--all`\|`--json`)
-
-: List all managed services for the current user (or root).
-
-\[`sudo`\] `brew services run` (*`formula`*\|`--all`)
-
-: Run the service *`formula`* without registering to launch at login (or boot).
-
-\[`sudo`\] `brew services start` (*`formula`*\|`--all`\|`--file=`)
-
-: Start the service *`formula`* immediately and register it to launch at login
-  (or boot).
-
-\[`sudo`\] `brew services stop` (*`formula`*\|`--all`)
-
-: Stop the service *`formula`* immediately and unregister it from launching at
-  login (or boot).
-
-\[`sudo`\] `brew services kill` (*`formula`*\|`--all`)
-
-: Stop the service *`formula`* immediately but keep it registered to launch at
-  login (or boot).
-
-\[`sudo`\] `brew services restart` (*`formula`*\|`--all`)
-
-: Stop (if necessary) and start the service *`formula`* immediately and register
-  it to launch at login (or boot).
-
-\[`sudo`\] `brew services cleanup`
-
-: Remove all unused services.
-
-`--file`
-
-: Use the service file from this location to `start` the service.
-
-`--sudo-service-user`
-
-: When run as root on macOS, run the service(s) as this user.
-
-`--max-wait`
-
-: Wait at most this many seconds for `stop` to finish stopping a service. Omit
-  this flag or set this to zero (0) seconds to wait indefinitely.
-
-`--all`
-
-: Run *`subcommand`* on all services.
-
-`--json`
-
-: Output as JSON.
-
-`--no-wait`
-
-: Don't wait for `stop` to finish stopping the service.
 
 ### `test-bot` \[*`options`*\] \[*`formula`*\]
 
@@ -3759,6 +3790,11 @@ command execution e.g. `$(cat file)`.
 : When `$HOMEBREW_ARTIFACT_DOMAIN` and `$HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK`
   are both set, if the request to `$HOMEBREW_ARTIFACT_DOMAIN` fails then
   Homebrew will error rather than trying any other/default URLs.
+
+`HOMEBREW_ASK`
+
+: If set, pass `--ask`to all formulae `brew install`, `brew upgrade` and `brew
+  reinstall` commands.
 
 `HOMEBREW_AUTO_UPDATE_SECS`
 
