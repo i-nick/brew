@@ -14,7 +14,6 @@ env:
   HOMEBREW_DEVELOPER: 1
   HOMEBREW_NO_AUTO_UPDATE: 1
   HOMEBREW_NO_ENV_HINTS: 1
-  HOMEBREW_BOOTSNAP: 1
   HOMEBREW_NO_INSTALL_CLEANUP: 1
   HOMEBREW_VERIFY_ATTESTATIONS: 1
 
@@ -258,9 +257,6 @@ jobs:
             test-flags: --coverage
             runs-on: ubuntu-latest
             container: ghcr.io/homebrew/ubuntu20.04:latest
-          - name: tests (macOS 13 x86_64)
-            test-flags: --coverage
-            runs-on: macos-13
           - name: tests (macOS 15 arm64)
             test-flags: --coverage
             runs-on: macos-15
@@ -346,7 +342,7 @@ jobs:
           disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - uses: codecov/codecov-action@0565863a31f2c772f9f0395002a31e3f06189574 # v5.4.0
+      - uses: codecov/codecov-action@ad3126e916f78f00edff4ed0317cf185271ccc2d # v5.4.2
         with:
           working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
           files: Library/Homebrew/test/coverage/coverage.xml
@@ -389,11 +385,69 @@ jobs:
 
       - run: brew test-bot --only-cleanup-before
 
+      - name: Setup environment variables
+        if: matrix.container == 'ghcr.io/homebrew/ubuntu20.04:latest'
+        run: echo "HOMEBREW_GLIBC_TESTING=1" >> "$GITHUB_ENV"
+
       - run: brew test-bot --only-setup
 
       - run: brew install gnu-tar
 
       - run: brew test-bot --only-formulae --only-json-tab --test-default-formula
+
+  test-brew-bundle-services:
+    name: ${{ matrix.name }}
+    needs: syntax
+    if: github.repository_owner == 'Homebrew' && github.event_name != 'push'
+    runs-on: ${{ matrix.runs-on }}
+    strategy:
+      matrix:
+        include:
+          - name: test brew bundle and brew services (Ubuntu)
+            runs-on: ubuntu-latest
+          - name: test brew bundle and brew services (macOS)
+            runs-on: macos-15
+    steps:
+      - name: Set up Homebrew
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+        with:
+          core: true
+          cask: false
+          test-bot: false
+
+      - run: brew test-bot --only-cleanup-before
+
+      - run: brew test-bot --only-setup
+
+      - name: Run brew bundle and brew services integration tests
+        run: |
+          cat <<EOS >> Brewfile
+            brew "git"
+            brew "memcached", restart_service: true
+            brew "postgresql@15", restart_service: true
+            cask "1password"
+            cask "1password-cli"
+            cask "google-chrome"
+            # VSCode cask is not available on Linux.
+            vscode "github.copilot" if OS.mac?
+          EOS
+
+          brew bundle check && exit 1
+          brew bundle check --verbose && exit 1
+          brew bundle list
+          brew bundle --verbose
+          brew bundle --upgrade-formulae=memcached,postgresql@15
+          brew bundle upgrade
+          brew bundle env | grep PATH | grep git
+          brew bundle env --install
+          brew bundle exec --services true
+          brew bundle dump --force --describe
+          brew services list
+          brew services info memcached postgresql@15
+          brew services info --json memcached postgresql@15
+          brew services cleanup
+          brew bundle cleanup --force
 
   test-analytics:
     runs-on: ${{ matrix.os }}

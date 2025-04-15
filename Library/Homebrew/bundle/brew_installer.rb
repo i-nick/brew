@@ -32,7 +32,7 @@ module Homebrew
       end
 
       def preinstall(no_upgrade: false, verbose: false)
-        if installed? && (no_upgrade || !upgradable?)
+        if installed? && (self.class.no_upgrade_with_args?(no_upgrade, @name) || !upgradable?)
           puts "Skipping install of #{@name} formula. It is already installed." if verbose
           @changed = nil
           return false
@@ -62,13 +62,12 @@ module Homebrew
           if result && @version_file.present?
             # Use the version from the environment if it hasn't changed.
             # Strip the revision number because it's not part of the non-Homebrew version.
-            version = if !changed? && (env_version = Bundle.formula_versions_from_env[@name])
+            version = if !changed? && (env_version = Bundle.formula_versions_from_env(@name))
               PkgVersion.parse(env_version).version
             else
               Formula[@full_name].version
             end.to_s
-            version_path = Pathname.new(@version_file)
-            version_path.write("#{version}\n")
+            File.write(@version_file, "#{version}\n")
 
             puts "Wrote #{@name} version #{version} to #{@version_file}" if verbose
           end
@@ -167,9 +166,13 @@ module Homebrew
 
       def self.formula_installed_and_up_to_date?(formula, no_upgrade: false)
         return false unless formula_installed?(formula)
-        return true if no_upgrade
+        return true if no_upgrade_with_args?(no_upgrade, formula)
 
         !formula_upgradable?(formula)
+      end
+
+      def self.no_upgrade_with_args?(no_upgrade, formula_name)
+        no_upgrade && Bundle.upgrade_formulae.exclude?(formula_name)
       end
 
       def self.formula_in_array?(formula, array)

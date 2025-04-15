@@ -181,6 +181,40 @@ module Homebrew
         end
       end
 
+      sig { params(cask: Cask::Cask).returns(T::Array[[Symbol, Symbol]]) }
+      def generate_system_options(cask)
+        current_os = Homebrew::SimulateSystem.current_os
+        current_os_is_macos = MacOSVersion::SYMBOLS.include?(current_os)
+        newest_macos = MacOSVersion::SYMBOLS.keys.first
+
+        depends_on_archs = cask.depends_on.arch&.filter_map { |arch| arch[:type] }&.uniq
+
+        # NOTE: We substitute the newest macOS (e.g. `:sequoia`) in place of
+        # `:macos` values (when used), as a generic `:macos` value won't apply
+        # to on_system blocks referencing macOS versions.
+        os_values = []
+        arch_values = depends_on_archs.presence || []
+        if cask.on_system_blocks_exist?
+          OnSystem::BASE_OS_OPTIONS.each do |os|
+            os_values << if os == :macos
+              (current_os_is_macos ? current_os : newest_macos)
+            else
+              os
+            end
+          end
+
+          arch_values = OnSystem::ARCH_OPTIONS if arch_values.empty?
+        else
+          # Architecture is only relevant if on_system blocks are present or
+          # the cask uses `depends_on arch`, otherwise we default to ARM for
+          # consistency.
+          os_values << (current_os_is_macos ? current_os : newest_macos)
+          arch_values << :arm if arch_values.empty?
+        end
+
+        os_values.product(arch_values)
+      end
+
       sig {
         params(
           cask:              Cask::Cask,
@@ -190,19 +224,19 @@ module Homebrew
         ).returns(T::Array[[T.any(Regexp, String), T.any(Pathname, String)]])
       }
       def replace_version_and_checksum(cask, new_hash, new_version, replacement_pairs)
-        # When blocks are absent, arch is not relevant. For consistency, we simulate the arm architecture.
-        system_options = if !cask.on_system_blocks_exist?
-          [[:macos, :arm]]
-        elsif cask.on_system_blocks_exist? && cask.depends_on.macos
-          [:macos].product(OnSystem::ARCH_OPTIONS)
-        else
-          OnSystem::BASE_OS_OPTIONS.product(OnSystem::ARCH_OPTIONS)
-        end
-
-        system_options.each do |os, arch|
+        generate_system_options(cask).each do |os, arch|
           SimulateSystem.with(os:, arch:) do
-            old_cask     = Cask::CaskLoader.load(cask.sourcefile_path)
-            old_version  = old_cask.version
+            # Handle the cask being invalid for specific os/arch combinations
+            old_cask = begin
+              Cask::CaskLoader.load(cask.sourcefile_path)
+            rescue Cask::CaskInvalidError, Cask::CaskUnreadableError
+              raise unless cask.on_system_blocks_exist?
+            end
+            next if old_cask.nil?
+
+            old_version = old_cask.version
+            next unless old_version
+
             bump_version = new_version.send(arch) || new_version.general
 
             old_version_regex = old_version.latest? ? ":latest" : %Q(["']#{Regexp.escape(old_version.to_s)}["'])
@@ -259,8 +293,9 @@ module Homebrew
 
         file = cask.sourcefile_path.relative_path_from(cask.tap.path).to_s
         quiet = args.quiet?
+        official_tap = cask.tap.official?
         GitHub.check_for_duplicate_pull_requests(cask.token, tap_remote_repo,
-                                                 state: "open", file:, quiet:)
+                                                 state: "open", file:, quiet:, official_tap:)
 
         # if we haven't already found open requests, try for an exact match across all pull requests
         new_version.instance_variables.each do |version_type|
@@ -268,7 +303,8 @@ module Homebrew
           next if version_type_version.blank?
 
           version = shortened_version(version_type_version, cask:)
-          GitHub.check_for_duplicate_pull_requests(cask.token, tap_remote_repo, version:, file:, quiet:)
+          GitHub.check_for_duplicate_pull_requests(cask.token, tap_remote_repo, version:,
+                                                   file:, quiet:, official_tap:)
         end
       end
 

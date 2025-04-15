@@ -247,6 +247,11 @@ flags which will help with finding keg-only dependencies like `openssl`,
 : `install` runs `brew upgrade` on outdated dependencies, even if
   `$HOMEBREW_BUNDLE_NO_UPGRADE` is set.
 
+`--upgrade-formulae`
+
+: `install` runs `brew upgrade` on any of these comma-separated formulae, even
+  if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set.
+
 `--install`
 
 : Run `install` before continuing to other operations e.g. `exec`.
@@ -2090,6 +2095,10 @@ displays whether a pull request has been opened with the URL.
 
 : Do not retrieve pull requests from GitHub.
 
+`--no-autobump`
+
+: Ignore formulae/casks in autobump list (official repositories only).
+
 `--formula`
 
 : Check only formulae.
@@ -3842,11 +3851,6 @@ command execution e.g. `$(cat file)`.
 : Use this as the `bat` theme for syntax highlighting.
   
   *Default:* `$BAT_THEME`.
-
-`HOMEBREW_BOOTSNAP`
-
-: If set, use Bootsnap to speed up repeated `brew` calls. A no-op on Linux when
-  not using Homebrew's vendored, relocatable Ruby.
 
 `HOMEBREW_BOTTLE_DOMAIN`
 

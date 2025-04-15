@@ -104,6 +104,10 @@ HOMEBREW_CASKROOM="${HOMEBREW_PREFIX}/Caskroom"
 HOMEBREW_CACHE="${HOMEBREW_CACHE:-${HOMEBREW_DEFAULT_CACHE}}"
 HOMEBREW_LOGS="${HOMEBREW_LOGS:-${HOMEBREW_DEFAULT_LOGS}}"
 HOMEBREW_TEMP="${HOMEBREW_TEMP:-${HOMEBREW_DEFAULT_TEMP}}"
+if [[ ! -w "${HOMEBREW_TEMP}" ]]
+then
+  HOMEBREW_TEMP="${HOMEBREW_DEFAULT_TEMP}"
+fi
 
 # commands that take a single or no arguments.
 # HOMEBREW_LIBRARY set by bin/brew
@@ -373,8 +377,11 @@ auto-update() {
     unset HOMEBREW_AUTO_UPDATING
     unset HOMEBREW_AUTO_UPDATE_TAP
 
-    # exec a new process to set any new environment variables.
-    exec "${HOMEBREW_BREW_FILE}" "$@"
+    if [[ $# -gt 0 ]]
+    then
+      # exec a new process to set any new environment variables.
+      exec "${HOMEBREW_BREW_FILE}" "$@"
+    fi
   fi
 
   unset AUTO_UPDATE_COMMANDS

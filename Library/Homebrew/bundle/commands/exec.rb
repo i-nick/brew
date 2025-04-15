@@ -1,6 +1,7 @@
 # typed: false # rubocop:todo Sorbet/TrueSigil
 # frozen_string_literal: true
 
+require "English"
 require "exceptions"
 require "extend/ENV"
 require "utils"
@@ -10,47 +11,9 @@ module Homebrew
   module Bundle
     module Commands
       module Exec
-        # Homebrew's global environment variables that we don't want to leak into
-        # the `brew bundle exec` environment.
-        HOMEBREW_ENV_CLEANUP = %w[
-          HOMEBREW_HELP_MESSAGE
-          HOMEBREW_API_DEFAULT_DOMAIN
-          HOMEBREW_BOTTLE_DEFAULT_DOMAIN
-          HOMEBREW_BREW_DEFAULT_GIT_REMOTE
-          HOMEBREW_CORE_DEFAULT_GIT_REMOTE
-          HOMEBREW_DEFAULT_CACHE
-          HOMEBREW_DEFAULT_LOGS
-          HOMEBREW_DEFAULT_TEMP
-          HOMEBREW_REQUIRED_RUBY_VERSION
-          HOMEBREW_PRODUCT
-          HOMEBREW_SYSTEM
-          HOMEBREW_PROCESSOR
-          HOMEBREW_PHYSICAL_PROCESSOR
-          HOMEBREW_BREWED_CURL_PATH
-          HOMEBREW_USER_AGENT_CURL
-          HOMEBREW_USER_AGENT
-          HOMEBREW_GENERIC_DEFAULT_PREFIX
-          HOMEBREW_GENERIC_DEFAULT_REPOSITORY
-          HOMEBREW_DEFAULT_PREFIX
-          HOMEBREW_DEFAULT_REPOSITORY
-          HOMEBREW_AUTO_UPDATE_COMMAND
-          HOMEBREW_BREW_GIT_REMOTE
-          HOMEBREW_COMMAND_DEPTH
-          HOMEBREW_CORE_GIT_REMOTE
-          HOMEBREW_MACOS_VERSION_NUMERIC
-          HOMEBREW_MINIMUM_GIT_VERSION
-          HOMEBREW_MACOS_NEWEST_UNSUPPORTED
-          HOMEBREW_MACOS_OLDEST_SUPPORTED
-          HOMEBREW_MACOS_OLDEST_ALLOWED
-          HOMEBREW_GITHUB_PACKAGES_AUTH
-        ].freeze
-
         PATH_LIKE_ENV_REGEX = /.+#{File::PATH_SEPARATOR}/
 
         def self.run(*args, global: false, file: nil, subcommand: "", services: false)
-          # Cleanup Homebrew's global environment
-          HOMEBREW_ENV_CLEANUP.each { |key| ENV.delete(key) }
-
           # Store the old environment so we can check if things were already set
           # before we start mutating it.
           old_env = ENV.to_h
@@ -112,7 +75,11 @@ module Homebrew
           end
 
           # Replace the formula versions from the environment variables
-          Bundle.formula_versions_from_env.each do |formula_name, formula_version|
+          ENV.deps.each do |formula|
+            formula_name = formula.name
+            formula_version = Bundle.formula_versions_from_env(formula_name)
+            next unless formula_version
+
             ENV.each do |key, value|
               opt = %r{/opt/#{formula_name}([/:$])}
               next unless value.match(opt)
@@ -144,15 +111,44 @@ module Homebrew
           # For commands which aren't either absolute or relative
           raise "command was not found in your PATH: #{command}" if command.exclude?("/") && which(command).nil?
 
+          %w[HOMEBREW_TEMP TMPDIR HOMEBREW_TMPDIR].each do |var|
+            value = ENV.fetch(var, nil)
+            next if value.blank?
+            next if File.writable?(value)
+
+            ENV.delete(var)
+          end
+
           if subcommand == "env"
             ENV.sort.each do |key, value|
               # No need to export empty values.
               next if value.blank?
 
-              # Skip exporting non-Homebrew things that were already set in the old environment.
-              next if !key.start_with?("HOMEBREW_") && old_env.key?(key) && old_env[key] == value
+              # Skip exporting Homebrew internal variables that won't be used by other tools.
+              # Those Homebrew needs have already been set to global constants and/or are exported again later.
+              # Setting these globally can interfere with nested Homebrew invocations/environments.
+              next if key.start_with?("HOMEBREW_", "PORTABLE_RUBY_")
 
-              puts "export #{key}=\"#{Utils::Shell.sh_quote(value)}\""
+              # Skip exporting things that were the same in the old environment.
+              old_value = old_env[key]
+              next if old_value == value
+
+              # Look for PATH-like environment variables
+              if key.include?("PATH") && value.match?(PATH_LIKE_ENV_REGEX)
+                old_values = old_value.to_s.split(File::PATH_SEPARATOR)
+                path = PATH.new(value)
+                           .reject do |path_value|
+                  # Exclude Homebrew shims from the PATH as they don't work
+                  # without all Homebrew environment variables.
+                  # Exclude existing/old values as they've already been exported.
+                  path_value.include?("/Homebrew/shims/") || old_values.include?(path_value)
+                end
+                next if path.blank?
+
+                puts "export #{key}=\"#{Utils::Shell.sh_quote(path.to_s)}:${#{key}:-}\""
+              else
+                puts "export #{key}=\"#{Utils::Shell.sh_quote(value)}\""
+              end
             end
             return
           end
@@ -175,6 +171,7 @@ module Homebrew
           params(
             entries: T::Array[Homebrew::Bundle::Dsl::Entry],
             _block:  T.proc.params(
+              entry:                Homebrew::Bundle::Dsl::Entry,
               info:                 T::Hash[String, T.anything],
               service_file:         Pathname,
               conflicting_services: T::Array[T::Hash[String, T.anything]],
@@ -191,13 +188,24 @@ module Homebrew
             [entry, formula]
           end.to_h
 
+          return if entries_formulae.empty?
+
+          conflicts = entries_formulae.to_h do |entry, formula|
+            [
+              entry,
+              (
+                formula.versioned_formulae_names +
+                  formula.conflicts.map(&:name) +
+                  Array(entry.options[:conflicts_with])
+              ).uniq,
+            ]
+          end
+
           # The formula + everything that could possible conflict with the service
           names_to_query = entries_formulae.flat_map do |entry, formula|
             [
               formula.name,
-              *formula.versioned_formulae_names,
-              *formula.conflicts.map(&:name),
-              *entry.options[:conflicts_with],
+              *conflicts.fetch(entry),
             ]
           end
 
@@ -227,20 +235,25 @@ module Homebrew
             conflicting_services = services_info.select do |candidate|
               next unless candidate["running"]
 
-              formula.versioned_formulae_names.include?(candidate["name"])
+              conflicts.fetch(entry).include?(candidate["name"])
             end
 
             raise "Failed to get service info for #{entry.name}" if info.nil?
 
-            yield info, service_file, conflicting_services
+            yield entry, info, service_file, conflicting_services
           end
         end
 
         sig { params(entries: T::Array[Homebrew::Bundle::Dsl::Entry], _block: T.nilable(T.proc.void)).void }
         private_class_method def self.run_services(entries, &_block)
+          entries_to_stop = []
           services_to_restart = []
 
-          map_service_info(entries) do |info, service_file, conflicting_services|
+          map_service_info(entries) do |entry, info, service_file, conflicting_services|
+            # Don't restart if already running this version
+            loaded_file = Pathname.new(info["loaded_file"].to_s)
+            next if info["running"] && loaded_file&.file? && loaded_file&.realpath == service_file.realpath
+
             if info["running"] && !Bundle::BrewServices.stop(info["name"], keep: true)
               opoo "Failed to stop #{info["name"]} service"
             end
@@ -256,6 +269,8 @@ module Homebrew
             unless Bundle::BrewServices.run(info["name"], file: service_file)
               opoo "Failed to start #{info["name"]} service"
             end
+
+            entries_to_stop << entry
           end
 
           return unless block_given?
@@ -264,7 +279,7 @@ module Homebrew
             yield
           ensure
             # Do a full re-evaluation of services instead state has changed
-            stop_services(entries)
+            stop_services(entries_to_stop)
 
             services_to_restart.each do |service|
               next if Bundle::BrewServices.run(service)
@@ -276,7 +291,7 @@ module Homebrew
 
         sig { params(entries: T::Array[Homebrew::Bundle::Dsl::Entry]).void }
         private_class_method def self.stop_services(entries)
-          map_service_info(entries) do |info, _, _|
+          map_service_info(entries) do |_, info, _, _|
             next unless info["loaded"]
 
             # Try avoid services not started by `brew bundle services`

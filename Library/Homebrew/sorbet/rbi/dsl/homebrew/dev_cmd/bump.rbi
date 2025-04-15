@@ -36,6 +36,9 @@ class Homebrew::DevCmd::Bump::Args < Homebrew::CLI::Args
   def installed?; end
 
   sig { returns(T::Boolean) }
+  def no_autobump?; end
+
+  sig { returns(T::Boolean) }
   def no_fork?; end
 
   sig { returns(T::Boolean) }

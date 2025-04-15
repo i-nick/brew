@@ -188,6 +188,11 @@ module Homebrew
         Regexp.last_match(1).to_i if status_output =~ exit_code_regex(status_type)
       end
 
+      def loaded_file
+        status_output, _, status_type = status_output_success_type
+        Regexp.last_match(1) if status_output =~ loaded_file_regex(status_type)
+      end
+
       sig { returns(T::Hash[Symbol, T.anything]) }
       def to_hash
         hash = {
@@ -202,6 +207,7 @@ module Homebrew
           status:       status_symbol,
           file:         service_file_present? ? dest : service_file,
           registered:   service_file_present?,
+          loaded_file:,
         }
 
         return hash unless service?
@@ -235,19 +241,19 @@ module Homebrew
 
       def status_output_success_type
         @status_output_success_type ||= if System.launchctl?
-          cmd = [System.launchctl.to_s, "list", "#{System.domain_target}/#{service_name}"]
+          cmd = [System.launchctl.to_s, "print", "#{System.domain_target}/#{service_name}"]
           output = Utils.popen_read(*cmd).chomp
           if $CHILD_STATUS.present? && $CHILD_STATUS.success? && output.present?
             success = true
-            odebug cmd.join(" "), output
-            [output, success, :launchctl_list]
+            type = :launchctl_print
           else
-            cmd = [System.launchctl.to_s, "print", "#{System.domain_target}/#{service_name}"]
+            cmd = [System.launchctl.to_s, "list", service_name]
             output = Utils.popen_read(*cmd).chomp
             success = $CHILD_STATUS.present? && $CHILD_STATUS.success? && output.present?
-            odebug cmd.join(" "), output
-            [output, success, :launchctl_print]
+            type = :launchctl_list
           end
+          odebug cmd.join(" "), output
+          [output, success, type]
         elsif System.systemctl?
           cmd = ["status", service_name]
           output = System::Systemctl.popen_read(*cmd).chomp
@@ -300,6 +306,15 @@ module Homebrew
           systemctl:       /Main PID: ([0-9]*) \((?!code=)/,
         }
         @pid_regex.fetch(status_type)
+      end
+
+      def loaded_file_regex(status_type)
+        @loaded_file_regex ||= {
+          launchctl_list:  //, # not available
+          launchctl_print: /path = (.*)/,
+          systemctl:       /Loaded: .*? \((.*);/,
+        }
+        @loaded_file_regex.fetch(status_type)
       end
 
       sig { returns(T::Boolean) }
