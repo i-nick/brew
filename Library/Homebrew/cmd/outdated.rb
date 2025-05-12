@@ -177,7 +177,7 @@ module Homebrew
       sig { returns(T::Array[Formula]) }
       def outdated_formulae
         T.cast(
-          select_outdated((args.named.to_resolved_formulae.presence || Formula.installed)).sort,
+          select_outdated(args.named.to_resolved_formulae.presence || Formula.installed).sort,
           T::Array[Formula],
         )
       end

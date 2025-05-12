@@ -167,7 +167,6 @@ RSpec.describe Homebrew::Services::FormulaWrapper do
       allow(service).to receive_messages(installed?:   true,
                                          service_file: Pathname.new(File::NULL),
                                          formula:      instance_double(Formula,
-                                                                       plist:      nil,
                                                                        opt_prefix: Pathname.new("/dfslkfhjdsolshlk")))
       expect(service.plist?).to be(false)
     end

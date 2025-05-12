@@ -41,7 +41,7 @@ module Homebrew
             case v
             when TrueClass
               "--#{k}"
-            when FalseClass
+            when FalseClass, NilClass
               nil
             else
               "--#{k}=#{v}"

@@ -38,7 +38,7 @@ class SoftwareSpec
     super()
 
     # Ensure this is synced with `initialize_dup` and `freeze` (excluding simple objects like integers and booleans)
-    @resource = Resource::Formula.new
+    @resource = T.let(Resource::Formula.new, Resource::Formula)
     @resources = {}
     @dependency_collector = DependencyCollector.new
     @bottle_specification = BottleSpecification.new
@@ -152,11 +152,6 @@ class SoftwareSpec
 
       resources.fetch(name) { raise ResourceMissingError.new(owner, name) }
     end
-  end
-
-  def go_resource(name, &block)
-    odisabled "`SoftwareSpec#go_resource`", "Go modules"
-    resource name, Resource::Go, &block
   end
 
   def option_defined?(name)

@@ -259,6 +259,8 @@ livecheck do
 end
 ```
 
+The strategy's default logic skips releases marked as draft or pre-release but this can be modified by using a `strategy` block. Removing the `release["prerelease"]` condition from the previous example would allow us to work with pre-release releases, though the regex may also need to be adapted to handle unstable version formats.
+
 You can find more information on the response JSON from this API endpoint in the related [GitHub REST API documentation](https://docs.github.com/en/rest/releases/releases?apiVersion=latest#list-releases).
 
 #### `Crate` `strategy` block

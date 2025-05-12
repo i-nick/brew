@@ -199,7 +199,7 @@ By default, only Homebrew formula dependencies are listed.
   of the corresponding type. Passing `--formula` also removes matches against
   formula aliases and old formula names.
 
-`brew bundle exec` *`command`*
+`brew bundle exec` \[--check\] *`command`*
 
 : Run an external command in an isolated build environment based on the
   `Brewfile` dependencies.
@@ -210,11 +210,11 @@ commands like `bundle install`, `npm install`, etc. It will also add compiler
 flags which will help with finding keg-only dependencies like `openssl`,
 `icu4c`, etc.
 
-`brew bundle sh`
+`brew bundle sh` \[--check\]
 
 : Run your shell in a `brew bundle exec` environment.
 
-`brew bundle env`
+`brew bundle env` \[--check\]
 
 : Print the environment variables that would be set in a `brew bundle exec`
   environment.
@@ -258,7 +258,8 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 `--services`
 
-: Temporarily start services while running the `exec` or `sh` command.
+: Temporarily start services while running the `exec` or `sh` command. This is
+  enabled by default if `$HOMEBREW_BUNDLE_SERVICES` is set.
 
 `-f`, `--force`
 
@@ -317,6 +318,11 @@ flags which will help with finding keg-only dependencies like `openssl`,
 `--zap`
 
 : `cleanup` casks using the `zap` command instead of `uninstall`.
+
+`--check`
+
+: Check that all dependencies in the Brewfile are installed before running
+  `exec`, `sh`, or `env`.
 
 ### `casks`
 
@@ -2135,6 +2141,10 @@ displays whether a pull request has been opened with the URL.
 `--start-with`
 
 : Letter or word that the list of package results should alphabetically follow.
+
+`--bump-synced`
+
+: Bump additional formulae marked as synced with the given formulae.
 
 ### `bump-cask-pr` \[*`options`*\] *`cask`*
 
@@ -4045,6 +4055,10 @@ command execution e.g. `$(cat file)`.
 : A space-separated list of taps. Homebrew will refuse to install a formula if
   it or any of its dependencies is in a tap on this list.
 
+`HOMEBREW_FORBID_CASKS`
+
+: If set, Homebrew will refuse to install any casks.
+
 `HOMEBREW_FORBID_PACKAGES_FROM_PATHS`
 
 : If set, Homebrew will refuse to read formulae or casks provided from file
@@ -4339,7 +4353,7 @@ command execution e.g. `$(cat file)`.
   the target does not yet exist. This issue typically occurs when using
   FileVault or custom SSD configurations.
   
-  *Default:* macOS: `/private/tmp`, Linux: `/tmp`.
+  *Default:* macOS: `/private/tmp`, Linux: `/var/tmp`.
 
 `HOMEBREW_UPDATE_TO_TAG`
 

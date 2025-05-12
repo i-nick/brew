@@ -2,7 +2,7 @@
 # When bumping to a new major/minor version, also update the bounds in the Gemfile
 # HOMEBREW_LIBRARY set by bin/brew
 # shellcheck disable=SC2154
-export HOMEBREW_REQUIRED_RUBY_VERSION="3.3"
+export HOMEBREW_REQUIRED_RUBY_VERSION="3.4"
 HOMEBREW_PORTABLE_RUBY_VERSION="$(cat "${HOMEBREW_LIBRARY}/Homebrew/vendor/portable-ruby-version")"
 
 # Disable Ruby options we don't need.

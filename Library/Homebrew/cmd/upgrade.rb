@@ -39,6 +39,10 @@ module Homebrew
                description: "Print the verification and post-install steps."
         switch "-n", "--dry-run",
                description: "Show what would be upgraded, but do not actually upgrade anything."
+        switch "--ask",
+               description: "Ask for confirmation before downloading and upgrading formulae. " \
+                            "Print bottles and dependencies download size, install and net install size.",
+               env:         :ask
         [
           [:switch, "--formula", "--formulae", {
             description: "Treat all named arguments as formulae. If no named arguments " \
@@ -70,11 +74,6 @@ module Homebrew
           }],
           [:switch, "--overwrite", {
             description: "Delete files that already exist in the prefix while linking.",
-          }],
-          [:switch, "--ask", {
-            description: "Ask for confirmation before downloading and upgrading formulae. " \
-                         "Print bottles and dependencies download size, install and net install size.",
-            env:         :ask,
           }],
         ].each do |args|
           options = args.pop
@@ -222,7 +221,7 @@ module Homebrew
         Install.perform_preinstall_checks_once
 
         # Main block: if asking the user is enabled, show dependency and size information.
-        Install.ask(formulae_to_install, args: args) if args.ask?
+        Install.ask_formulae(formulae_to_install, args: args) if args.ask?
 
         Upgrade.upgrade_formulae(
           formulae_to_install,
@@ -261,6 +260,8 @@ module Homebrew
       sig { params(casks: T::Array[Cask::Cask]).returns(T::Boolean) }
       def upgrade_outdated_casks(casks)
         return false if args.formula?
+
+        Install.ask_casks casks if args.ask?
 
         Cask::Upgrade.upgrade_casks(
           *casks,

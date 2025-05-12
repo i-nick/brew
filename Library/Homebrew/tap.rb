@@ -162,7 +162,7 @@ class Tap
   sig { returns(T::Boolean) }
   def repo
     # delete this whole function when removing odisabled
-    odeprecated "Tap#repo", "Tap#repository"
+    odisabled "Tap#repo", "Tap#repository"
     repository
   end
 
@@ -284,7 +284,7 @@ class Tap
   sig { returns(T.nilable(String)) }
   def remote_repo
     # delete this whole function when removing odisabled
-    odeprecated "Tap#remote_repo", "Tap#remote_repository"
+    odisabled "Tap#remote_repo", "Tap#remote_repository"
     remote_repository
   end
 
@@ -306,7 +306,7 @@ class Tap
   sig { returns(String) }
   def repo_var_suffix
     # delete this whole function when removing odisabled
-    odeprecated "Tap#repo_var_suffix", "Tap#repository_var_suffix"
+    odisabled "Tap#repo_var_suffix", "Tap#repository_var_suffix"
     repository_var_suffix
   end
 
@@ -985,11 +985,29 @@ class Tap
   # Array with autobump names
   sig { returns(T::Array[String]) }
   def autobump
-    @autobump ||= if (autobump_file = path/HOMEBREW_TAP_AUTOBUMP_FILE).file?
-      autobump_file.readlines(chomp: true)
-    else
-      []
+    # TODO: uncomment when official taps are prepared to use new autobump system
+    #
+    # autobump_packages = if core_cask_tap?
+    #   Homebrew::API::Cask.all_casks
+    # elsif core_tap?
+    #   Homebrew::API::Formula.all_formulae
+    # else
+    #   {}
+    # end
+    #
+    # @autobump ||= autobump_packages.select do |_, p|
+    #   p["autobump"] == true && !p["skip_livecheck"] && !(p["deprecated"] || p["disabled"])
+    # end.keys
+
+    if @autobump.blank?
+      @autobump = if (autobump_file = path/HOMEBREW_TAP_AUTOBUMP_FILE).file?
+        autobump_file.readlines(chomp: true)
+      else
+        []
+      end
     end
+
+    @autobump
   end
 
   # Whether this {Tap} allows running bump commands on the given {Formula} or {Cask}.
@@ -1078,14 +1096,6 @@ class Tap
     else
       all.each(&block)
     end
-  end
-
-  # An array of all installed {Tap} names.
-  sig { returns(T::Array[String]) }
-  def self.names
-    odisabled "`#{self}.names`"
-
-    map(&:name).sort
   end
 
   # An array of official taps that have been manually untapped
@@ -1187,13 +1197,6 @@ class AbstractCoreTap < Tap
     return if Homebrew::EnvConfig.automatically_set_no_install_from_api?
 
     super
-  end
-
-  sig { void }
-  def self.ensure_installed!
-    odisabled "`#{self}.ensure_installed!`", "`#{self}.instance.ensure_installed!`"
-
-    instance.ensure_installed!
   end
 
   sig { params(file: Pathname).returns(String) }

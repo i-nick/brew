@@ -138,7 +138,7 @@ module Cask
         @dsl = T.let(dsl, ::Cask::DSL)
         @block = T.let(block, T.proc.params(arg0: T.all(String, PageWithURL)).returns(BlockReturn))
 
-        odeprecated "cask `url do` blocks" if @block
+        odisabled "cask `url do` blocks" if @block
       end
 
       sig { returns(BlockReturn) }

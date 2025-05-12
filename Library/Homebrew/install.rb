@@ -331,7 +331,9 @@ module Homebrew
       end
 
       # If asking the user is enabled, show dependency and size information.
-      def ask(formulae, args:)
+      def ask_formulae(formulae, args:)
+        return if formulae.empty?
+
         ohai "Looking for bottles..."
 
         sized_formulae = compute_sized_formulae(formulae, args: args)
@@ -342,6 +344,15 @@ module Homebrew
         puts "Download Size: #{disk_usage_readable(sizes[:download])}"
         puts "Install Size:  #{disk_usage_readable(sizes[:installed])}"
         puts "Net Install Size: #{disk_usage_readable(sizes[:net])}" if sizes[:net] != 0
+
+        ask_input
+      end
+
+      def ask_casks(casks)
+        return if casks.empty?
+
+        puts "#{::Utils.pluralize("Cask", casks.count, plural: "s")} \
+(#{casks.count}): #{casks.join(", ")}\n\n"
 
         ask_input
       end

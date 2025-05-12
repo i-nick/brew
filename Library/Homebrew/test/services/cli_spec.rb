@@ -74,6 +74,7 @@ RSpec.describe Homebrew::Services::Cli do
         keep_alive?: false,
       )
       allow(service).to receive(:service_name)
+      allow(service).to receive(:reset_cache!)
       allow(Homebrew::Services::FormulaWrapper).to receive(:from).and_return(service)
       allow(services_cli).to receive(:running).and_return(["example_service"])
       expect do

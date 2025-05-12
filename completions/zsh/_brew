@@ -288,10 +288,10 @@ _brew___cache() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Only show cache files for formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--build-from-source --force-bottle --bottle-tag --HEAD --formula)--cask[Only show cache files for casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew --caskroom
@@ -302,7 +302,7 @@ _brew___caskroom() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - cask \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew --cellar
@@ -313,7 +313,7 @@ _brew___cellar() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew --config
@@ -335,7 +335,7 @@ _brew___env() {
     '--shell[Generate a list of environment variables for the specified shell, or `--shell=auto` to detect the current shell]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew --prefix
@@ -348,7 +348,7 @@ _brew___prefix() {
     '(--installed)--unbrewed[List files in Homebrew'\''s prefix not installed by Homebrew]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew --repo
@@ -359,7 +359,7 @@ _brew___repo() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew --repository
@@ -370,7 +370,7 @@ _brew___repository() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew --version
@@ -433,10 +433,10 @@ _brew_abv() {
     '--verbose[Show more verbose analytics data for formula]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula --fetch-manifest)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew alias
@@ -457,7 +457,7 @@ _brew_analytics() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - subcommand \
-    '*::subcommand:(state on off regenerate-uuid)'
+    '*:subcommand:(state on off regenerate-uuid)'
 }
 
 # brew audit
@@ -489,10 +489,10 @@ _brew_audit() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew autoremove
@@ -526,34 +526,35 @@ _brew_bottle() {
     '--verbose[Make some output more verbose]' \
     '--write[Write changes to the formula file. A new commit will be generated unless `--no-commit` is passed]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - file \
-    '*::file:__brew_formulae_or_ruby_files'
+    '*:file:__brew_formulae_or_ruby_files'
 }
 
 # brew bump
 _brew_bump() {
   _arguments \
+    '--bump-synced[Bump additional formulae marked as synced with the given formulae]' \
     '--debug[Display any debugging information]' \
     '(--installed)--eval-all[Evaluate all formulae and casks]' \
     '--full-name[Print formulae/casks with fully-qualified names]' \
     '--help[Show this message]' \
     '(--tap --eval-all --auto)--installed[Check formulae and casks that are currently installed]' \
-    '--no-autobump[Ignore formulae/casks in autobump list (official repositories only)]' \
+    '(--tap)--no-autobump[Ignore formulae/casks in autobump list (official repositories only)]' \
     '--no-fork[Don'\''t try to fork the repository]' \
     '(--open-pr)--no-pull-requests[Do not retrieve pull requests from GitHub]' \
     '(--no-pull-requests)--open-pr[Open a pull request for the new version if none have been opened yet]' \
     '--quiet[Make some output more quiet]' \
     '--repology[Use Repology to check for outdated packages]' \
     '--start-with[Letter or word that the list of package results should alphabetically follow]' \
-    '(--installed --no-auto)--tap[Check formulae and casks within the given tap, specified as user`/`repo]' \
+    '(--installed --no-autobump)--tap[Check formulae and casks within the given tap, specified as user`/`repo]' \
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Check only formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Check only casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew bump-cask-pr
@@ -578,7 +579,7 @@ _brew_bump_cask_pr() {
     '(--version)--version-intel[Specify the new cask version for the Intel architecture]' \
     '--write-only[Make the expected file modifications without taking any Git actions]' \
     - cask \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew bump-formula-pr
@@ -610,7 +611,7 @@ _brew_bump_formula_pr() {
     '--version[Use the specified version to override the value parsed from the URL or tag. Note that `--version=0` can be used to delete an existing version override from a formula if it has become redundant]' \
     '(--dry-run)--write-only[Make the expected file modifications without taking any Git actions]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew bump-revision
@@ -625,7 +626,7 @@ _brew_bump_revision() {
     '--verbose[Make some output more verbose]' \
     '(--dry-run)--write-only[Make the expected file modifications without taking any Git actions]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew bump-unversioned-casks
@@ -639,9 +640,9 @@ _brew_bump_unversioned_casks() {
     '--state-file[File for caching state]' \
     '--verbose[Make some output more verbose]' \
     - cask \
-    '*::cask:__brew_casks' \
+    '*:cask:__brew_casks' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew bundle
@@ -649,6 +650,7 @@ _brew_bundle() {
   _arguments \
     '(--no-vscode)--all[`list` all dependencies]' \
     '--cask[`list` or `dump` Homebrew cask dependencies]' \
+    '--check[Check that all dependencies in the Brewfile are installed before running `exec`, `sh`, or `env`]' \
     '--cleanup[`install` performs cleanup operation, same as running `cleanup --force`. This is enabled by default if `$HOMEBREW_BUNDLE_INSTALL_CLEANUP` is set and `--global` is passed]' \
     '--debug[Display any debugging information]' \
     '--describe[`dump` adds a description comment above each line, unless the dependency does not have a description. This is enabled by default if `$HOMEBREW_BUNDLE_DUMP_DESCRIBE` is set]' \
@@ -663,7 +665,7 @@ _brew_bundle() {
     '--no-upgrade[`install` does not run `brew upgrade` on outdated dependencies. `check` does not check for outdated dependencies. Note they may still be upgraded by `brew install` if needed. This is enabled by default if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set]' \
     '(--all --vscode)--no-vscode[`dump` without VSCode (and forks/variants) extensions. This is enabled by default if `$HOMEBREW_BUNDLE_DUMP_NO_VSCODE` is set]' \
     '--quiet[Make some output more quiet]' \
-    '--services[Temporarily start services while running the `exec` or `sh` command]' \
+    '--services[Temporarily start services while running the `exec` or `sh` command. This is enabled by default if `$HOMEBREW_BUNDLE_SERVICES` is set]' \
     '--tap[`list` or `dump` Homebrew tap dependencies]' \
     '(--install)--upgrade[`install` runs `brew upgrade` on outdated dependencies, even if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set]' \
     '--upgrade-formulae[`install` runs `brew upgrade` on any of these comma-separated formulae, even if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set]' \
@@ -672,7 +674,7 @@ _brew_bundle() {
     '--whalebrew[`list` or `dump` Whalebrew dependencies]' \
     '--zap[`cleanup` casks using the `zap` command instead of `uninstall`]' \
     - subcommand \
-    '*::subcommand:(install dump cleanup check exec list sh env edit)'
+    '*:subcommand:(install dump cleanup check exec list sh env edit)'
 }
 
 # brew casks
@@ -693,10 +695,10 @@ _brew_cat() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew cleanup
@@ -711,9 +713,9 @@ _brew_cleanup() {
     '--scrub[Scrub the cache, including downloads for even the latest versions. Note that downloads for any installed formulae or casks will still not be deleted. If you want to delete those too: `rm -rf "$(brew --cache)"`]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew command
@@ -724,7 +726,7 @@ _brew_command() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - command \
-    '*::command:__brew_commands'
+    '*:command:__brew_commands'
 }
 
 # brew commands
@@ -745,7 +747,7 @@ _brew_completions() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - subcommand \
-    '*::subcommand:(state link unlink)'
+    '*:subcommand:(state link unlink)'
 }
 
 # brew config
@@ -808,7 +810,7 @@ _brew_debugger() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - command \
-    '*::command:__brew_commands'
+    '*:command:__brew_commands'
 }
 
 # brew deps
@@ -841,10 +843,10 @@ _brew_deps() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew desc
@@ -860,10 +862,10 @@ _brew_desc() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew determine-test-runners
@@ -886,7 +888,7 @@ _brew_developer() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - subcommand \
-    '*::subcommand:(state on off)'
+    '*:subcommand:(state on off)'
 }
 
 # brew dispatch-build-bottle
@@ -907,7 +909,7 @@ _brew_dispatch_build_bottle() {
     '--verbose[Make some output more verbose]' \
     '--workflow[Dispatch specified workflow (default: `dispatch-build-bottle.yml`)]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew docs
@@ -929,7 +931,7 @@ _brew_doctor() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - diagnostic_check \
-    '*::diagnostic_check:__brew_diagnostic_checks'
+    '*:diagnostic_check:__brew_diagnostic_checks'
 }
 
 # brew dr
@@ -942,7 +944,7 @@ _brew_dr() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - diagnostic_check \
-    '*::diagnostic_check:__brew_diagnostic_checks'
+    '*:diagnostic_check:__brew_diagnostic_checks'
 }
 
 # brew edit
@@ -955,12 +957,12 @@ _brew_edit() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks' \
+    '*:cask:__brew_casks' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew environment
@@ -973,7 +975,7 @@ _brew_environment() {
     '--shell[Generate a list of environment variables for the specified shell, or `--shell=auto` to detect the current shell]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew extract
@@ -987,9 +989,9 @@ _brew_extract() {
     '--verbose[Make some output more verbose]' \
     '--version[Extract the specified version of formula instead of the most recent]' \
     - formula \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew fetch
@@ -1013,10 +1015,10 @@ _brew_fetch() {
     '--verbose[Do a verbose VCS checkout, if the URL represents a VCS. This is useful for seeing if an existing VCS cache has been updated]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--HEAD --deps -s --build-bottle --force-bottle --bottle-tag --formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew formula
@@ -1027,7 +1029,7 @@ _brew_formula() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew formula-analytics
@@ -1096,7 +1098,7 @@ _brew_generate_cask_ci_matrix() {
     '--verbose[Make some output more verbose]' \
     - cask \
     '(--url)--cask[Treat all named arguments as cask tokens]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew generate-formula-api
@@ -1129,7 +1131,7 @@ _brew_gist_logs() {
     '--verbose[Make some output more verbose]' \
     '--with-hostname[Include the hostname in the Gist]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew home
@@ -1141,10 +1143,10 @@ _brew_home() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew homepage
@@ -1156,10 +1158,10 @@ _brew_homepage() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew info
@@ -1180,10 +1182,10 @@ _brew_info() {
     '--verbose[Show more verbose analytics data for formula]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula --fetch-manifest)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew instal
@@ -1241,10 +1243,10 @@ _brew_instal() {
     '(--formula)--zap[For use with `brew reinstall --cask`. Remove all files associated with a cask. *May remove files which are shared between applications.*]' \
     - formula \
     '(--casks --binaries --require-sha --quarantine --adopt --skip-cask-deps --zap --appdir --keyboard-layoutdir --colorpickerdir --prefpanedir --qlplugindir --mdimporterdir --dictionarydir --fontdir --servicedir --input-methoddir --internet-plugindir --audio-unit-plugindir --vst-plugindir --vst3-plugindir --screen-saverdir --language)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formulae --env --ignore-dependencies --only-dependencies --cc --build-from-source --force-bottle --include-test --HEAD --fetch-HEAD --keep-tmp --debug-symbols --build-bottle --skip-post-install --skip-link --as-dependency --bottle-arch --interactive --git --overwrite --ask)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew install
@@ -1302,10 +1304,10 @@ _brew_install() {
     '(--formula)--zap[For use with `brew reinstall --cask`. Remove all files associated with a cask. *May remove files which are shared between applications.*]' \
     - formula \
     '(--casks --binaries --require-sha --quarantine --adopt --skip-cask-deps --zap --appdir --keyboard-layoutdir --colorpickerdir --prefpanedir --qlplugindir --mdimporterdir --dictionarydir --fontdir --servicedir --input-methoddir --internet-plugindir --audio-unit-plugindir --vst-plugindir --vst3-plugindir --screen-saverdir --language)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formulae --env --ignore-dependencies --only-dependencies --cc --build-from-source --force-bottle --include-test --HEAD --fetch-HEAD --keep-tmp --debug-symbols --build-bottle --skip-post-install --skip-link --as-dependency --bottle-arch --interactive --git --overwrite --ask)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew install-bundler-gems
@@ -1348,10 +1350,10 @@ _brew_lc() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask --extract-plist)--formula[Only check formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Only check casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew leaves
@@ -1377,7 +1379,7 @@ _brew_link() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew linkage
@@ -1392,7 +1394,7 @@ _brew_linkage() {
     '--test[Show only missing libraries and exit with a non-zero status if any missing libraries are found]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew list
@@ -1416,10 +1418,10 @@ _brew_list() {
     '(--versions --pinned --full-name)-t[Sort formulae and/or casks by time modified, listing most recently modified first. Has no effect when a formula or cask name is passed as an argument]' \
     - installed_formula \
     '(--cask)--formula[List only formulae, or treat all named arguments as formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formula --pinned --multiple --installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source)--cask[List only casks, or treat all named arguments as casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew livecheck
@@ -1440,10 +1442,10 @@ _brew_livecheck() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask --extract-plist)--formula[Only check formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Only check casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew ln
@@ -1458,7 +1460,7 @@ _brew_ln() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew log
@@ -1475,10 +1477,10 @@ _brew_log() {
     '(--max-count)-1[Print only one commit]' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew ls
@@ -1502,10 +1504,10 @@ _brew_ls() {
     '(--versions --pinned --full-name)-t[Sort formulae and/or casks by time modified, listing most recently modified first. Has no effect when a formula or cask name is passed as an argument]' \
     - installed_formula \
     '(--cask)--formula[List only formulae, or treat all named arguments as formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formula --pinned --multiple --installed-on-request --installed-as-dependency --poured-from-bottle --built-from-source)--cask[List only casks, or treat all named arguments as casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew migrate
@@ -1519,10 +1521,10 @@ _brew_migrate() {
     '--verbose[Make some output more verbose]' \
     - installed_formula \
     '(--cask)--formula[Only migrate formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formula)--cask[Only migrate casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew missing
@@ -1534,7 +1536,7 @@ _brew_missing() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew nodenv-sync
@@ -1558,7 +1560,7 @@ _brew_options() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew outdated
@@ -1575,10 +1577,10 @@ _brew_outdated() {
     '(--quiet --json)--verbose[Include detailed version information]' \
     - formula \
     '(--cask)--formula[List only outdated formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[List only outdated casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew pin
@@ -1589,7 +1591,7 @@ _brew_pin() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew post_install
@@ -1600,7 +1602,7 @@ _brew_post_install() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew postinstall
@@ -1611,7 +1613,7 @@ _brew_postinstall() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew pr-automerge
@@ -1701,7 +1703,7 @@ _brew_prof() {
     '--verbose[Make some output more verbose]' \
     '--vernier[Use `vernier` instead of `ruby-prof` (the default)]' \
     - command \
-    '*::command:__brew_commands'
+    '*:command:__brew_commands'
 }
 
 # brew pyenv-sync
@@ -1736,7 +1738,7 @@ _brew_readall() {
     '--syntax[Syntax-check all of Homebrew'\''s Ruby files (if no tap is passed)]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew reinstall
@@ -1781,10 +1783,10 @@ _brew_reinstall() {
     '(--formula)--zap[For use with `brew reinstall --cask`. Remove all files associated with a cask. *May remove files which are shared between applications.*]' \
     - formula \
     '(--casks --binaries --require-sha --quarantine --adopt --skip-cask-deps --zap --appdir --keyboard-layoutdir --colorpickerdir --prefpanedir --qlplugindir --mdimporterdir --dictionarydir --fontdir --servicedir --input-methoddir --internet-plugindir --audio-unit-plugindir --vst-plugindir --vst3-plugindir --screen-saverdir --language)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formulae --build-from-source --interactive --force-bottle --keep-tmp --debug-symbols --git --ask)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew release
@@ -1810,10 +1812,10 @@ _brew_remove() {
     '(--formula)--zap[Remove all files associated with a cask. *May remove files which are shared between applications.*]' \
     - installed_formula \
     '(--cask --zap)--formula[Treat all named arguments as formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew rm
@@ -1828,10 +1830,10 @@ _brew_rm() {
     '(--formula)--zap[Remove all files associated with a cask. *May remove files which are shared between applications.*]' \
     - installed_formula \
     '(--cask --zap)--formula[Treat all named arguments as formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew rubocop
@@ -1853,7 +1855,7 @@ _brew_ruby() {
     '-e[Execute the given text string as a script]' \
     '-r[Load a library using `require`]' \
     - file \
-    '*::file:__brew_formulae_or_ruby_files'
+    '*:file:__brew_formulae_or_ruby_files'
 }
 
 # brew rubydoc
@@ -1906,7 +1908,7 @@ _brew_services() {
     '--sudo-service-user[When run as root on macOS, run the service(s) as this user]' \
     '--verbose[Make some output more verbose]' \
     - subcommand \
-    '*::subcommand:(list info run start stop kill restart cleanup)'
+    '*:subcommand:(list info run start stop kill restart cleanup)'
 }
 
 # brew setup-ruby
@@ -1917,7 +1919,7 @@ _brew_setup_ruby() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - command \
-    '*::command:__brew_commands'
+    '*:command:__brew_commands'
 }
 
 # brew sh
@@ -1930,7 +1932,7 @@ _brew_sh() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - file \
-    '*::file:__brew_formulae_or_ruby_files'
+    '*:file:__brew_formulae_or_ruby_files'
 }
 
 # brew shellenv
@@ -1954,15 +1956,15 @@ _brew_style() {
     '--reset-cache[Reset the RuboCop cache]' \
     '--verbose[Make some output more verbose]' \
     - file \
-    '*::file:__brew_formulae_or_ruby_files' \
+    '*:file:__brew_formulae_or_ruby_files' \
     - tap \
-    '*::tap:__brew_any_tap' \
+    '*:tap:__brew_any_tap' \
     - formula \
     '(--cask)--formula[Treat all named arguments as formulae]' \
-    '*::formula:__brew_formulae' \
+    '*:formula:__brew_formulae' \
     - cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::cask:__brew_casks'
+    '*:cask:__brew_casks'
 }
 
 # brew tab
@@ -1976,10 +1978,10 @@ _brew_tab() {
     '--verbose[Make some output more verbose]' \
     - installed_formula \
     '(--cask)--formula[Only mark formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formula)--cask[Only mark casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew tap
@@ -1994,7 +1996,7 @@ _brew_tap() {
     '--repair[Add missing symlinks to tap manpages and shell completions. Correct git remote refs for any taps where upstream HEAD branch has been renamed]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew tap-info
@@ -2007,7 +2009,7 @@ _brew_tap_info() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew tap-new
@@ -2022,7 +2024,7 @@ _brew_tap_new() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew tc
@@ -2041,7 +2043,7 @@ _brew_tc() {
     '(--lsp)--update-all[Update all RBI files rather than just updated gems]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew test
@@ -2056,7 +2058,7 @@ _brew_test() {
     '--retry[Retry if a testing fails]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew tests
@@ -2092,7 +2094,7 @@ _brew_typecheck() {
     '(--lsp)--update-all[Update all RBI files rather than just updated gems]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew unalias
@@ -2117,7 +2119,7 @@ _brew_unbottled() {
     '(--dependents --lost)--total[Print the number of unbottled and total formulae]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew uninstal
@@ -2132,10 +2134,10 @@ _brew_uninstal() {
     '(--formula)--zap[Remove all files associated with a cask. *May remove files which are shared between applications.*]' \
     - installed_formula \
     '(--cask --zap)--formula[Treat all named arguments as formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew uninstall
@@ -2150,10 +2152,10 @@ _brew_uninstall() {
     '(--formula)--zap[Remove all files associated with a cask. *May remove files which are shared between applications.*]' \
     - installed_formula \
     '(--cask --zap)--formula[Treat all named arguments as formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formula)--cask[Treat all named arguments as casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew unlink
@@ -2165,7 +2167,7 @@ _brew_unlink() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew unpack
@@ -2180,7 +2182,7 @@ _brew_unpack() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew unpin
@@ -2191,7 +2193,7 @@ _brew_unpin() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - installed_formula \
-    '*::installed_formula:__brew_installed_formulae'
+    '*:installed_formula:__brew_installed_formulae'
 }
 
 # brew untap
@@ -2203,7 +2205,7 @@ _brew_untap() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - tap \
-    '*::tap:__brew_any_tap'
+    '*:tap:__brew_any_tap'
 }
 
 # brew up
@@ -2274,7 +2276,7 @@ _brew_update_python_resources() {
     '--verbose[Make some output more verbose]' \
     '--version[Use the specified version when finding resources for formula. If no version is specified, the current version for formula will be used]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew update-report
@@ -2364,10 +2366,10 @@ _brew_upgrade() {
     '(--formula)--vst3-plugindir[Target location for VST3 Plugins (default: `~/Library/Audio/Plug-Ins/VST3`)]' \
     - installed_formula \
     '(--casks --skip-cask-deps --greedy --greedy-latest --greedy-auto-updates --binaries --require-sha --quarantine --appdir --keyboard-layoutdir --colorpickerdir --prefpanedir --qlplugindir --mdimporterdir --dictionarydir --fontdir --servicedir --input-methoddir --internet-plugindir --audio-unit-plugindir --vst-plugindir --vst3-plugindir --screen-saverdir --language)--formula[Treat all named arguments as formulae. If no named arguments are specified, upgrade only outdated formulae]' \
-    '*::installed_formula:__brew_installed_formulae' \
+    '*:installed_formula:__brew_installed_formulae' \
     - installed_cask \
     '(--formulae --build-from-source --interactive --force-bottle --fetch-HEAD --keep-tmp --debug-symbols --overwrite --ask)--cask[Treat all named arguments as casks. If no named arguments are specified, upgrade only outdated casks]' \
-    '*::installed_cask:__brew_installed_casks'
+    '*:installed_cask:__brew_installed_casks'
 }
 
 # brew uses
@@ -2389,7 +2391,7 @@ _brew_uses() {
     '--verbose[Make some output more verbose]' \
     - formula \
     '(--cask)--formula[Include only formulae]' \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # brew vendor-gems
@@ -2426,7 +2428,7 @@ _brew_verify() {
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - formula \
-    '*::formula:__brew_formulae'
+    '*:formula:__brew_formulae'
 }
 
 # The main completion function

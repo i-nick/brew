@@ -27,6 +27,7 @@ DEPRECATED_OFFICIAL_TAPS = %w[
   games
   gui
   head-only
+  linux-fonts
   livecheck
   nginx
   php

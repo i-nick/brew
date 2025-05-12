@@ -43,11 +43,9 @@ module RuboCop
             end
           end
 
-          unless method_called_ever?(body_node, :go_resource)
-            # processed_source.ast is passed instead of body_node because `require` would be outside body_node
-            find_method_with_args(processed_source.ast, :require, "language/go") do
-              problem "require \"language/go\" is unnecessary unless using `go_resource`s"
-            end
+          # processed_source.ast is passed instead of body_node because `require` would be outside body_node
+          find_method_with_args(processed_source.ast, :require, "language/go") do
+            problem "require \"language/go\" is no longer necessary or correct"
           end
 
           find_instance_method_call(body_node, "Formula", :factory) do

@@ -464,9 +464,9 @@ module Cask
                                  args:         paths,
                                  print_stderr: Homebrew::EnvConfig.developer?
 
-        trashed, _, untrashable = stdout.partition("\n")
-        trashed = trashed.split(":")
-        untrashable = untrashable.split(":")
+        trashed, = stdout.partition("\n")
+        trashed = trashed.split(":") & paths
+        untrashable = paths - trashed
 
         trashed_with_permissions, untrashable = untrashable.partition do |path|
           Utils.gain_permissions(path, ["-R"], SystemCommand) do
@@ -514,7 +514,7 @@ module Cask
           end
 
           # Directory counts as empty if it only contains a `.DS_Store`.
-          if children.include?((ds_store = resolved_path/".DS_Store"))
+          if children.include?(ds_store = resolved_path/".DS_Store")
             Utils.gain_permissions_remove(ds_store, command:)
             children.delete(ds_store)
           end

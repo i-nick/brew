@@ -15,12 +15,12 @@ last_review_date: "2025-02-08"
 - [Common Issues](Common-Issues.md)
 - [`brew` Shell Completion](Shell-Completion.md)
 - [Homebrew on Linux](Homebrew-on-Linux.md)
-- [`brew bundle` and `Brewfile`](Brew-Bundle-and-Brewfile.md)
+- [Homebrew Bundle, `brew bundle` and `Brewfile`](Brew-Bundle-and-Brewfile.md)
 
 - [Bottles (binary packages)](Bottles.md)
 - [Taps (third-party repositories)](Taps.md)
 - [Interesting Taps and Forks](Interesting-Taps-and-Forks.md)
-- [Tips and Tricks](Tips-N'-Tricks.md)
+- [Tips and Tricks](Tips-and-Tricks.md)
 - [Anonymous Analytics](Analytics.md)
 
 - [Querying `brew`](Querying-Brew.md)

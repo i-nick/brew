@@ -54,7 +54,7 @@ module Homebrew
         flag "--file=", description: "Use the service file from this location to `start` the service."
         flag "--sudo-service-user=", description: "When run as root on macOS, run the service(s) as this user."
         flag "--max-wait=", description: "Wait at most this many seconds for `stop` to finish stopping a service. " \
-                                         "Omit this flag or set this to zero (0) seconds to wait indefinitely."
+                                         "Defaults to 60. Set this to zero (0) seconds to wait indefinitely."
         switch "--all", description: "Run <subcommand> on all services."
         switch "--json", description: "Output as JSON."
         switch "--no-wait", description: "Don't wait for `stop` to finish stopping the service."
@@ -177,7 +177,7 @@ module Homebrew
             targets,
             verbose:  args.verbose?,
             no_wait:  args.no_wait?,
-            max_wait: args.max_wait.to_f,
+            max_wait: args.max_wait&.to_f || 60.0,
             keep:     args.keep?,
           )
         when *Homebrew::Services::Commands::Kill::TRIGGERS

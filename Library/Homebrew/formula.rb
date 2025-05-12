@@ -1,6 +1,7 @@
 # typed: strict
 # frozen_string_literal: true
 
+require "autobump_constants"
 require "cache_store"
 require "did_you_mean"
 require "formula_support"
@@ -242,6 +243,9 @@ class Formula
     @head = T.let(nil, T.nilable(SoftwareSpec))
     @stable = T.let(nil, T.nilable(SoftwareSpec))
 
+    @autobump = T.let(true, T::Boolean)
+    @no_autobump_message = T.let(nil, T.nilable(T.any(String, Symbol)))
+
     @force_bottle = T.let(force_bottle, T::Boolean)
 
     @tap = T.let(tap, T.nilable(Tap))
@@ -473,6 +477,23 @@ class Formula
   # @!method livecheckable?
   # @see .livecheckable?
   delegate livecheckable?: :"self.class"
+
+  # Exclude the formula from autobump list.
+  # @!method no_autobump!
+  # @see .no_autobump!
+  delegate no_autobump!: :"self.class"
+
+  # Is the formula in autobump list?
+  # @!method autobump?
+  # @see .autobump?
+  delegate autobump?: :"self.class"
+
+  # Is no_autobump! method defined?
+  # @!method no_autobump_defined?
+  # @see .no_autobump_defined?
+  delegate no_autobump_defined?: :"self.class"
+
+  delegate no_autobump_message: :"self.class"
 
   # Is a service specification defined for the software?
   # @!method service?
@@ -1173,44 +1194,6 @@ class Formula
     @active_log_type = old_log_type
   end
 
-  # This method can be overridden to provide a plist.
-  #
-  # ### Example
-  #
-  # ```ruby
-  # def plist; <<~EOS
-  #   <?xml version="1.0" encoding="UTF-8"?>
-  #   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-  #   <plist version="1.0">
-  #   <dict>
-  #     <key>Label</key>
-  #       <string>#{plist_name}</string>
-  #     <key>ProgramArguments</key>
-  #     <array>
-  #       <string>#{opt_bin}/example</string>
-  #       <string>--do-this</string>
-  #     </array>
-  #     <key>RunAtLoad</key>
-  #     <true/>
-  #     <key>KeepAlive</key>
-  #     <true/>
-  #     <key>StandardErrorPath</key>
-  #     <string>/dev/null</string>
-  #     <key>StandardOutPath</key>
-  #     <string>/dev/null</string>
-  #   </dict>
-  #   </plist>
-  #   EOS
-  # end
-  # ```
-  #
-  # @see https://www.unix.com/man-page/all/5/plist/ <code>plist(5)</code> man page
-  sig { returns(NilClass) }
-  def plist
-    odisabled "`Formula#plist`", "`Homebrew::Service`"
-    nil
-  end
-
   # The generated launchd {.plist} service name.
   sig { returns(String) }
   def plist_name = service.plist_name
@@ -1477,12 +1460,19 @@ class Formula
   # @see .deprecate!
   delegate deprecation_reason: :"self.class"
 
-  # The replacement for this deprecated {Formula}.
+  # The replacement formula for this deprecated {Formula}.
   # Returns `nil` if no replacement is specified or the formula is not deprecated.
-  # @!method deprecation_replacement
+  # @!method deprecation_replacement_formula
   # @return [String]
   # @see .deprecate!
-  delegate deprecation_replacement: :"self.class"
+  delegate deprecation_replacement_formula: :"self.class"
+
+  # The replacement cask for this deprecated {Formula}.
+  # Returns `nil` if no replacement is specified or the formula is not deprecated.
+  # @!method deprecation_replacement_cask
+  # @return [String]
+  # @see .deprecate!
+  delegate deprecation_replacement_cask: :"self.class"
 
   # Whether this {Formula} is disabled (i.e. cannot be installed).
   # Defaults to false.
@@ -1505,12 +1495,19 @@ class Formula
   # @see .disable!
   delegate disable_reason: :"self.class"
 
-  # The replacement for this disabled {Formula}.
+  # The replacement formula for this disabled {Formula}.
   # Returns `nil` if no replacement is specified or the formula is not disabled.
-  # @!method disable_replacement
+  # @!method disable_replacement_formula
   # @return [String]
   # @see .disable!
-  delegate disable_replacement: :"self.class"
+  delegate disable_replacement_formula: :"self.class"
+
+  # The replacement cask for this disabled {Formula}.
+  # Returns `nil` if no replacement is specified or the formula is not disabled.
+  # @!method disable_replacement_cask
+  # @return [String]
+  # @see .disable!
+  delegate disable_replacement_cask: :"self.class"
 
   sig { returns(T::Boolean) }
   def skip_cxxstdlib_check? = false
@@ -2491,57 +2488,62 @@ class Formula
   sig { returns(T::Hash[String, T.untyped]) }
   def to_hash
     hsh = {
-      "name"                     => name,
-      "full_name"                => full_name,
-      "tap"                      => tap&.name,
-      "oldnames"                 => oldnames,
-      "aliases"                  => aliases.sort,
-      "versioned_formulae"       => versioned_formulae.map(&:name),
-      "desc"                     => desc,
-      "license"                  => SPDX.license_expression_to_string(license),
-      "homepage"                 => homepage,
-      "versions"                 => {
+      "name"                            => name,
+      "full_name"                       => full_name,
+      "tap"                             => tap&.name,
+      "oldnames"                        => oldnames,
+      "aliases"                         => aliases.sort,
+      "versioned_formulae"              => versioned_formulae.map(&:name),
+      "desc"                            => desc,
+      "license"                         => SPDX.license_expression_to_string(license),
+      "homepage"                        => homepage,
+      "versions"                        => {
         "stable" => stable&.version&.to_s,
         "head"   => head&.version&.to_s,
         "bottle" => bottle_defined?,
       },
-      "urls"                     => urls_hash,
-      "revision"                 => revision,
-      "version_scheme"           => version_scheme,
-      "bottle"                   => {},
-      "pour_bottle_only_if"      => self.class.pour_bottle_only_if&.to_s,
-      "keg_only"                 => keg_only?,
-      "keg_only_reason"          => keg_only_reason&.to_hash,
-      "options"                  => [],
-      "build_dependencies"       => [],
-      "dependencies"             => [],
-      "test_dependencies"        => [],
-      "recommended_dependencies" => [],
-      "optional_dependencies"    => [],
-      "uses_from_macos"          => [],
-      "uses_from_macos_bounds"   => [],
-      "requirements"             => serialized_requirements,
-      "conflicts_with"           => conflicts.map(&:name),
-      "conflicts_with_reasons"   => conflicts.map(&:reason),
-      "link_overwrite"           => self.class.link_overwrite_paths.to_a,
-      "caveats"                  => caveats_with_placeholders,
-      "installed"                => T.let([], T::Array[T::Hash[String, T.untyped]]),
-      "linked_keg"               => linked_version&.to_s,
-      "pinned"                   => pinned?,
-      "outdated"                 => outdated?,
-      "deprecated"               => deprecated?,
-      "deprecation_date"         => deprecation_date,
-      "deprecation_reason"       => deprecation_reason,
-      "deprecation_replacement"  => deprecation_replacement,
-      "disabled"                 => disabled?,
-      "disable_date"             => disable_date,
-      "disable_reason"           => disable_reason,
-      "disable_replacement"      => disable_replacement,
-      "post_install_defined"     => post_install_defined?,
-      "service"                  => (service.to_hash if service?),
-      "tap_git_head"             => tap_git_head,
-      "ruby_source_path"         => ruby_source_path,
-      "ruby_source_checksum"     => {},
+      "urls"                            => urls_hash,
+      "revision"                        => revision,
+      "version_scheme"                  => version_scheme,
+      "autobump"                        => autobump?,
+      "no_autobump_message"             => no_autobump_message,
+      "skip_livecheck"                  => livecheck.skip?,
+      "bottle"                          => {},
+      "pour_bottle_only_if"             => self.class.pour_bottle_only_if&.to_s,
+      "keg_only"                        => keg_only?,
+      "keg_only_reason"                 => keg_only_reason&.to_hash,
+      "options"                         => [],
+      "build_dependencies"              => [],
+      "dependencies"                    => [],
+      "test_dependencies"               => [],
+      "recommended_dependencies"        => [],
+      "optional_dependencies"           => [],
+      "uses_from_macos"                 => [],
+      "uses_from_macos_bounds"          => [],
+      "requirements"                    => serialized_requirements,
+      "conflicts_with"                  => conflicts.map(&:name),
+      "conflicts_with_reasons"          => conflicts.map(&:reason),
+      "link_overwrite"                  => self.class.link_overwrite_paths.to_a,
+      "caveats"                         => caveats_with_placeholders,
+      "installed"                       => T.let([], T::Array[T::Hash[String, T.untyped]]),
+      "linked_keg"                      => linked_version&.to_s,
+      "pinned"                          => pinned?,
+      "outdated"                        => outdated?,
+      "deprecated"                      => deprecated?,
+      "deprecation_date"                => deprecation_date,
+      "deprecation_reason"              => deprecation_reason,
+      "deprecation_replacement_formula" => deprecation_replacement_formula,
+      "deprecation_replacement_cask"    => deprecation_replacement_cask,
+      "disabled"                        => disabled?,
+      "disable_date"                    => disable_date,
+      "disable_reason"                  => disable_reason,
+      "disable_replacement_formula"     => disable_replacement_formula,
+      "disable_replacement_cask"        => disable_replacement_cask,
+      "post_install_defined"            => post_install_defined?,
+      "service"                         => (service.to_hash if service?),
+      "tap_git_head"                    => tap_git_head,
+      "ruby_source_path"                => ruby_source_path,
+      "ruby_source_checksum"            => {},
     }
 
     hsh["bottle"]["stable"] = bottle_hash if stable && bottle_defined?
@@ -2803,13 +2805,13 @@ class Formula
     ).returns(Pathname)
   }
   def fetch(verify_download_integrity: true, timeout: nil, quiet: false)
-    odeprecated "Formula#fetch", "Resource#fetch on Formula#resource"
+    odisabled "Formula#fetch", "Resource#fetch on Formula#resource"
     active_spec.fetch(verify_download_integrity:, timeout:, quiet:)
   end
 
   sig { params(filename: T.any(Pathname, String)).void }
   def verify_download_integrity(filename)
-    odeprecated "Formula#verify_download_integrity", "Resource#verify_download_integrity on Formula#resource"
+    odisabled "Formula#verify_download_integrity", "Resource#verify_download_integrity on Formula#resource"
     active_spec.verify_download_integrity(filename)
   end
 
@@ -2920,8 +2922,8 @@ class Formula
   def inreplace(paths, before = nil, after = nil, old_audit_result = nil, audit_result: true, global: true, &block)
     # NOTE: must check for `#nil?` and not `#blank?`, or else `old_audit_result = false` will not call `odeprecated`.
     unless old_audit_result.nil?
-      odeprecated "inreplace(paths, before, after, #{old_audit_result})",
-                  "inreplace(paths, before, after, audit_result: #{old_audit_result})"
+      odisabled "inreplace(paths, before, after, #{old_audit_result})",
+                "inreplace(paths, before, after, audit_result: #{old_audit_result})"
       audit_result = old_audit_result
     end
     Utils::Inreplace.inreplace(paths, before, after, audit_result:, global:, &block)
@@ -3548,7 +3550,7 @@ class Formula
     # and `false` otherwise.
     sig { returns(T::Boolean) }
     def livecheckable?
-      # odeprecated "`livecheckable?`", "`livecheck_defined?`"
+      odeprecated "`livecheckable?`", "`livecheck_defined?`"
       @livecheck_defined == true
     end
 
@@ -3820,15 +3822,6 @@ class Formula
       specs.each do |spec|
         spec.resource(name, klass, &block) unless spec.resource_defined?(name)
       end
-    end
-
-    # Specify a Go resource.
-    #
-    # @api public
-    sig { params(name: String, block: T.nilable(T.proc.void)).void }
-    def go_resource(name, &block)
-      odisabled "`Formula.go_resource`", "Go modules"
-      specs.each { |spec| spec.go_resource(name, &block) }
     end
 
     # The dependencies for this formula. Use strings for the names of other
@@ -4213,6 +4206,40 @@ class Formula
       @livecheck.instance_eval(&block)
     end
 
+    # Method that excludes the formula from the autobump list.
+    #
+    # TODO: limit this method to the official taps only (f.e. raise
+    # an error if `!tap.official?`)
+    #
+    # @api public
+    sig { params(because: T.any(String, Symbol)).void }
+    def no_autobump!(because:)
+      if because.is_a?(Symbol) && !NO_AUTOBUMP_REASONS_LIST.key?(because)
+        raise ArgumentError, "'because' argument should use valid symbol or a string!"
+      end
+
+      @no_autobump_defined = T.let(true, T.nilable(T::Boolean))
+      @no_autobump_message = T.let(because, T.nilable(T.any(String, Symbol)))
+      @autobump = T.let(false, T.nilable(T::Boolean))
+    end
+
+    # Is the formula in autobump list?
+    sig { returns(T::Boolean) }
+    def autobump?
+      @autobump != false # @autobump may be `nil`
+    end
+
+    # Is no_autobump! method defined?
+    sig { returns(T::Boolean) }
+    def no_autobump_defined? = @no_autobump_defined == true
+
+    # Message that explains why the formula was excluded from autobump list.
+    # Returns `nil` if no message is specified.
+    #
+    # @see .no_autobump!
+    sig { returns(T.nilable(T.any(String, Symbol))) }
+    attr_reader :no_autobump_message
+
     # Service can be used to define services.
     # This method evaluates the DSL specified in the service block of the
     # {Formula} (if it exists) and sets the instance variables of a Service
@@ -4318,19 +4345,43 @@ class Formula
     # ```
     #
     # ```ruby
-    # deprecate! date: "2020-08-27", because: "has been replaced by foo", replacement: "foo"
+    # deprecate! date: "2020-08-27", because: "has been replaced by foo", replacement_formula: "foo"
     # ```
+    # ```ruby
+    # deprecate! date: "2020-08-27", because: "has been replaced by foo", replacement_cask: "foo"
+    # ```
+    # TODO: replace legacy `replacement` with `replacement_formula` or `replacement_cask`
     #
     # @see https://docs.brew.sh/Deprecating-Disabling-and-Removing-Formulae
     # @see DeprecateDisable::FORMULA_DEPRECATE_DISABLE_REASONS
     # @api public
-    sig { params(date: String, because: T.any(NilClass, String, Symbol), replacement: T.nilable(String)).void }
-    def deprecate!(date:, because:, replacement: nil)
+    sig {
+      params(
+        date:                String,
+        because:             T.any(NilClass, String, Symbol),
+        replacement:         T.nilable(String),
+        replacement_formula: T.nilable(String),
+        replacement_cask:    T.nilable(String),
+      ).void
+    }
+    def deprecate!(date:, because:, replacement: nil, replacement_formula: nil, replacement_cask: nil)
+      if [replacement, replacement_formula, replacement_cask].filter_map(&:presence).length > 1
+        raise ArgumentError, "more than one of replacement, replacement_formula and/or replacement_cask specified!"
+      end
+
+      if replacement
+        odeprecated(
+          "deprecate!(:replacement)",
+          "deprecate!(:replacement_formula) or deprecate!(:replacement_cask)",
+        )
+      end
+
       @deprecation_date = T.let(Date.parse(date), T.nilable(Date))
       return if T.must(@deprecation_date) > Date.today
 
       @deprecation_reason = T.let(because, T.any(NilClass, String, Symbol))
-      @deprecation_replacement = T.let(replacement, T.nilable(String))
+      @deprecation_replacement_formula = T.let(replacement_formula.presence || replacement, T.nilable(String))
+      @deprecation_replacement_cask = T.let(replacement_cask.presence || replacement, T.nilable(String))
       T.must(@deprecated = T.let(true, T.nilable(T::Boolean)))
     end
 
@@ -4356,12 +4407,19 @@ class Formula
     sig { returns(T.any(NilClass, String, Symbol)) }
     attr_reader :deprecation_reason
 
-    # The replacement for a deprecated {Formula}.
+    # The replacement formula for a deprecated {Formula}.
     #
     # @return [nil] if no replacement was provided or the formula is not deprecated.
     # @see .deprecate!
     sig { returns(T.nilable(String)) }
-    attr_reader :deprecation_replacement
+    attr_reader :deprecation_replacement_formula
+
+    # The replacement cask for a deprecated {Formula}.
+    #
+    # @return [nil] if no replacement was provided or the formula is not deprecated.
+    # @see .deprecate!
+    sig { returns(T.nilable(String)) }
+    attr_reader :deprecation_replacement_cask
 
     # Disables a {Formula} (on the given date) so it cannot be
     # installed. If the date has not yet passed the formula
@@ -4378,25 +4436,50 @@ class Formula
     # ```
     #
     # ```ruby
-    # disable! date: "2020-08-27", because: "has been replaced by foo", replacement: "foo"
+    # disable! date: "2020-08-27", because: "has been replaced by foo", replacement_formula: "foo"
     # ```
+    # ```ruby
+    # disable! date: "2020-08-27", because: "has been replaced by foo", replacement_cask: "foo"
+    # ```
+    #  TODO: replace legacy `replacement` with `replacement_formula` or `replacement_cask`
     #
     # @see https://docs.brew.sh/Deprecating-Disabling-and-Removing-Formulae
     # @see DeprecateDisable::FORMULA_DEPRECATE_DISABLE_REASONS
     # @api public
-    sig { params(date: String, because: T.any(NilClass, String, Symbol), replacement: T.nilable(String)).void }
-    def disable!(date:, because:, replacement: nil)
+    sig {
+      params(
+        date:                String,
+        because:             T.any(NilClass, String, Symbol),
+        replacement:         T.nilable(String),
+        replacement_formula: T.nilable(String),
+        replacement_cask:    T.nilable(String),
+      ).void
+    }
+    def disable!(date:, because:, replacement: nil, replacement_formula: nil, replacement_cask: nil)
+      if [replacement, replacement_formula, replacement_cask].filter_map(&:presence).length > 1
+        raise ArgumentError, "more than one of replacement, replacement_formula and/or replacement_cask specified!"
+      end
+
+      if replacement
+        odeprecated(
+          "disable!(:replacement)",
+          "disable!(:replacement_formula) or deprecate!(:replacement_cask)",
+        )
+      end
+
       @disable_date = T.let(Date.parse(date), T.nilable(Date))
 
       if T.must(@disable_date) > Date.today
         @deprecation_reason = T.let(because, T.any(NilClass, String, Symbol))
-        @deprecation_replacement = T.let(replacement, T.nilable(String))
+        @deprecation_replacement_formula = T.let(replacement_formula.presence || replacement, T.nilable(String))
+        @deprecation_replacement_cask = T.let(replacement_cask.presence || replacement, T.nilable(String))
         @deprecated = T.let(true, T.nilable(T::Boolean))
         return
       end
 
       @disable_reason = T.let(because, T.nilable(T.any(String, Symbol)))
-      @disable_replacement = T.let(replacement, T.nilable(String))
+      @disable_replacement_formula = T.let(replacement_formula.presence || replacement, T.nilable(String))
+      @disable_replacement_cask = T.let(replacement_cask.presence || replacement, T.nilable(String))
       @disabled = T.let(true, T.nilable(T::Boolean))
     end
 
@@ -4423,12 +4506,19 @@ class Formula
     sig { returns(T.any(NilClass, String, Symbol)) }
     attr_reader :disable_reason
 
-    # The replacement for a disabled {Formula}.
+    # The replacement formula for a disabled {Formula}.
     # Returns `nil` if no reason was provided or the formula is not disabled.
     #
     # @see .disable!
     sig { returns(T.nilable(String)) }
-    attr_reader :disable_replacement
+    attr_reader :disable_replacement_formula
+
+    # The replacement cask for a disabled {Formula}.
+    # Returns `nil` if no reason was provided or the formula is not disabled.
+    #
+    # @see .disable!
+    sig { returns(T.nilable(String)) }
+    attr_reader :disable_replacement_cask
 
     # Permit overwriting certain files while linking.
     #

@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "url"
@@ -23,9 +23,16 @@ module Downloadable
 
   sig { void }
   def initialize
+    @url = T.let(nil, T.nilable(URL))
+    @checksum = T.let(nil, T.nilable(Checksum))
     @mirrors = T.let([], T::Array[String])
+    @version = T.let(nil, T.nilable(Version))
+    @download_strategy = T.let(nil, T.nilable(T::Class[AbstractDownloadStrategy]))
+    @downloader = T.let(nil, T.nilable(AbstractDownloadStrategy))
+    @download_name = T.let(nil, T.nilable(String))
   end
 
+  sig { params(other: Object).void }
   def initialize_dup(other)
     super
     @checksum = @checksum.dup
@@ -46,7 +53,8 @@ module Downloadable
 
   sig { returns(String) }
   def download_type
-    T.must(self.class.name&.split("::")&.last).gsub(/([[:lower:]])([[:upper:]])/, '\1 \2').downcase
+    class_name = T.let(self.class, T::Class[Downloadable]).name&.split("::")&.last
+    T.must(class_name).gsub(/([[:lower:]])([[:upper:]])/, '\1 \2').downcase
   end
 
   sig(:final) { returns(T::Boolean) }
@@ -72,9 +80,9 @@ module Downloadable
     version unless version&.null?
   end
 
-  sig { overridable.returns(T.class_of(AbstractDownloadStrategy)) }
+  sig { overridable.returns(T::Class[AbstractDownloadStrategy]) }
   def download_strategy
-    @download_strategy ||= determine_url&.download_strategy
+    @download_strategy ||= T.must(determine_url).download_strategy
   end
 
   sig { overridable.returns(AbstractDownloadStrategy) }
@@ -129,7 +137,7 @@ module Downloadable
 
   sig { overridable.returns(String) }
   def download_name
-    @download_name ||= File.basename(determine_url.to_s)
+    @download_name ||= File.basename(determine_url.to_s).freeze
   end
 
   private

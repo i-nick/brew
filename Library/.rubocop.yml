@@ -27,7 +27,6 @@ AllCops:
     - "**/*.rbi"
   Exclude:
     - "Homebrew/sorbet/rbi/{dsl,gems}/**/*.rbi"
-    # TODO: remove file and exclusion in Ruby 3.4
     - "Homebrew/sorbet/rbi/parser*.rbi"
     - "Homebrew/bin/*"
     - "Homebrew/vendor/**/*"
@@ -241,6 +240,8 @@ RSpec:
 # Intentionally disabled as it doesn't fit with our code style.
 RSpec/AnyInstance:
   Enabled: false
+RSpec/IncludeExamples:
+  Enabled: false
 RSpec/SpecFilePathFormat:
   Enabled: false
 RSpec/StubbedMock:
@@ -416,12 +417,10 @@ Style/MutableConstant:
 Style/NumericLiteralPrefix:
   EnforcedOctalStyle: zero_only
 
-# Only use this for numbers >= `1_000_000`.
+# Only require this for numbers >= `10_000_000_000`.
 Style/NumericLiterals:
-  MinDigits: 7
+  MinDigits: 11
   Strict: true
-  Exclude:
-    - "**/Brewfile"
 
 Style/OpenStructUse:
   Exclude:

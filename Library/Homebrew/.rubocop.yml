@@ -37,7 +37,6 @@ Style/Documentation:
     - formula.rb
     - formula_assertions.rb
     - formula_free_port.rb
-    - language/go.rb
     - language/java.rb
     - language/node.rb
     - language/perl.rb

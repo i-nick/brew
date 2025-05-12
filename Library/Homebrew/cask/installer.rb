@@ -692,9 +692,10 @@ on_request: true)
 
     sig { void }
     def forbidden_cask_and_formula_check
+      forbid_casks = Homebrew::EnvConfig.forbid_casks?
       forbidden_formulae = Set.new(Homebrew::EnvConfig.forbidden_formulae.to_s.split)
       forbidden_casks = Set.new(Homebrew::EnvConfig.forbidden_casks.to_s.split)
-      return if forbidden_formulae.blank? && forbidden_casks.blank?
+      return if !forbid_casks && forbidden_formulae.blank? && forbidden_casks.blank?
 
       owner = Homebrew::EnvConfig.forbidden_owner
       owner_contact = if (contact = Homebrew::EnvConfig.forbidden_owner_contact.presence)
@@ -705,13 +706,17 @@ on_request: true)
         cask_and_formula_dependencies.each do |dep_cask_or_formula|
           dep_name, dep_type, variable = if dep_cask_or_formula.is_a?(Cask) && forbidden_casks.present?
             dep_cask = dep_cask_or_formula
-            dep_cask_name = if forbidden_casks.include?(dep_cask.token)
+            env_variable = "HOMEBREW_FORBIDDEN_CASKS"
+            dep_cask_name = if forbid_casks
+              env_variable = "HOMEBREW_FORBID_CASKS"
+              dep_cask.token
+            elsif forbidden_casks.include?(dep_cask.full_name)
               dep_cask.token
             elsif dep_cask.tap.present? &&
                   forbidden_casks.include?(dep_cask.full_name)
               dep_cask.full_name
             end
-            [dep_cask_name, "cask", "HOMEBREW_FORBIDDEN_CASKS"]
+            [dep_cask_name, "cask", env_variable]
           elsif dep_cask_or_formula.is_a?(Formula) && forbidden_formulae.present?
             dep_formula = dep_cask_or_formula
             formula_name = if forbidden_formulae.include?(dep_formula.name)
@@ -731,9 +736,13 @@ on_request: true)
           )
         end
       end
-      return if forbidden_casks.blank?
+      return if !forbid_casks && forbidden_casks.blank?
 
-      if forbidden_casks.include?(@cask.token)
+      variable = "HOMEBREW_FORBIDDEN_CASKS"
+      if forbid_casks
+        variable = "HOMEBREW_FORBID_CASKS"
+        @cask.token
+      elsif forbidden_casks.include?(@cask.token)
         @cask.token
       elsif forbidden_casks.include?(@cask.full_name)
         @cask.full_name
@@ -742,7 +751,7 @@ on_request: true)
       end
 
       raise CaskCannotBeInstalledError.new(@cask, <<~EOS
-        forbidden for installation by #{owner} in `HOMEBREW_FORBIDDEN_CASKS`.#{owner_contact}
+        forbidden for installation by #{owner} in `#{variable}`.#{owner_contact}
       EOS
       )
     end

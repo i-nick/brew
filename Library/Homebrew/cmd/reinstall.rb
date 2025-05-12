@@ -39,6 +39,10 @@ module Homebrew
                             "non-migrated versions."
         switch "-v", "--verbose",
                description: "Print the verification and post-install steps."
+        switch "--ask",
+               description: "Ask for confirmation before downloading and upgrading formulae. " \
+                            "Print bottles and dependencies download size, install and net install size.",
+               env:         :ask
         [
           [:switch, "--formula", "--formulae", { description: "Treat all named arguments as formulae." }],
           [:switch, "-s", "--build-from-source", {
@@ -62,11 +66,6 @@ module Homebrew
           }],
           [:switch, "-g", "--git", {
             description: "Create a Git repository, useful for creating patches to the software.",
-          }],
-          [:switch, "--ask", {
-            description: "Ask for confirmation before downloading and upgrading formulae. " \
-                         "Print bottles and dependencies download size, install and net install size.",
-            env:         :ask,
           }],
         ].each do |args|
           options = args.pop
@@ -132,7 +131,7 @@ module Homebrew
           Install.perform_preinstall_checks_once
 
           # If asking the user is enabled, show dependency and size information.
-          Install.ask(formulae, args: args) if args.ask?
+          Install.ask_formulae(formulae, args: args) if args.ask?
 
           formulae.each do |formula|
             if formula.pinned?
@@ -173,6 +172,7 @@ module Homebrew
         end
 
         if casks.any?
+          Install.ask_casks casks if args.ask?
           Cask::Reinstall.reinstall_casks(
             *casks,
             binaries:       args.binaries?,

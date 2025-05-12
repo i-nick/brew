@@ -65,7 +65,12 @@ else
   CACHE_HOME="${HOMEBREW_XDG_CACHE_HOME:-${HOME}/.cache}"
   HOMEBREW_DEFAULT_CACHE="${CACHE_HOME}/Homebrew"
   HOMEBREW_DEFAULT_LOGS="${CACHE_HOME}/Homebrew/Logs"
-  HOMEBREW_DEFAULT_TEMP="/tmp"
+  if [[ -r "/var/tmp" && -w "/var/tmp" ]]
+  then
+    HOMEBREW_DEFAULT_TEMP="/var/tmp"
+  else
+    HOMEBREW_DEFAULT_TEMP="/tmp"
+  fi
 fi
 
 realpath() {
@@ -251,7 +256,14 @@ check-run-command-as-root() {
   [[ -f /proc/1/cgroup ]] && grep -E "azpl_job|actions_job|docker|garden|kubepods" -q /proc/1/cgroup && return
 
   # `brew services` may need `sudo` for system-wide daemons.
-  [[ "${HOMEBREW_COMMAND}" == "services" ]] && return
+  if [[ "${HOMEBREW_COMMAND}" == "services" ]]
+  then
+    # Need to disable Bootsnap when running as root to avoid permission errors:
+    # https://github.com/Homebrew/brew/issues/19904
+    export HOMEBREW_NO_BOOTSNAP="1"
+
+    return
+  fi
 
   # It's fine to run this as root as it's not changing anything.
   [[ "${HOMEBREW_COMMAND}" == "--prefix" ]] && return
@@ -460,7 +472,7 @@ fi
 #####
 
 # Docker image deprecation
-if [[ -f "${HOMEBREW_REPOSITORY}/.docker-deprecate" ]]
+if [[ -f "${HOMEBREW_REPOSITORY}/.docker-deprecate" && -z "${HOMEBREW_TESTS}" ]]
 then
   read -r DOCKER_DEPRECATION_MESSAGE <"${HOMEBREW_REPOSITORY}/.docker-deprecate"
   if [[ -n "${GITHUB_ACTIONS}" ]]

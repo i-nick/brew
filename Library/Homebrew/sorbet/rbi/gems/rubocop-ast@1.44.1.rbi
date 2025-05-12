@@ -815,6 +815,9 @@ module RuboCop::AST::CollectionNode
   def fetch(*_arg0, **_arg1, &_arg2); end
 
   # source://rubocop-ast//lib/rubocop/ast/utilities/simple_forwardable.rb#19
+  def fetch_values(*_arg0, **_arg1, &_arg2); end
+
+  # source://rubocop-ast//lib/rubocop/ast/utilities/simple_forwardable.rb#19
   def fill(*_arg0, **_arg1, &_arg2); end
 
   # source://rubocop-ast//lib/rubocop/ast/utilities/simple_forwardable.rb#19
@@ -4397,7 +4400,7 @@ end
 # Doc on how this fits in the compiling process:
 #   /docs/modules/ROOT/pages/node_pattern.adoc
 #
-# source://rubocop-ast//lib/rubocop/ast/node_pattern/compiler/sequence_subcompiler.rb#17
+# source://rubocop-ast//lib/rubocop/ast/node_pattern/compiler/sequence_subcompiler.rb#16
 class RuboCop::AST::NodePattern::Compiler::SequenceSubcompiler < ::RuboCop::AST::NodePattern::Compiler::Subcompiler
   # Calls `compile_sequence`; the actual `compile` method
   # will be used for the different terms of the sequence.
@@ -6285,7 +6288,7 @@ class RuboCop::AST::ProcessedSource
   # source://rubocop-ast//lib/rubocop/ast/processed_source.rb#77
   def lines; end
 
-  # source://rubocop-md/2.0.0/lib/rubocop/markdown/rubocop_ext.rb#85
+  # source://rubocop-md/2.0.1/lib/rubocop/markdown/rubocop_ext.rb#85
   def parse(src, *args); end
 
   # Returns the value of attribute parser_engine.

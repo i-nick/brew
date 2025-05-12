@@ -34,6 +34,7 @@ For questions about donations, including corporate giving, please email the Home
 
 - [Homebrew/discussions (forum)](https://github.com/orgs/Homebrew/discussions)
 - [@homebrew@fosstodon.org (Mastodon)](https://fosstodon.org/@homebrew)
+- [@brew.sh (Bluesky)](https://bsky.app/profile/brew.sh)
 - [@MacHomebrew (𝕏 (formerly known as Twitter))](https://x.com/MacHomebrew)
 
 ## Contributing

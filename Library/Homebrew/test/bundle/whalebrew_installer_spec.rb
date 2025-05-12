@@ -31,17 +31,6 @@ RSpec.describe Homebrew::Bundle::WhalebrewInstaller do
         expect(described_class.image_installed?("whalebrew/wget")).to be(true)
       end
     end
-
-    context "when an image isn't installed" do
-      before do
-        described_class.reset!
-      end
-
-      it "returns false" do
-        allow(Homebrew::Bundle::WhalebrewDumper).to receive(:images).and_return([])
-        expect(described_class.image_installed?("test/doesnotexist")).to be(false)
-      end
-    end
   end
 
   context "when whalebrew isn't installed" do
@@ -74,11 +63,6 @@ RSpec.describe Homebrew::Bundle::WhalebrewInstaller do
       it "skips" do
         expect(described_class.preinstall("whalebrew/wget")).to be(false)
       end
-    end
-
-    it "successfully installs an image" do
-      expect(described_class.preinstall("whalebrew/wget")).to be(true)
-      expect { described_class.install("whalebrew/wget") }.not_to raise_error
     end
   end
 end

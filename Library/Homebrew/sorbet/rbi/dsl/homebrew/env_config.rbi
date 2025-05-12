@@ -122,6 +122,9 @@ module Homebrew::EnvConfig
     def fail_log_lines; end
 
     sig { returns(T::Boolean) }
+    def forbid_casks?; end
+
+    sig { returns(T::Boolean) }
     def forbid_packages_from_paths?; end
 
     sig { returns(T.nilable(::String)) }

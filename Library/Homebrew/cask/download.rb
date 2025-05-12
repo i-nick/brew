@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "downloadable"
@@ -13,8 +13,10 @@ module Cask
 
     include Context
 
+    sig { returns(::Cask::Cask) }
     attr_reader :cask
 
+    sig { params(cask: ::Cask::Cask, quarantine: T.nilable(T::Boolean)).void }
     def initialize(cask, quarantine: nil)
       super()
 
@@ -29,9 +31,9 @@ module Cask
 
     sig { override.returns(T.nilable(::URL)) }
     def url
-      return if cask.url.nil?
+      return if (cask_url = cask.url).nil?
 
-      @url ||= ::URL.new(cask.url.to_s, cask.url.specs)
+      @url ||= ::URL.new(cask_url.to_s, cask_url.specs)
     end
 
     sig { override.returns(T.nilable(::Checksum)) }
@@ -70,12 +72,14 @@ module Cask
       downloaded_path
     end
 
+    sig { params(timeout: T.any(Float, Integer, NilClass)).returns([T.nilable(Time), Integer]) }
     def time_file_size(timeout: nil)
       raise ArgumentError, "not supported for this download strategy" unless downloader.is_a?(CurlDownloadStrategy)
 
       T.cast(downloader, CurlDownloadStrategy).resolved_time_file_size(timeout:)
     end
 
+    sig { returns(Pathname) }
     def basename
       downloader.basename
     end
@@ -102,6 +106,7 @@ module Cask
 
     private
 
+    sig { params(path: Pathname).void }
     def quarantine(path)
       return if @quarantine.nil?
       return unless Quarantine.available?

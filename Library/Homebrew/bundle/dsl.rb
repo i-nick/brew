@@ -42,7 +42,7 @@ module Homebrew
       def cask_args(args)
         raise "cask_args(#{args.inspect}) should be a Hash object" unless args.is_a? Hash
 
-        @cask_arguments = args
+        @cask_arguments.merge!(args)
       end
 
       def brew(name, options = {})

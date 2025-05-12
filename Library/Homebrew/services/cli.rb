@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "services/formula_wrapper"
+require "fileutils"
 
 module Homebrew
   module Services
@@ -195,18 +196,31 @@ module Homebrew
               System::Systemctl.quiet_run(*systemctl_args, "disable", "--now", service.service_name)
             end
           elsif System.launchctl?
-            quiet_system System.launchctl, "bootout", "#{System.domain_target}/#{service.service_name}"
-            unless no_wait
-              time_slept = 0
-              sleep_time = 1
-              max_wait = T.must(max_wait)
-              while ($CHILD_STATUS.to_i == 9216 || service.loaded?) && (max_wait.zero? || time_slept < max_wait)
-                sleep(sleep_time)
-                time_slept += sleep_time
-                quiet_system System.launchctl, "bootout", "#{System.domain_target}/#{service.service_name}"
+            dont_wait_statuses = [
+              Errno::ESRCH::Errno,
+              System::LAUNCHCTL_DOMAIN_ACTION_NOT_SUPPORTED,
+            ]
+            System.candidate_domain_targets.each do |domain_target|
+              break unless service.loaded?
+
+              quiet_system System.launchctl, "bootout", "#{domain_target}/#{service.service_name}"
+              unless no_wait
+                time_slept = 0
+                sleep_time = 1
+                max_wait = T.must(max_wait)
+                exit_status = $CHILD_STATUS.exitstatus
+                while dont_wait_statuses.exclude?(exit_status) &&
+                      (exit_status == Errno::EINPROGRESS::Errno || service.loaded?) &&
+                      (max_wait.zero? || time_slept < max_wait)
+                  sleep(sleep_time)
+                  time_slept += sleep_time
+                  quiet_system System.launchctl, "bootout", "#{domain_target}/#{service.service_name}"
+                  exit_status = $CHILD_STATUS.exitstatus
+                end
               end
+              service.reset_cache!
+              quiet_system System.launchctl, "stop", "#{domain_target}/#{service.service_name}" if service.pid?
             end
-            quiet_system System.launchctl, "stop", "#{System.domain_target}/#{service.service_name}" if service.pid?
           end
 
           unless keep
@@ -215,7 +229,7 @@ module Homebrew
             System::Systemctl.run(*systemctl_args, "daemon-reload") if System.systemctl?
           end
 
-          if service.pid? || service.loaded?
+          if service.loaded? || service.pid?
             opoo "Unable to stop `#{service.name}` (label: #{service.service_name})"
           else
             ohai "Successfully stopped `#{service.name}` (label: #{service.service_name})"
@@ -236,7 +250,12 @@ module Homebrew
             if System.systemctl?
               System::Systemctl.quiet_run("stop", service.service_name)
             elsif System.launchctl?
-              quiet_system System.launchctl, "stop", "#{System.domain_target}/#{service.service_name}"
+              System.candidate_domain_targets.each do |domain_target|
+                break unless service.pid?
+
+                quiet_system System.launchctl, "stop", "#{domain_target}/#{service.service_name}"
+                service.reset_cache!
+              end
             end
 
             if service.pid?

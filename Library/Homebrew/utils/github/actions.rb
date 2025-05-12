@@ -98,7 +98,7 @@ module GitHub
 
       sig { returns(String) }
       def to_s
-        metadata = @type.to_s
+        metadata = @type.to_s.dup
         if @file
           metadata << " file=#{Actions.escape(@file.to_s)}"
 

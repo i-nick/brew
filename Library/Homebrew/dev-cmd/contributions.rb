@@ -43,6 +43,8 @@ module Homebrew
 
       sig { override.void }
       def run
+        Homebrew.install_bundler_gems!(groups: ["contributions"]) if args.csv?
+
         results = {}
         grand_totals = {}
 
@@ -124,7 +126,7 @@ module Homebrew
 
       sig { params(totals: T::Hash[String, T::Hash[Symbol, Integer]]).returns(String) }
       def generate_csv(totals)
-        require "csv" # TODO: this will be removed from Ruby 3.4
+        require "csv"
 
         CSV.generate do |csv|
           csv << %w[user repo author committer coauthor review total]

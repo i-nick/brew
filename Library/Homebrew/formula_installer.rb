@@ -1222,11 +1222,12 @@ on_request: installed_on_request?, options:)
   # Rescue all possible exceptions when fixing linkage.
   rescue Exception => e # rubocop:disable Lint/RescueException
     ofail "Failed to fix install linkage"
+    puts e
     puts "The formula built, but you may encounter issues using it or linking other"
     puts "formulae against it."
 
     require "utils/backtrace"
-    odebug e, Utils::Backtrace.clean(e)
+    odebug "Backtrace", Utils::Backtrace.clean(e)
 
     @show_summary_heading = true
   end

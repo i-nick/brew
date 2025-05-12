@@ -61,8 +61,6 @@ HOMEBREW_PULL_OR_COMMIT_URL_REGEX =
 HOMEBREW_BOTTLES_EXTNAME_REGEX = /\.([a-z0-9_]+)\.bottle\.(?:(\d+)\.)?tar\.gz$/
 
 module Homebrew
-  extend FileUtils
-
   DEFAULT_PREFIX = T.let(ENV.fetch("HOMEBREW_DEFAULT_PREFIX").freeze, String)
   DEFAULT_REPOSITORY = T.let(ENV.fetch("HOMEBREW_DEFAULT_REPOSITORY").freeze, String)
   DEFAULT_CELLAR = "#{DEFAULT_PREFIX}/Cellar".freeze

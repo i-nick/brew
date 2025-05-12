@@ -7,6 +7,7 @@ module Homebrew
   module Bundle
     module Skipper
       class << self
+        sig { params(entry: Dsl::Entry, silent: T::Boolean).returns(T::Boolean) }
         def skip?(entry, silent: false)
           require "bundle/brew_dumper"
 

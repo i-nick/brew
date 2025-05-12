@@ -20,7 +20,7 @@ module OS
             glibc_path
           elsif (homebrew_path = HOMEBREW_PREFIX/"bin/#{tool}").executable?
             homebrew_path
-          elsif File.executable?((system_path = "/usr/bin/#{tool}"))
+          elsif File.executable?(system_path = "/usr/bin/#{tool}")
             Pathname.new system_path
           end
         end

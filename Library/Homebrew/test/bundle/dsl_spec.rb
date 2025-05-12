@@ -60,6 +60,20 @@ RSpec.describe Homebrew::Bundle::Dsl do
     end
   end
 
+  context "with multiple cask_args" do
+    subject(:dsl) do
+      dsl_from_string <<~EOS
+        cask_args appdir: '/global-apps'
+        cask_args require_sha: true
+        cask_args appdir: '~/my-apps'
+      EOS
+    end
+
+    it "merges the arguments" do
+      expect(dsl.cask_arguments).to eql(appdir: "~/my-apps", require_sha: true)
+    end
+  end
+
   context "with invalid input" do
     it "handles completely invalid code" do
       expect { dsl_from_string "abcdef" }.to raise_error(RuntimeError)

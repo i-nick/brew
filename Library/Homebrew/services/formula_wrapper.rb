@@ -113,12 +113,17 @@ module Homebrew
         false
       end
 
+      sig { void }
+      def reset_cache!
+        @status_output_success_type = nil
+      end
+
       # Returns `true` if the service is loaded, else false.
       # TODO: this should either be T::Boolean or renamed to `loaded`
       sig { params(cached: T::Boolean).returns(T.nilable(T::Boolean)) }
       def loaded?(cached: false)
         if System.launchctl?
-          @status_output_success_type = nil unless cached
+          reset_cache! unless cached
           _, status_success, = status_output_success_type
           status_success
         elsif System.systemctl?

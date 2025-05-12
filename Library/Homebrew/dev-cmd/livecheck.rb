@@ -100,10 +100,7 @@ module Homebrew
             tap = formula_or_cask.tap
             next false if tap.nil?
 
-            autobump_lists[tap] ||= begin
-              autobump_path = tap.path/".github/autobump.txt"
-              autobump_path.exist? ? autobump_path.readlines.map(&:strip) : []
-            end
+            autobump_lists[tap] ||= tap.autobump
 
             name = formula_or_cask.respond_to?(:token) ? formula_or_cask.token : formula_or_cask.name
             next unless autobump_lists[tap].include?(name)

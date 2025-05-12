@@ -255,8 +255,18 @@ class GitHubRunnerMatrix
       @testing_formulae.select do |formula|
         next false if macos_version && !formula.compatible_with?(macos_version)
 
-        formula.public_send(:"#{platform}_compatible?") &&
-          formula.public_send(:"#{arch}_compatible?")
+        simulate_arch = case arch
+        when :x86_64
+          :intel
+        when :arm64
+          :arm
+        else
+          :dunno
+        end
+        Homebrew::SimulateSystem.with(os: platform, arch: simulate_arch) do
+          formula.public_send(:"#{platform}_compatible?") &&
+            formula.public_send(:"#{arch}_compatible?")
+        end
       end
     end
   end

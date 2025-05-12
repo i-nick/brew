@@ -23,7 +23,7 @@ class GitRepository
   sig { returns(T::Boolean) }
   def git_repo?
     # delete this whole function when removing odisabled
-    odeprecated "GitRepository#git_repo?", "GitRepository#git_repository?"
+    odisabled "GitRepository#git_repo?", "GitRepository#git_repository?"
     git_repository?
   end
 

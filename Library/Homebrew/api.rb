@@ -4,7 +4,7 @@
 require "api/analytics"
 require "api/cask"
 require "api/formula"
-require "base64" # TODO: vendor this for Ruby 3.4.
+require "base64"
 
 module Homebrew
   # Helper functions for using Homebrew's formulae.brew.sh API.
@@ -96,7 +96,7 @@ module Homebrew
 
         mtime = insecure_download ? Time.new(1970, 1, 1) : Time.now
         FileUtils.touch(target, mtime:) unless skip_download
-        JSON.parse(target.read, freeze: true)
+        JSON.parse(target.read(encoding: Encoding::UTF_8), freeze: true)
       rescue JSON::ParserError
         target.unlink
         retry_count += 1

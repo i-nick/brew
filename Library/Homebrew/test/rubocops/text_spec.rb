@@ -140,7 +140,7 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Text do
     it 'reports an offense if `require "language/go"` is present' do
       expect_offense(<<~RUBY)
         require "language/go"
-        ^^^^^^^^^^^^^^^^^^^^^ FormulaAudit/Text: require "language/go" is unnecessary unless using `go_resource`s
+        ^^^^^^^^^^^^^^^^^^^^^ FormulaAudit/Text: require "language/go" is no longer necessary or correct
 
         class Foo < Formula
           url "https://brew.sh/foo-1.0.tgz"

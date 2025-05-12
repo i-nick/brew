@@ -269,100 +269,6 @@ class RSpec::Core::BacktraceFormatter
   def matches?(patterns, line); end
 end
 
-# @private
-#
-# source://rspec-core//lib/rspec/core/bisect/utilities.rb#3
-module RSpec::Core::Bisect; end
-
-# @private
-#
-# source://rspec-core//lib/rspec/core/bisect/utilities.rb#8
-class RSpec::Core::Bisect::BisectFailedError < ::StandardError
-  class << self
-    # source://rspec-core//lib/rspec/core/bisect/utilities.rb#9
-    def for_failed_spec_run(spec_output); end
-  end
-end
-
-# Wraps a pipe to support sending objects between a child and
-# parent process. Where supported, encoding is explicitly
-# set to ensure binary data is able to pass from child to
-# parent.
-#
-# @private
-#
-# source://rspec-core//lib/rspec/core/bisect/utilities.rb#36
-class RSpec::Core::Bisect::Channel
-  # @return [Channel] a new instance of Channel
-  #
-  # source://rspec-core//lib/rspec/core/bisect/utilities.rb#41
-  def initialize; end
-
-  # source://rspec-core//lib/rspec/core/bisect/utilities.rb#62
-  def close; end
-
-  # source://rspec-core//lib/rspec/core/bisect/utilities.rb#56
-  def receive; end
-
-  # source://rspec-core//lib/rspec/core/bisect/utilities.rb#50
-  def send(message); end
-end
-
-# source://rspec-core//lib/rspec/core/bisect/utilities.rb#38
-RSpec::Core::Bisect::Channel::MARSHAL_DUMP_ENCODING = T.let(T.unsafe(nil), Encoding)
-
-# @private
-#
-# source://rspec-core//lib/rspec/core/bisect/utilities.rb#5
-class RSpec::Core::Bisect::ExampleSetDescriptor < ::Struct
-  # Returns the value of attribute all_example_ids
-  #
-  # @return [Object] the current value of all_example_ids
-  def all_example_ids; end
-
-  # Sets the attribute all_example_ids
-  #
-  # @param value [Object] the value to set the attribute all_example_ids to.
-  # @return [Object] the newly set value
-  def all_example_ids=(_); end
-
-  # Returns the value of attribute failed_example_ids
-  #
-  # @return [Object] the current value of failed_example_ids
-  def failed_example_ids; end
-
-  # Sets the attribute failed_example_ids
-  #
-  # @param value [Object] the value to set the attribute failed_example_ids to.
-  # @return [Object] the newly set value
-  def failed_example_ids=(_); end
-
-  class << self
-    def [](*_arg0); end
-    def inspect; end
-    def keyword_init?; end
-    def members; end
-    def new(*_arg0); end
-  end
-end
-
-# Wraps a `formatter` providing a simple means to notify it in place
-# of an `RSpec::Core::Reporter`, without involving configuration in
-# any way.
-#
-# @private
-#
-# source://rspec-core//lib/rspec/core/bisect/utilities.rb#19
-class RSpec::Core::Bisect::Notifier
-  # @return [Notifier] a new instance of Notifier
-  #
-  # source://rspec-core//lib/rspec/core/bisect/utilities.rb#20
-  def initialize(formatter); end
-
-  # source://rspec-core//lib/rspec/core/bisect/utilities.rb#24
-  def publish(event, *args); end
-end
-
 # Stores runtime configuration information.
 #
 # Configuration options are loaded from multiple files and joined together
@@ -4882,38 +4788,6 @@ module RSpec::Core::Formatters
   end
 end
 
-# Contains common logic for formatters used by `--bisect` to communicate results
-# back to the bisect runner.
-#
-# Subclasses must define a `notify_results(all_example_ids, failed_example_ids)`
-# method.
-#
-# @private
-#
-# source://rspec-core//lib/rspec/core/formatters/base_bisect_formatter.rb#12
-class RSpec::Core::Formatters::BaseBisectFormatter
-  # @return [BaseBisectFormatter] a new instance of BaseBisectFormatter
-  #
-  # source://rspec-core//lib/rspec/core/formatters/base_bisect_formatter.rb#17
-  def initialize(expected_failures); end
-
-  # source://rspec-core//lib/rspec/core/formatters/base_bisect_formatter.rb#23
-  def example_failed(notification); end
-
-  # source://rspec-core//lib/rspec/core/formatters/base_bisect_formatter.rb#27
-  def example_finished(notification); end
-
-  # source://rspec-core//lib/rspec/core/formatters/base_bisect_formatter.rb#37
-  def start_dump(_notification); end
-
-  class << self
-    # @private
-    #
-    # source://rspec-core//lib/rspec/core/formatters/base_bisect_formatter.rb#13
-    def inherited(formatter); end
-  end
-end
-
 # RSpec's built-in formatters are all subclasses of
 # RSpec::Core::Formatters::BaseFormatter.
 #
@@ -5036,27 +4910,6 @@ class RSpec::Core::Formatters::BaseTextFormatter < ::RSpec::Core::Formatters::Ba
   #
   # source://rspec-core//lib/rspec/core/formatters/base_text_formatter.rb#53
   def seed(notification); end
-end
-
-# Used by `--bisect`. When it shells out and runs a portion of the suite, it uses
-# this formatter as a means to have the status reported back to it, via DRb.
-#
-# Note that since DRb calls carry considerable overhead compared to normal
-# method calls, we try to minimize the number of DRb calls for perf reasons,
-# opting to communicate only at the start and the end of the run, rather than
-# after each example.
-#
-# @private
-#
-# source://rspec-core//lib/rspec/core/formatters/bisect_drb_formatter.rb#15
-class RSpec::Core::Formatters::BisectDRbFormatter < ::RSpec::Core::Formatters::BaseBisectFormatter
-  # @return [BisectDRbFormatter] a new instance of BisectDRbFormatter
-  #
-  # source://rspec-core//lib/rspec/core/formatters/bisect_drb_formatter.rb#16
-  def initialize(_output); end
-
-  # source://rspec-core//lib/rspec/core/formatters/bisect_drb_formatter.rb#23
-  def notify_results(results); end
 end
 
 # ConsoleCodes provides helpers for formatting console output
@@ -9558,6 +9411,9 @@ class RSpec::Core::OutputWrapper
 
   # source://rspec-core//lib/rspec/core/output_wrapper.rb#23
   def tty?(*args, &block); end
+
+  # source://rspec-core//lib/rspec/core/output_wrapper.rb#23
+  def ttyname(*args, &block); end
 
   # source://rspec-core//lib/rspec/core/output_wrapper.rb#23
   def ungetbyte(*args, &block); end

@@ -82,6 +82,12 @@ module Cask
 
         @arch.concat(arches.map { |arch| VALID_ARCHES[arch] })
       end
+
+      sig { returns(T::Boolean) }
+      def empty? = T.let(__getobj__, T::Hash[Symbol, T.untyped]).empty?
+
+      sig { returns(T::Boolean) }
+      def present? = !empty?
     end
   end
 end

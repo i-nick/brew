@@ -25,15 +25,19 @@ class Resource
   sig { params(name: T.nilable(String), block: T.nilable(T.proc.bind(Resource).void)).void }
   def initialize(name = nil, &block)
     super()
-    # Ensure this is synced with `initialize_dup` and `freeze` (excluding simple objects like integers and booleans)
+    # Generally ensure this is synced with `initialize_dup` and `freeze`
+    # (excluding simple objects like integers & booleans, weak refs like `owner` or permafrozen objects)
     @name = name
+    @source_modified_time = nil
     @patches = []
+    @owner = nil
     @livecheck = Livecheck.new(self)
     @livecheck_defined = false
     @insecure = false
     instance_eval(&block) if block
   end
 
+  sig { params(other: Object).void }
   def initialize_dup(other)
     super
     @name = @name.dup
@@ -108,7 +112,7 @@ class Resource
     current_working_directory = Pathname.pwd
     stage_resource(download_name, debug_symbols:) do |staging|
       downloader.stage do
-        @source_modified_time = downloader.source_modified_time
+        @source_modified_time = downloader.source_modified_time.freeze
         apply_patches
         if block_given?
           yield ResourceStageContext.new(self, staging)
@@ -178,7 +182,7 @@ class Resource
   # and `false` otherwise.
   sig { returns(T::Boolean) }
   def livecheckable?
-    # odeprecated "`livecheckable?`", "`livecheck_defined?`"
+    odeprecated "`livecheckable?`", "`livecheck_defined?`"
     @livecheck_defined == true
   end
 

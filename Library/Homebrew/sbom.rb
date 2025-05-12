@@ -192,7 +192,7 @@ class SBOM
              T::Array[
               T::Hash[
                 Symbol,
-                T.any(String, T::Array[T::Hash[Symbol, String]])
+                T.any(String, T::Array[T::Hash[Symbol, String]]),
               ],
             ],
            )

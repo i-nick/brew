@@ -508,6 +508,7 @@ _brew_bump() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --bump-synced
       --cask
       --debug
       --eval-all
@@ -651,6 +652,7 @@ _brew_bundle() {
       __brewcomp "
       --all
       --cask
+      --check
       --cleanup
       --debug
       --describe

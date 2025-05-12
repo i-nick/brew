@@ -6,7 +6,7 @@ require_relative "system/systemctl"
 module Homebrew
   module Services
     module System
-      extend FileUtils
+      LAUNCHCTL_DOMAIN_ACTION_NOT_SUPPORTED = T.let(125, Integer)
 
       # Path to launchctl binary.
       sig { returns(T.nilable(Pathname)) }
@@ -99,6 +99,13 @@ module Homebrew
         else
           "gui/#{Process.uid}"
         end
+      end
+
+      sig { returns(T::Array[String]) }
+      def self.candidate_domain_targets
+        candidates = [domain_target]
+        candidates += ["user/#{Process.euid}", "gui/#{Process.uid}"] unless root?
+        candidates.uniq
       end
     end
   end

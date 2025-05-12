@@ -40,7 +40,7 @@
 # Ignore Ruby gems for versions other than we explicitly vendor.
 # Keep this in sync with the list in standalone/init.rb.
 **/vendor/bundle/ruby/*/
-!**/vendor/bundle/ruby/3.3.0/
+!**/vendor/bundle/ruby/3.4.0/
 
 # Ignore Bundler binary files
 **/vendor/bundle/ruby/*/gems/**/*.bundle
@@ -79,6 +79,7 @@
 **/vendor/bundle/ruby/*/gems/coderay-*/
 **/vendor/bundle/ruby/*/gems/colorize-*/
 **/vendor/bundle/ruby/*/gems/commander-*/
+**/vendor/bundle/ruby/*/gems/csv-*/
 **/vendor/bundle/ruby/*/gems/diff-lcs-*/
 **/vendor/bundle/ruby/*/gems/docile-*/
 **/vendor/bundle/ruby/*/gems/ecma-re-validator-*/
@@ -170,7 +171,6 @@
 
 # Ignore generated documentation site
 /docs/_site
-/docs/bin
 /docs/.jekyll-metadata
 /docs/vendor
 /docs/Gemfile.lock

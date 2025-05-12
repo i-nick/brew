@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "cask/cask_loader"
@@ -27,6 +27,7 @@ module OS
             true
           end
 
+          sig { params(entry: Homebrew::Bundle::Dsl::Entry, silent: T::Boolean).returns(T::Boolean) }
           def skip?(entry, silent: false)
             if macos_only_entry?(entry) || macos_only_cask?(entry)
               unless silent
