@@ -87,7 +87,7 @@ module SPDX
     return ALLOWED_LICENSE_SYMBOLS.include? license if license.is_a? Symbol
 
     license = license.delete_suffix "+"
-    license_data["licenses"].any? { |spdx_license| spdx_license["licenseId"] == license }
+    license_data["licenses"].any? { |spdx_license| spdx_license["licenseId"].downcase == license.downcase }
   end
 
   sig { params(license: T.any(String, Symbol)).returns(T::Boolean) }
@@ -97,14 +97,14 @@ module SPDX
 
     license = license.to_s.delete_suffix "+"
     license_data["licenses"].none? do |spdx_license|
-      spdx_license["licenseId"] == license && !spdx_license["isDeprecatedLicenseId"]
+      spdx_license["licenseId"].downcase == license.downcase && !spdx_license["isDeprecatedLicenseId"]
     end
   end
 
   sig { params(exception: String).returns(T::Boolean) }
   def valid_license_exception?(exception)
     exception_data["exceptions"].any? do |spdx_exception|
-      spdx_exception["licenseExceptionId"] == exception && !spdx_exception["isDeprecatedLicenseId"]
+      spdx_exception["licenseExceptionId"].downcase == exception.downcase && !spdx_exception["isDeprecatedLicenseId"]
     end
   end
 

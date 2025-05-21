@@ -177,6 +177,14 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Urls do
       "url" => "svn+http://brew.sh/foo/bar",
       "msg" => "Use of the svn+http:// scheme is deprecated, pass `:using => :svn` instead",
       "col" => 2,
+    }, {
+      "url" => "https://🫠.sh/foo/bar",
+      "msg" => "Please use the ASCII (Punycode encoded host, URL-encoded path and query) version of https://🫠.sh/foo/bar.",
+      "col" => 2,
+    }, {
+      "url" => "https://ßreｗ.sh/foo/bar",
+      "msg" => "Please use the ASCII (Punycode encoded host, URL-encoded path and query) version of https://ßreｗ.sh/foo/bar.",
+      "col" => 2,
     }]
   end
 

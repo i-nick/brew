@@ -5,7 +5,6 @@ require "json"
 require "time"
 require "unpack_strategy"
 require "lazy_object"
-require "cgi"
 require "lock_file"
 require "system_command"
 
@@ -384,9 +383,12 @@ class AbstractFileDownloadStrategy < AbstractDownloadStrategy
     if url.match?(URI::DEFAULT_PARSER.make_regexp)
       uri = URI(url)
 
-      if uri.query
-        query_params = CGI.parse(uri.query)
-        query_params["response-content-disposition"].each do |param|
+      if (uri_query = uri.query.presence)
+        URI.decode_www_form(uri_query).each do |key, param|
+          components[:query] << param if search_query
+
+          next if key != "response-content-disposition"
+
           query_basename = param[/attachment;\s*filename=(["']?)(.+)\1/i, 2]
           return File.basename(query_basename) if query_basename
         end
@@ -396,10 +398,6 @@ class AbstractFileDownloadStrategy < AbstractDownloadStrategy
         components[:path] = uri_path.split("/").filter_map do |part|
           URI::DEFAULT_PARSER.unescape(part).presence
         end
-      end
-
-      if search_query && (uri_query = uri.query.presence)
-        components[:query] = URI.decode_www_form(uri_query).map { _2 }
       end
     else
       components[:path] = [url]
@@ -705,7 +703,12 @@ class CurlGitHubPackagesDownloadStrategy < CurlDownloadStrategy
     meta[:headers] ||= []
     # GitHub Packages authorization header.
     # HOMEBREW_GITHUB_PACKAGES_AUTH set in brew.sh
-    meta[:headers] << "Authorization: #{HOMEBREW_GITHUB_PACKAGES_AUTH}"
+    # If using a private GHCR mirror with no Authentication set then do not add the header. In all other cases add it.
+    if !Homebrew::EnvConfig.artifact_domain.presence ||
+       Homebrew::EnvConfig.docker_registry_basic_auth_token.presence ||
+       Homebrew::EnvConfig.docker_registry_token.presence
+      meta[:headers] << "Authorization: #{HOMEBREW_GITHUB_PACKAGES_AUTH}"
+    end
     super
   end
 

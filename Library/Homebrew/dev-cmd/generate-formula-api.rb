@@ -44,20 +44,23 @@ module Homebrew
           Formulary.enable_factory_cache!
           Formula.generating_hash!
 
-          tap.formula_names.each do |name|
-            formula = Formulary.factory(name)
-            name = formula.name
-            json = JSON.pretty_generate(formula.to_hash_with_variations)
-            html_template_name = html_template(name)
+          latest_macos = MacOSVersion.new((HOMEBREW_MACOS_NEWEST_UNSUPPORTED.to_i - 1).to_s).to_sym
+          Homebrew::SimulateSystem.with(os: latest_macos, arch: :arm) do
+            tap.formula_names.each do |name|
+              formula = Formulary.factory(name)
+              name = formula.name
+              json = JSON.pretty_generate(formula.to_hash_with_variations)
+              html_template_name = html_template(name)
 
-            unless args.dry_run?
-              File.write("_data/formula/#{name.tr("+", "_")}.json", "#{json}\n")
-              File.write("api/formula/#{name}.json", FORMULA_JSON_TEMPLATE)
-              File.write("formula/#{name}.html", html_template_name)
+              unless args.dry_run?
+                File.write("_data/formula/#{name.tr("+", "_")}.json", "#{json}\n")
+                File.write("api/formula/#{name}.json", FORMULA_JSON_TEMPLATE)
+                File.write("formula/#{name}.html", html_template_name)
+              end
+            rescue
+              onoe "Error while generating data for formula '#{name}'."
+              raise
             end
-          rescue
-            onoe "Error while generating data for formula '#{name}'."
-            raise
           end
 
           canonical_json = JSON.pretty_generate(tap.formula_renames.merge(tap.alias_table))

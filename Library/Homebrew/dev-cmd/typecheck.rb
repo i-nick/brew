@@ -60,6 +60,7 @@ module Homebrew
         HOMEBREW_LIBRARY_PATH.cd do
           if update
             workers = args.debug? ? ["--workers=1"] : []
+            safe_system "bundle", "exec", "tapioca", "annotations"
             safe_system "bundle", "exec", "tapioca", "dsl", *workers
             # Prefer adding args here: Library/Homebrew/sorbet/tapioca/config.yml
             tapioca_args = args.update_all? ? ["--all"] : []

@@ -178,7 +178,9 @@ module Homebrew
             exit_code = 0
             run_services(@dsl.entries) do
               Kernel.system(*args)
-              exit_code = $CHILD_STATUS.exitstatus
+              if (system_exit_code = $CHILD_STATUS&.exitstatus)
+                exit_code = system_exit_code
+              end
             end
             exit!(exit_code)
           else

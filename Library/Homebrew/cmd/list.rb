@@ -215,7 +215,7 @@ module Homebrew
       sig { void }
       def list_casks
         casks = if args.no_named?
-          cask_paths = Cask::Caskroom.path.children.map do |path|
+          cask_paths = Cask::Caskroom.path.children.reject(&:file?).map do |path|
             if path.symlink?
               real_path = path.realpath
               real_path.basename.to_s

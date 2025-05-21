@@ -35,6 +35,12 @@ module RuboCop
       def audit_url(type, urls, mirrors, livecheck_url: false)
         @type = type
 
+        # URLs must be ASCII; IDNs must be punycode
+        ascii_pattern = /[^\p{ASCII}]+/
+        audit_urls(urls, ascii_pattern) do |_, url|
+          problem "Please use the ASCII (Punycode encoded host, URL-encoded path and query) version of #{url}."
+        end
+
         # GNU URLs; doesn't apply to mirrors
         gnu_pattern = %r{^(?:https?|ftp)://ftpmirror\.gnu\.org/(.*)}
         audit_urls(urls, gnu_pattern) do |match, url|
