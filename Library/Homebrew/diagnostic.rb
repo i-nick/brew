@@ -531,7 +531,26 @@ module Homebrew
 
       def check_brew_git_origin
         repo = GitRepository.new(HOMEBREW_REPOSITORY)
-        examine_git_origin(repo, Homebrew::EnvConfig.brew_git_remote)
+        return unless Utils::Git.available? && repo.git_repository?
+
+        current_origin = repo.origin_url
+        desired_origin = Homebrew::EnvConfig.brew_git_remote
+
+        if current_origin.nil?
+          <<~EOS
+            Missing #{desired_origin} git origin remote.
+
+            Without a correctly configured origin, Homebrew won't update
+            properly. You can solve this by adding the remote:
+              git -C "#{repo.path}" remote add origin #{Formatter.url(desired_origin)}
+          EOS
+        elsif !current_origin.match?(%r{#{desired_origin}(\.git|/)?$}i)
+          # If current_origin is present but doesn't match desired_origin, return nil.
+          nil
+        else
+          # If current_origin matches desired_origin, return nil (no issue).
+          nil
+        end
       end
 
       def check_coretap_integrity
