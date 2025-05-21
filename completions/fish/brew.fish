@@ -1556,7 +1556,7 @@ __fish_brew_complete_arg 'services' -l file -d 'Use the service file from this l
 __fish_brew_complete_arg 'services' -l help -d 'Show this message'
 __fish_brew_complete_arg 'services' -l json -d 'Output as JSON'
 __fish_brew_complete_arg 'services' -l keep -d 'When stopped, don\'t unregister the service from launching at login (or boot)'
-__fish_brew_complete_arg 'services' -l max-wait -d 'Wait at most this many seconds for `stop` to finish stopping a service. Omit this flag or set this to zero (0) seconds to wait indefinitely'
+__fish_brew_complete_arg 'services' -l max-wait -d 'Wait at most this many seconds for `stop` to finish stopping a service. Defaults to 60. Set this to zero (0) seconds to wait indefinitely'
 __fish_brew_complete_arg 'services' -l no-wait -d 'Don\'t wait for `stop` to finish stopping the service'
 __fish_brew_complete_arg 'services' -l quiet -d 'Make some output more quiet'
 __fish_brew_complete_arg 'services' -l sudo-service-user -d 'When run as root on macOS, run the service(s) as this user'

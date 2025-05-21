@@ -11,8 +11,6 @@ require "cask/migrator"
 require "cask/quarantine"
 require "cask/tab"
 
-require "cgi"
-
 module Cask
   # Installer for a {Cask}.
   class Installer

@@ -5,68 +5,86 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: "friday"
+      time: "08:00"
+      timezone: "Etc/UTC"
     allow:
       - dependency-type: all
-    # The actions in triage-issues.yml are updated in the Homebrew/.github repo
-    ignore:
-      - dependency-name: actions/stale
     groups:
-      artifacts:
+      github-actions:
         patterns:
-          - actions/*-artifact
-    open-pull-requests-limit: 10
+          - "*"
 
   - package-ecosystem: bundler
-    directory: /Library/Homebrew
+    directories:
+      - /
+      - /Library/Homebrew
     schedule:
-      interval: daily
+      interval: weekly
+      day: "friday"
+      time: "08:00"
+      timezone: "Etc/UTC"
     allow:
       - dependency-type: all
     groups:
-      rspec:
+      bundler:
         patterns:
-          - "rspec*"
-      sorbet:
-        patterns:
-          - "sorbet*"
-    open-pull-requests-limit: 10
+          - "*"
 
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: daily
+      interval: weekly
+      day: "friday"
+      time: "08:00"
+      timezone: "Etc/UTC"
     allow:
       - dependency-type: all
-    open-pull-requests-limit: 10
+    groups:
+      npm:
+        patterns:
+          - "*"
 
   - package-ecosystem: docker
     directory: /
     schedule:
-      interval: daily
+      interval: weekly
+      day: "friday"
+      time: "08:00"
+      timezone: "Etc/UTC"
     allow:
       - dependency-type: all
-    open-pull-requests-limit: 10
+    groups:
+      docker:
+        patterns:
+          - "*"
 
   - package-ecosystem: devcontainers
     directory: /
     schedule:
-      interval: daily
+      interval: weekly
+      day: "friday"
+      time: "08:00"
+      timezone: "Etc/UTC"
     allow:
       - dependency-type: all
-    open-pull-requests-limit: 10
+    groups:
+      devcontainers:
+        patterns:
+          - "*"
 
   - package-ecosystem: pip
-    directory: /
+    directories:
+      - /
+      - /Library/Homebrew/formula-analytics/
     schedule:
-      interval: daily
+      interval: weekly
+      day: "friday"
+      time: "08:00"
+      timezone: "Etc/UTC"
     allow:
       - dependency-type: all
-    open-pull-requests-limit: 10
-
-  - package-ecosystem: pip
-    directory: /Library/Homebrew/formula-analytics/
-    schedule:
-      interval: daily
-    allow:
-      - dependency-type: all
-    open-pull-requests-limit: 10
+    groups:
+      pip:
+        patterns:
+          - "*"

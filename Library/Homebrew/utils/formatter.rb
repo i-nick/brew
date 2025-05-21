@@ -54,6 +54,19 @@ module Formatter
     label(label, string, :red)
   end
 
+  # Truncate a string to a specific length.
+  #
+  # @api internal
+  sig { params(string: String, max: Integer, omission: String).returns(String) }
+  def self.truncate(string, max: 30, omission: "...")
+    return string if string.length <= max
+
+    length_with_room_for_omission = max - omission.length
+    truncated = string[0, length_with_room_for_omission]
+
+    "#{truncated}#{omission}"
+  end
+
   # Wraps text to fit within a given number of columns using regular expressions that:
   #
   # 1. convert hard-wrapped paragraphs to a single line

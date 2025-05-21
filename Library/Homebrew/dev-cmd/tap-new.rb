@@ -126,7 +126,7 @@ module Homebrew
                     echo "::add-mask::${base64_token}"
                     echo "token=${base64_token}" >> "${GITHUB_OUTPUT}"
           <% end -%>
-                - run: brew test-bot --only-formulae<% if root_url %> --root-url='<%= root_url %>'<% end %>
+                - run: brew test-bot --only-formulae#{" --root-url=#{root_url}" if root_url}
                   if: github.event_name == 'pull_request'
           <% if args.github_packages? -%>
                   env:

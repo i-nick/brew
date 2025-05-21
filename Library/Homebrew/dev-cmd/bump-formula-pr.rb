@@ -159,6 +159,7 @@ module Homebrew
 
           new_url = args.url
           new_version = args.version
+
           check_new_version(commit_formula, tap_remote_repo, version: new_version) if new_version.present?
 
           opoo "This formula has patches that may be resolved upstream." if commit_formula.patchlist.present?
@@ -174,6 +175,7 @@ module Homebrew
           end
 
           old_hash = commit_formula_spec.checksum&.hexdigest
+
           new_hash = args.sha256
           new_tag = args.tag
           new_revision = args.revision
@@ -213,10 +215,9 @@ module Homebrew
           elsif new_url.blank? && new_version.blank?
             raise UsageError, "#{commit_formula}: no `--url` or `--version` argument specified!"
           else
-            next unless new_version.present?
+            new_url ||= PyPI.update_pypi_url(old_url, new_version) if new_version.present?
 
-            new_url ||= PyPI.update_pypi_url(old_url, new_version)
-            if new_url.blank?
+            if new_url.blank? && new_version.present?
               new_url = update_url(old_url, old_version, new_version)
               if new_mirrors.blank? && old_mirrors.present?
                 new_mirrors = old_mirrors.map do |old_mirror|
@@ -230,6 +231,9 @@ module Homebrew
                 and old URL are both:
                   #{new_url}
               EOS
+            end
+            if new_url.blank?
+              odie "There was an issue generating the updated url, you may need to create the PR manually"
             end
             check_new_version(commit_formula, tap_remote_repo, url: new_url) if new_version.blank?
             resource_path, forced_version = fetch_resource_and_forced_version(commit_formula, new_version, new_url)
@@ -395,10 +399,14 @@ module Homebrew
 
             if github_release_data.present?
               pre = "pre" if github_release_data["prerelease"].present?
+              # maximum length of PR body is 65,536 characters so let's truncate release notes to half of that.
+              body = Formatter.truncate(github_release_data["body"], max: 32_768)
+
               formula_pr_message += <<~XML
                 <details>
                   <summary>#{pre}release notes</summary>
-                  <pre>#{github_release_data["body"]}</pre>
+                  <pre>#{body}</pre>
+                  <p>View the full release notes at #{github_release_data["html_url"]}.</p>
                 </details>
               XML
             end
@@ -407,7 +415,7 @@ module Homebrew
           {
             sourcefile_path:    commit_formula.path,
             old_contents:,
-            commit_message:     "#{commit_formula.name} #{args.version}",
+            commit_message:     "#{commit_formula.name} #{new_formula_version}",
             additional_files:   alias_rename,
             formula_pr_message:,
             formula_name:       commit_formula.name,
@@ -437,6 +445,7 @@ module Homebrew
         end
 
         new_formula_version = T.must(commits.first)[:new_version]
+
         pr_title = if args.bump_synced.nil?
           "#{formula.name} #{new_formula_version}"
         else

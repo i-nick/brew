@@ -464,9 +464,9 @@ module Cask
                                  args:         paths,
                                  print_stderr: Homebrew::EnvConfig.developer?
 
-        trashed, = stdout.partition("\n")
-        trashed = trashed.split(":") & paths
-        untrashable = paths - trashed
+        trashed, _, untrashable = stdout.partition("\n")
+        trashed = trashed.split(":")
+        untrashable = untrashable.split(":")
 
         trashed_with_permissions, untrashable = untrashable.partition do |path|
           Utils.gain_permissions(path, ["-R"], SystemCommand) do

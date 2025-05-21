@@ -68,6 +68,13 @@ class MacOSRequirement < Requirement
     @version
   end
 
+  def maximum_version
+    return MacOSVersion.new(HOMEBREW_MACOS_NEWEST_UNSUPPORTED) if @comparator == ">=" || !version_specified?
+    return @version.max if @version.respond_to?(:to_ary)
+
+    @version
+  end
+
   def allows?(other)
     return true unless version_specified?
 

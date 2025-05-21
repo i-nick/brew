@@ -44,22 +44,25 @@ module Homebrew
 
           Cask::Cask.generating_hash!
 
-          tap.cask_files.each do |path|
-            cask = Cask::CaskLoader.load(path)
-            name = cask.token
-            json = JSON.pretty_generate(cask.to_hash_with_variations)
-            cask_source = path.read
-            html_template_name = html_template(name)
+          latest_macos = MacOSVersion.new((HOMEBREW_MACOS_NEWEST_UNSUPPORTED.to_i - 1).to_s).to_sym
+          Homebrew::SimulateSystem.with(os: latest_macos, arch: :arm) do
+            tap.cask_files.each do |path|
+              cask = Cask::CaskLoader.load(path)
+              name = cask.token
+              json = JSON.pretty_generate(cask.to_hash_with_variations)
+              cask_source = path.read
+              html_template_name = html_template(name)
 
-            unless args.dry_run?
-              File.write("_data/cask/#{name.tr("+", "_")}.json", "#{json}\n")
-              File.write("api/cask/#{name}.json", CASK_JSON_TEMPLATE)
-              File.write("api/cask-source/#{name}.rb", cask_source)
-              File.write("cask/#{name}.html", html_template_name)
+              unless args.dry_run?
+                File.write("_data/cask/#{name.tr("+", "_")}.json", "#{json}\n")
+                File.write("api/cask/#{name}.json", CASK_JSON_TEMPLATE)
+                File.write("api/cask-source/#{name}.rb", cask_source)
+                File.write("cask/#{name}.html", html_template_name)
+              end
+            rescue
+              onoe "Error while generating data for cask '#{path.stem}'."
+              raise
             end
-          rescue
-            onoe "Error while generating data for cask '#{path.stem}'."
-            raise
           end
 
           canonical_json = JSON.pretty_generate(tap.cask_renames)

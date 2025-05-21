@@ -606,7 +606,10 @@ module Cask
     def audit_rosetta
       return if (url = cask.url).nil?
       return unless online?
+      # Rosetta 2 is only for ARM-capable macOS versions, which are Big Sur (11.x) and later
       return if Homebrew::SimulateSystem.current_arch != :arm
+      return if MacOSVersion::SYMBOLS.fetch(Homebrew::SimulateSystem.current_os, "10") < "11"
+      return if cask.depends_on.macos&.maximum_version.to_s < "11"
 
       odebug "Auditing Rosetta 2 requirement"
 
@@ -640,7 +643,7 @@ module Cask
           # binary stanza can contain shell scripts, so we just continue if lipo fails.
           next unless result.success?
 
-          odebug result.merged_output
+          odebug "Architectures: #{result.merged_output}"
 
           unless /arm64|x86_64/.match?(result.merged_output)
             add_error "Artifacts architecture is no longer supported by macOS!",
@@ -652,7 +655,7 @@ module Cask
           mentions_rosetta = cask.caveats.include?("requires Rosetta 2")
 
           if supports_arm && mentions_rosetta
-            add_error "Artifacts does not require Rosetta 2 but the caveats say otherwise!",
+            add_error "Artifacts do not require Rosetta 2 but the caveats say otherwise!",
                       location: url.location
           elsif !supports_arm && !mentions_rosetta
             add_error "Artifacts require Rosetta 2 but this is not indicated by the caveats!",
