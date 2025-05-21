@@ -73,6 +73,12 @@ module Homebrew
           first_warning = false
         end
 
+        if OS.mac? && MacOS::Xcode.installed? && !MacOS::CLT.installed?
+          ohai <<~EOS
+            Xcode is installed, and Command Line Tools are not. This is a supported configuration.
+            Homebrew will use the developer tools from Xcode.
+          EOS
+        end
         puts "Your system is ready to brew." if !Homebrew.failed? && !args.quiet?
       end
     end
