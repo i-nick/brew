@@ -10,7 +10,7 @@ It uses `Brewfile`s to provide a declarative interface for installing/upgrading 
 
 Rather than specifying the `brew` commands you wish to run, you can specify the state you wish to reach.
 
-See also the [`brew bundle` section of `man brew`](https://docs.brew.sh/Manpage#bundle-subcommand) or `brew bundle --help`.
+See also the [`brew bundle` section of `man brew`](Manpage.md#bundle-subcommand) or `brew bundle --help`.
 
 ## Basic Usage
 

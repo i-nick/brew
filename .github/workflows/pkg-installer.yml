@@ -230,17 +230,15 @@ jobs:
                                     --password "${PKG_APPLE_ID_APP_SPECIFIC_PASSWORD}"
                                     --wait
 
-      - name: Install gh
-        run: brew install gh
-
       - name: Upload installer to GitHub release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ github.token }}
           INSTALLER_PATH: ${{ needs.build.outputs.installer_path }}
-        run: gh release upload --repo Homebrew/brew
-                                "${GITHUB_REF//refs\/tags\//}"
-                                "${INSTALLER_PATH}"
+        run: |
+          VERSION="${INSTALLER_PATH#Homebrew-}"
+          VERSION="${VERSION%.pkg}"
+          gh release upload --repo Homebrew/brew "${VERSION}" "${INSTALLER_PATH}"
 
   issue:
     needs: [build, test, upload]

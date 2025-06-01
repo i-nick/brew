@@ -67,7 +67,18 @@ module Homebrew
               end
 
               unversioned_name = f.name.gsub(/@.+$/, "")
-              maybe_paths = Dir.glob("#{f.etc}/*#{unversioned_name}*")
+              maybe_paths = Dir.glob("#{f.etc}/#{unversioned_name}*")
+              excluded_names = Homebrew::API::Formula.all_formulae.keys
+              maybe_paths = maybe_paths.reject do |path|
+                # Remove extension only if a file
+                # (f.e. directory with name "openssl@1.1" will be trimmed to "openssl@1")
+                basename = if File.directory?(path)
+                  File.basename(path)
+                else
+                  File.basename(path, ".*")
+                end
+                excluded_names.include?(basename)
+              end
               maybe_paths -= paths if paths.present?
               if maybe_paths.present?
                 puts

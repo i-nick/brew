@@ -104,12 +104,12 @@ eval "$(<Homebrew prefix path>/bin/brew shellenv)"
 ```
 
 Replace `<Homebrew prefix path>` with the directory where Homebrew is installed on your system.
-You can find Homebrew's default install location [in this FAQ entry](https://docs.brew.sh/FAQ#why-should-i-install-homebrew-in-the-default-location).
+You can find Homebrew's default install location in [this FAQ entry](FAQ.md#why-should-i-install-homebrew-in-the-default-location).
 
-For more insight, re-run the installer or inspect [the installer's source](https://github.com/Homebrew/install/blob/deacfa6a6e62e5f4002baf9e1fac7a96e9aa5d41/install.sh#L1072-L1088)
+For more insight, re-run the installer or inspect [the installer's source](https://github.com/Homebrew/install/blob/956abfa01f0d1dba285e6d3da86587ed428f19fe/install.sh#L1075-L1091)
 to see how the installer constructs the path it recommends.
 
-See [Tips and Tricks > Loading Homebrew from the same dotfiles on different operating systems](Tips-and-Tricks.md#loading-homebrew-from-the-same-dotfiles-on-different-operating-systems)
+See [this tip in Tips and Tricks](Tips-and-Tricks.md#load-homebrew-from-the-same-dotfiles-on-different-operating-systems)
 for another way to handle this across multiple operating systems.
 
 ## Uninstallation

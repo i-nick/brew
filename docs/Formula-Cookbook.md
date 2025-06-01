@@ -43,7 +43,7 @@ Packages are installed according to their formulae. Read over a simple one, e.g.
 
 Make sure you run `brew update` before you start. This ensures your Homebrew installation is a Git repository.
 
-To create or edit formulae locally, you'll need to first [tap `homebrew/core`](https://docs.brew.sh/FAQ#can-i-edit-formulae-myself) if you haven't previously. This clones the Homebrew/homebrew-core Git repository to `$(brew --repository homebrew/core)`. As you're developing, you'll also need to set `HOMEBREW_NO_INSTALL_FROM_API=1` in your shell environment or before any `install`, `reinstall` or `upgrade` commands to force `brew` to use the local repository instead of the API.
+To create or edit formulae locally, you'll need to first [tap `homebrew/core`](FAQ.md#can-i-edit-formulae-myself) if you haven't previously. This clones the Homebrew/homebrew-core Git repository to `$(brew --repository homebrew/core)`. As you're developing, you'll also need to set `HOMEBREW_NO_INSTALL_FROM_API=1` in your shell environment or before any `install`, `reinstall` or `upgrade` commands to force `brew` to use the local repository instead of the API.
 
 Before submitting a new formula make sure your package:
 
@@ -433,7 +433,7 @@ If you have already forked Homebrew on GitHub, then you can manually push (just 
 git push https://github.com/myname/homebrew-core/ <what-you-named-your-branch>
 ```
 
-Now, [open a pull request](https://docs.brew.sh/How-To-Open-a-Homebrew-Pull-Request) for your changes.
+Now, [open a pull request](How-To-Open-a-Homebrew-Pull-Request.md) for your changes.
 
 * One formula per commit; one commit per formula.
 * Keep merge commits out of the pull request.

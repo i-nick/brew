@@ -102,17 +102,17 @@ module Homebrew
         switch "--all",
                description: "`list` all dependencies."
         switch "--formula", "--brews",
-               description: "`list` or `dump` Homebrew formula dependencies."
+               description: "`list`, `dump` or `cleanup` Homebrew formula dependencies."
         switch "--cask", "--casks",
-               description: "`list` or `dump` Homebrew cask dependencies."
+               description: "`list`, `dump` or `cleanup` Homebrew cask dependencies."
         switch "--tap", "--taps",
-               description: "`list` or `dump` Homebrew tap dependencies."
+               description: "`list`, `dump` or `cleanup` Homebrew tap dependencies."
         switch "--mas",
                description: "`list` or `dump` Mac App Store dependencies."
         switch "--whalebrew",
                description: "`list` or `dump` Whalebrew dependencies."
         switch "--vscode",
-               description: "`list` or `dump` VSCode (and forks/variants) extensions."
+               description: "`list`, `dump` or `cleanup` VSCode (and forks/variants) extensions."
         switch "--no-vscode",
                env:         :bundle_dump_no_vscode,
                description: "`dump` without VSCode (and forks/variants) extensions. " \
@@ -226,7 +226,13 @@ module Homebrew
           exec_editor(Homebrew::Bundle::Brewfile.path(global:, file:))
         when "cleanup"
           require "bundle/commands/cleanup"
-          Homebrew::Bundle::Commands::Cleanup.run(global:, file:, force:, zap:)
+          Homebrew::Bundle::Commands::Cleanup.run(
+            global:, file:, force:, zap:,
+            brews:  args.brews? || no_type_args,
+            casks:  args.casks? || no_type_args,
+            taps:   args.taps? || no_type_args,
+            vscode: args.vscode? || no_type_args
+          )
         when "check"
           require "bundle/commands/check"
           Homebrew::Bundle::Commands::Check.run(global:, file:, no_upgrade:, verbose:)

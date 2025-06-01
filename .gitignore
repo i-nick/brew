@@ -164,6 +164,7 @@
 !/completions
 !/docs
 !/manpages
+!/CODEOWNERS
 
 # Unignore our packaging files
 !/package
@@ -172,6 +173,7 @@
 # Ignore generated documentation site
 /docs/_site
 /docs/.jekyll-metadata
+/docs/tmp/.htmlproofer
 /docs/vendor
 /docs/Gemfile.lock
 

@@ -84,7 +84,10 @@ module Homebrew
           r.owner = self
           filepath = r.fetch
           html_doctype_prefix = "<!doctype html"
-          if File.read(filepath, html_doctype_prefix.length).downcase.start_with?(html_doctype_prefix)
+          # Number of bytes to read from file start to ensure it is not HTML.
+          # HTML may start with arbitrary number of whitespace lines.
+          bytes_to_read = 100
+          if File.read(filepath, bytes_to_read).strip.downcase.start_with?(html_doctype_prefix)
             raise "Downloaded URL is not archive"
           end
 
@@ -138,7 +141,10 @@ module Homebrew
           head "#{@url}"
         <% end %>
 
-        <% if @mode == :cmake %>
+        <% if @mode == :cabal %>
+          depends_on "cabal-install" => :build
+          depends_on "ghc" => :build
+        <% elsif @mode == :cmake %>
           depends_on "cmake" => :build
         <% elsif @mode == :crystal %>
           depends_on "crystal" => :build
@@ -172,7 +178,10 @@ module Homebrew
 
         <% end %>
           def install
-        <% if @mode == :cmake %>
+        <% if @mode == :cabal %>
+            system "cabal", "v2-update"
+            system "cabal", "v2-install", *std_cabal_v2_args
+        <% elsif @mode == :cmake %>
             system "cmake", "-S", ".", "-B", "build", *std_cmake_args
             system "cmake", "--build", "build"
             system "cmake", "--install", "build"
@@ -216,11 +225,14 @@ module Homebrew
         <% elsif @mode == :python %>
             virtualenv_install_with_resources
         <% elsif @mode == :ruby %>
+            ENV["BUNDLE_VERSION"] = "system" # Avoid installing Bundler into the keg
             ENV["GEM_HOME"] = libexec
 
-            system "bundle", "install", "-without", "development", "test"
+            system "bundle", "config", "set", "without", "development", "test"
+            system "bundle", "install"
             system "gem", "build", "\#{name}.gemspec"
             system "gem", "install", "\#{name}-\#{version}.gem"
+
             bin.install libexec/"bin/\#{name}"
             bin.env_script_all_files(libexec/"bin", GEM_HOME: ENV["GEM_HOME"])
         <% elsif @mode == :rust %>

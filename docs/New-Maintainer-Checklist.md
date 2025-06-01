@@ -82,7 +82,7 @@ Now sit back, relax and let the new maintainers handle more of our contributions
 
 ## PLC
 
-If a maintainer or member is elected to the Homebrew's [Project Leadership Committee](https://docs.brew.sh/Homebrew-Governance#4-project-leadership-committee):
+If a maintainer or member is elected to the Homebrew's [Project Leadership Committee](Homebrew-Governance.md#4-project-leadership-committee):
 
 - Invite them to the [**@Homebrew/plc** team](https://github.com/orgs/Homebrew/teams/plc/members)
 - Make them [billing managers](https://github.com/organizations/Homebrew/settings/billing) and [moderators](https://github.com/organizations/Homebrew/settings/moderators) on the Homebrew GitHub organisation
@@ -92,7 +92,7 @@ When they cease to be a PLC member, revoke or downgrade their access to all of t
 
 ## TSC
 
-If a maintainer is elected to the Homebrew's [Technical Steering Committee](https://docs.brew.sh/Homebrew-Governance#7-technical-steering-committee):
+If a maintainer is elected to the Homebrew's [Technical Steering Committee](Homebrew-Governance.md#7-technical-steering-committee):
 
 - Invite them to the [**@Homebrew/tsc** team](https://github.com/orgs/Homebrew/teams/tsc/members)
 - Make them [billing managers](https://github.com/organizations/Homebrew/settings/billing) and [moderators](https://github.com/organizations/Homebrew/settings/moderators) on the Homebrew GitHub organisation
@@ -111,7 +111,7 @@ When they cease to be an owner, revoke or downgrade their access to all of the a
 
 ## Members
 
-People who are either not eligible or willing to be Homebrew maintainers but have shown continued involvement in the Homebrew community may be admitted by a majority vote of the [Project Leadership Committee](https://docs.brew.sh/Homebrew-Governance#4-project-leadership-committee).
+People who are either not eligible or willing to be Homebrew maintainers but have shown continued involvement in the Homebrew community may be admitted by a majority vote of the [Project Leadership Committee](Homebrew-Governance.md#4-project-leadership-committee).
 
 When admitted as members:
 

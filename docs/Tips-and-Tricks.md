@@ -143,7 +143,7 @@ export HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK=1
 export HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN="$(printf 'anonymous:' | base64)"
 ```
 
-## Loading Homebrew from the same dotfiles on different operating systems
+## Load Homebrew from the same dotfiles on different operating systems
 
 Some users may want to use the same shell initialization files on macOS and Linux.
 Use this to detect the likely Homebrew installation directory and load Homebrew when it's found.

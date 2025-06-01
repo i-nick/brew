@@ -25,13 +25,14 @@ module Homebrew
           Homebrew::Bundle::BrewServices.reset!
         end
 
-        def self.run(global: false, file: nil, force: false, zap: false, dsl: nil)
+        def self.run(global: false, file: nil, force: false, zap: false, dsl: nil,
+                     brews: true, casks: true, taps: true, vscode: true)
           @dsl ||= dsl
 
-          casks = casks_to_uninstall(global:, file:)
-          formulae = formulae_to_uninstall(global:, file:)
-          taps = taps_to_untap(global:, file:)
-          vscode_extensions = vscode_extensions_to_uninstall(global:, file:)
+          casks = casks ? casks_to_uninstall(global:, file:) : []
+          formulae = brews ? formulae_to_uninstall(global:, file:) : []
+          taps = taps ? taps_to_untap(global:, file:) : []
+          vscode_extensions = vscode ? vscode_extensions_to_uninstall(global:, file:) : []
           if force
             if casks.any?
               args = zap ? ["--zap"] : []

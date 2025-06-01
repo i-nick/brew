@@ -278,15 +278,15 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 `--formula`
 
-: `list` or `dump` Homebrew formula dependencies.
+: `list`, `dump` or `cleanup` Homebrew formula dependencies.
 
 `--cask`
 
-: `list` or `dump` Homebrew cask dependencies.
+: `list`, `dump` or `cleanup` Homebrew cask dependencies.
 
 `--tap`
 
-: `list` or `dump` Homebrew tap dependencies.
+: `list`, `dump` or `cleanup` Homebrew tap dependencies.
 
 `--mas`
 
@@ -298,7 +298,7 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 `--vscode`
 
-: `list` or `dump` VSCode (and forks/variants) extensions.
+: `list`, `dump` or `cleanup` VSCode (and forks/variants) extensions.
 
 `--no-vscode`
 
@@ -2413,6 +2413,10 @@ see: <https://rubydoc.brew.sh/Formula>
 `--autotools`
 
 : Create a basic template for an Autotools-style build.
+
+`--cabal`
+
+: Create a basic template for a Cabal build.
 
 `--cask`
 

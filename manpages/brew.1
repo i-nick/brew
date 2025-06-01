@@ -169,13 +169,13 @@ Temporarily start services while running the \fBexec\fP or \fBsh\fP command\. Th
 \fBlist\fP all dependencies\.
 .TP
 \fB\-\-formula\fP
-\fBlist\fP or \fBdump\fP Homebrew formula dependencies\.
+\fBlist\fP, \fBdump\fP or \fBcleanup\fP Homebrew formula dependencies\.
 .TP
 \fB\-\-cask\fP
-\fBlist\fP or \fBdump\fP Homebrew cask dependencies\.
+\fBlist\fP, \fBdump\fP or \fBcleanup\fP Homebrew cask dependencies\.
 .TP
 \fB\-\-tap\fP
-\fBlist\fP or \fBdump\fP Homebrew tap dependencies\.
+\fBlist\fP, \fBdump\fP or \fBcleanup\fP Homebrew tap dependencies\.
 .TP
 \fB\-\-mas\fP
 \fBlist\fP or \fBdump\fP Mac App Store dependencies\.
@@ -184,7 +184,7 @@ Temporarily start services while running the \fBexec\fP or \fBsh\fP command\. Th
 \fBlist\fP or \fBdump\fP Whalebrew dependencies\.
 .TP
 \fB\-\-vscode\fP
-\fBlist\fP or \fBdump\fP VSCode (and forks/variants) extensions\.
+\fBlist\fP, \fBdump\fP or \fBcleanup\fP VSCode (and forks/variants) extensions\.
 .TP
 \fB\-\-no\-vscode\fP
 \fBdump\fP without VSCode (and forks/variants) extensions\. This is enabled by default if \fB$HOMEBREW_BUNDLE_DUMP_NO_VSCODE\fP is set\.
@@ -1524,6 +1524,9 @@ Generate a formula or, with \fB\-\-cask\fP, a cask for the downloadable file at 
 .TP
 \fB\-\-autotools\fP
 Create a basic template for an Autotools\-style build\.
+.TP
+\fB\-\-cabal\fP
+Create a basic template for a Cabal build\.
 .TP
 \fB\-\-cask\fP
 Create a basic template for a cask\.

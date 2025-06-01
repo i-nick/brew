@@ -836,6 +836,7 @@ _brew_create() {
       __brewcomp "
       --HEAD
       --autotools
+      --cabal
       --cask
       --cmake
       --crystal

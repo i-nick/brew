@@ -76,7 +76,7 @@ To install build tools, paste at a terminal prompt:
 
 ### ARM32 (Tier 3 Support)
 
-Homebrew can run on 32-bit ARM (e.g. Raspberry Pi and others), but as they lack bottles (binary packages) they are a [Tier 3 supported platform](https://docs.brew.sh/Support-Tiers#tier-3)
+Homebrew can run on 32-bit ARM systems (e.g. Raspberry Pi and others), but as they lack bottles (binary packages) they are a [Tier 3 supported platform](Support-Tiers.md#tier-3).
 
 You may need to install your own Ruby using your system package manager, a PPA, or `rbenv/ruby-build` as we don't distribute a Homebrew Portable Ruby for ARM32.
 

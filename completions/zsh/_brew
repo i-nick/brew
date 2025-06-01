@@ -566,7 +566,7 @@ _brew_bump_cask_pr() {
     '--fork-org[Use the specified GitHub organization for forking]' \
     '--help[Show this message]' \
     '--message[Prepend message to the default pull request message]' \
-    '(--online)--no-audit[Don'\''t run `brew audit` before opening the PR]' \
+    '--no-audit[Don'\''t run `brew audit` before opening the PR]' \
     '--no-browse[Print the pull request URL instead of opening in a browser]' \
     '--no-fork[Don'\''t try to fork the repository]' \
     '--no-style[Don'\''t run `brew style --fix` before opening the PR]' \
@@ -649,14 +649,14 @@ _brew_bump_unversioned_casks() {
 _brew_bundle() {
   _arguments \
     '(--no-vscode)--all[`list` all dependencies]' \
-    '--cask[`list` or `dump` Homebrew cask dependencies]' \
+    '--cask[`list`, `dump` or `cleanup` Homebrew cask dependencies]' \
     '--check[Check that all dependencies in the Brewfile are installed before running `exec`, `sh`, or `env`]' \
     '--cleanup[`install` performs cleanup operation, same as running `cleanup --force`. This is enabled by default if `$HOMEBREW_BUNDLE_INSTALL_CLEANUP` is set and `--global` is passed]' \
     '--debug[Display any debugging information]' \
     '--describe[`dump` adds a description comment above each line, unless the dependency does not have a description. This is enabled by default if `$HOMEBREW_BUNDLE_DUMP_DESCRIBE` is set]' \
     '--file[Read from or write to the `Brewfile` from this location. Use `--file=-` to pipe to stdin/stdout]' \
     '--force[`install` runs with `--force`/`--overwrite`. `dump` overwrites an existing `Brewfile`. `cleanup` actually performs its cleanup operations]' \
-    '--formula[`list` or `dump` Homebrew formula dependencies]' \
+    '--formula[`list`, `dump` or `cleanup` Homebrew formula dependencies]' \
     '--global[Read from or write to the `Brewfile` from `$HOMEBREW_BUNDLE_FILE_GLOBAL` (if set), `${XDG_CONFIG_HOME}/homebrew/Brewfile` (if `$XDG_CONFIG_HOME` is set), `~/.homebrew/Brewfile` or `~/.Brewfile` otherwise]' \
     '--help[Show this message]' \
     '(--upgrade)--install[Run `install` before continuing to other operations e.g. `exec`]' \
@@ -666,11 +666,11 @@ _brew_bundle() {
     '(--all --vscode)--no-vscode[`dump` without VSCode (and forks/variants) extensions. This is enabled by default if `$HOMEBREW_BUNDLE_DUMP_NO_VSCODE` is set]' \
     '--quiet[Make some output more quiet]' \
     '--services[Temporarily start services while running the `exec` or `sh` command. This is enabled by default if `$HOMEBREW_BUNDLE_SERVICES` is set]' \
-    '--tap[`list` or `dump` Homebrew tap dependencies]' \
+    '--tap[`list`, `dump` or `cleanup` Homebrew tap dependencies]' \
     '(--install)--upgrade[`install` runs `brew upgrade` on outdated dependencies, even if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set]' \
     '--upgrade-formulae[`install` runs `brew upgrade` on any of these comma-separated formulae, even if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set]' \
     '--verbose[`install` prints output from commands as they are run. `check` lists all missing dependencies]' \
-    '(--no-vscode)--vscode[`list` or `dump` VSCode (and forks/variants) extensions]' \
+    '(--no-vscode)--vscode[`list`, `dump` or `cleanup` VSCode (and forks/variants) extensions]' \
     '--whalebrew[`list` or `dump` Whalebrew dependencies]' \
     '--zap[`cleanup` casks using the `zap` command instead of `uninstall`]' \
     - subcommand \
@@ -777,28 +777,29 @@ _brew_contributions() {
 _brew_create() {
   _arguments \
     '(--cask)--HEAD[Indicate that URL points to the package'\''s repository rather than a file]' \
-    '(--cmake --crystal --go --meson --node --perl --python --ruby --rust --zig --cask)--autotools[Create a basic template for an Autotools-style build]' \
-    '(--autotools --cmake --crystal --go --meson --node --perl --python --ruby --rust --zig --HEAD --set-license)--cask[Create a basic template for a cask]' \
-    '(--autotools --crystal --go --meson --node --perl --python --ruby --rust --zig --cask)--cmake[Create a basic template for a CMake-style build]' \
-    '(--autotools --cmake --go --meson --node --perl --python --ruby --rust --zig --cask)--crystal[Create a basic template for a Crystal build]' \
+    '(--cabal --cmake --crystal --go --meson --node --perl --python --ruby --rust --zig --cask)--autotools[Create a basic template for an Autotools-style build]' \
+    '(--autotools --cmake --crystal --go --meson --node --perl --python --ruby --rust --zig --cask)--cabal[Create a basic template for a Cabal build]' \
+    '(--autotools --cabal --cmake --crystal --go --meson --node --perl --python --ruby --rust --zig --HEAD --set-license)--cask[Create a basic template for a cask]' \
+    '(--autotools --cabal --crystal --go --meson --node --perl --python --ruby --rust --zig --cask)--cmake[Create a basic template for a CMake-style build]' \
+    '(--autotools --cabal --cmake --go --meson --node --perl --python --ruby --rust --zig --cask)--crystal[Create a basic template for a Crystal build]' \
     '--debug[Display any debugging information]' \
     '--force[Ignore errors for disallowed formula names and names that shadow aliases]' \
-    '(--autotools --cmake --crystal --meson --node --perl --python --ruby --rust --zig --cask)--go[Create a basic template for a Go build]' \
+    '(--autotools --cabal --cmake --crystal --meson --node --perl --python --ruby --rust --zig --cask)--go[Create a basic template for a Go build]' \
     '--help[Show this message]' \
-    '(--autotools --cmake --crystal --go --node --perl --python --ruby --rust --zig --cask)--meson[Create a basic template for a Meson-style build]' \
+    '(--autotools --cabal --cmake --crystal --go --node --perl --python --ruby --rust --zig --cask)--meson[Create a basic template for a Meson-style build]' \
     '--no-fetch[Homebrew will not download URL to the cache and will thus not add its SHA-256 to the formula for you, nor will it check the GitHub API for GitHub projects (to fill out its description and homepage)]' \
-    '(--autotools --cmake --crystal --go --meson --perl --python --ruby --rust --zig --cask)--node[Create a basic template for a Node build]' \
-    '(--autotools --cmake --crystal --go --meson --node --python --ruby --rust --zig --cask)--perl[Create a basic template for a Perl build]' \
-    '(--autotools --cmake --crystal --go --meson --node --perl --ruby --rust --zig --cask)--python[Create a basic template for a Python build]' \
+    '(--autotools --cabal --cmake --crystal --go --meson --perl --python --ruby --rust --zig --cask)--node[Create a basic template for a Node build]' \
+    '(--autotools --cabal --cmake --crystal --go --meson --node --python --ruby --rust --zig --cask)--perl[Create a basic template for a Perl build]' \
+    '(--autotools --cabal --cmake --crystal --go --meson --node --perl --ruby --rust --zig --cask)--python[Create a basic template for a Python build]' \
     '--quiet[Make some output more quiet]' \
-    '(--autotools --cmake --crystal --go --meson --node --perl --python --rust --zig --cask)--ruby[Create a basic template for a Ruby build]' \
-    '(--autotools --cmake --crystal --go --meson --node --perl --python --ruby --zig --cask)--rust[Create a basic template for a Rust build]' \
+    '(--autotools --cabal --cmake --crystal --go --meson --node --perl --python --rust --zig --cask)--ruby[Create a basic template for a Ruby build]' \
+    '(--autotools --cabal --cmake --crystal --go --meson --node --perl --python --ruby --zig --cask)--rust[Create a basic template for a Rust build]' \
     '(--cask)--set-license[Explicitly set the license of the new formula]' \
     '--set-name[Explicitly set the name of the new formula or cask]' \
     '--set-version[Explicitly set the version of the new formula or cask]' \
     '--tap[Generate the new formula within the given tap, specified as user`/`repo]' \
     '--verbose[Make some output more verbose]' \
-    '(--autotools --cmake --crystal --go --meson --node --perl --python --ruby --rust --cask)--zig[Create a basic template for a Zig build]'
+    '(--autotools --cabal --cmake --crystal --go --meson --node --perl --python --ruby --rust --cask)--zig[Create a basic template for a Zig build]'
 }
 
 # brew debugger
