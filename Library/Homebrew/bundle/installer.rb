@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "bundle/dsl"
-require "bundle/brew_installer"
+require "bundle/formula_installer"
 require "bundle/cask_installer"
 require "bundle/mac_app_store_installer"
 require "bundle/whalebrew_installer"
@@ -13,8 +13,8 @@ require "bundle/skipper"
 module Homebrew
   module Bundle
     module Installer
-      def self.install(entries, global: false, file: nil, no_lock: false, no_upgrade: false, verbose: false,
-                       force: false, quiet: false)
+      def self.install!(entries, global: false, file: nil, no_lock: false, no_upgrade: false, verbose: false,
+                        force: false, quiet: false)
         success = 0
         failure = 0
 
@@ -27,8 +27,8 @@ module Homebrew
           cls = case type
           when :brew
             options = entry.options
-            verb = "Upgrading" if Homebrew::Bundle::BrewInstaller.formula_upgradable?(name)
-            Homebrew::Bundle::BrewInstaller
+            verb = "Upgrading" if Homebrew::Bundle::FormulaInstaller.formula_upgradable?(name)
+            Homebrew::Bundle::FormulaInstaller
           when :cask
             options = entry.options
             verb = "Upgrading" if Homebrew::Bundle::CaskInstaller.cask_upgradable?(name)
@@ -49,7 +49,7 @@ module Homebrew
           next if cls.nil?
           next if Homebrew::Bundle::Skipper.skip? entry
 
-          preinstall = if cls.preinstall(*args, **options, no_upgrade:, verbose:)
+          preinstall = if cls.preinstall!(*args, **options, no_upgrade:, verbose:)
             puts Formatter.success("#{verb} #{name}")
             true
           else
@@ -57,7 +57,7 @@ module Homebrew
             false
           end
 
-          if cls.install(*args, **options,
+          if cls.install!(*args, **options,
                          preinstall:, no_upgrade:, verbose:, force:)
             success += 1
           else

@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches:
+      - main
       - master
   merge_group:
   release:
@@ -38,8 +39,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Fetch origin/master from Git
-        run: git fetch origin master
+      - name: Fetch origin/HEAD from Git
+        run: git fetch origin HEAD
 
       - name: Determine build attributes
         id: attributes
@@ -83,12 +84,16 @@ jobs:
                 )
               fi
             elif [[ "${GITHUB_EVENT_NAME}" == "push" &&
-                    "${GITHUB_REF}" == "refs/heads/master" &&
+                    ("${GITHUB_REF}" == "refs/heads/master" || "${GITHUB_REF}" == "refs/heads/main") &&
                     "${version}" == "22.04" ]]; then
               tags+=(
+                "ghcr.io/homebrew/brew:main"
                 "ghcr.io/homebrew/brew:master"
+                "ghcr.io/homebrew/ubuntu${version}:main"
                 "ghcr.io/homebrew/ubuntu${version}:master"
+                "homebrew/brew:main"
                 "homebrew/brew:master"
+                "homebrew/ubuntu${version}:main"
                 "homebrew/ubuntu${version}:master"
               )
             fi
@@ -160,11 +165,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Fetch origin/master from Git
-        run: git fetch origin master
+      - name: Fetch origin/HEAD from Git
+        run: git fetch origin HEAD
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           cache-binary: false
 
@@ -263,7 +268,7 @@ jobs:
         version: ${{ fromJSON(needs.generate-tags.outputs.matrix) }}
     steps:
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+        uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
         with:
           cache-binary: false
 

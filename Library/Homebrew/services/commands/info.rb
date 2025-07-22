@@ -17,7 +17,7 @@ module Homebrew
           ).void
         }
         def self.run(targets, verbose:, json:)
-          Services::Cli.check(targets)
+          Services::Cli.check!(targets)
 
           output = targets.map(&:to_hash)
 

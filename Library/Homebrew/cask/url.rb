@@ -11,11 +11,12 @@ module Cask
       T.any(URI::Generic, String, [T.any(URI::Generic, String), T::Hash[Symbol, T.untyped]])
     end
 
+    # Methods for the `url` stanza.
     class DSL
       sig { returns(T.any(URI::Generic, String)) }
       attr_reader :uri
 
-      sig { returns(T.nilable(T::Array[String])) }
+      sig { returns(T.nilable(T::Hash[T.any(Symbol, String), String])) }
       attr_reader :revisions
 
       sig { returns(T.nilable(T::Boolean)) }
@@ -57,7 +58,7 @@ module Cask
           # @api public
           branch:     T.nilable(String),
           # @api public
-          revisions:  T.nilable(T::Array[String]),
+          revisions:  T.nilable(T::Hash[T.any(Symbol, String), String]),
           # @api public
           revision:   T.nilable(String),
           # @api public
@@ -87,7 +88,7 @@ module Cask
         specs[:using]      = @using      = T.let(using, T.any(T::Class[AbstractDownloadStrategy], Symbol, NilClass))
         specs[:tag]        = @tag        = T.let(tag, T.nilable(String))
         specs[:branch]     = @branch     = T.let(branch, T.nilable(String))
-        specs[:revisions]  = @revisions  = T.let(revisions, T.nilable(T::Array[String]))
+        specs[:revisions]  = @revisions  = T.let(revisions, T.nilable(T::Hash[T.any(Symbol, String), String]))
         specs[:revision]   = @revision   = T.let(revision, T.nilable(String))
         specs[:trust_cert] = @trust_cert = T.let(trust_cert, T.nilable(T::Boolean))
         specs[:cookies]    = @cookies    = T.let(cookies, T.nilable(T::Hash[String, String]))
@@ -101,6 +102,7 @@ module Cask
       end
     end
 
+    # Allow passing a block to the `url` stanza.
     class BlockDSL
       # Allow accessing the URL associated with page contents.
       class PageWithURL < SimpleDelegator
@@ -197,7 +199,7 @@ module Cask
         using:           T.any(T::Class[AbstractDownloadStrategy], Symbol, NilClass),
         tag:             T.nilable(String),
         branch:          T.nilable(String),
-        revisions:       T.nilable(T::Array[String]),
+        revisions:       T.nilable(T::Hash[T.any(Symbol, String), String]),
         revision:        T.nilable(String),
         trust_cert:      T.nilable(T::Boolean),
         cookies:         T.nilable(T::Hash[String, String]),

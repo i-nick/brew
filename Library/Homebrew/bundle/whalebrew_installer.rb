@@ -8,7 +8,7 @@ module Homebrew
         @installed_images = nil
       end
 
-      def self.preinstall(name, verbose: false, **_options)
+      def self.preinstall!(name, verbose: false, **_options)
         unless Bundle.whalebrew_installed?
           puts "Installing whalebrew. It is not currently installed." if verbose
           Bundle.brew("install", "--formula", "whalebrew", verbose:)
@@ -23,7 +23,7 @@ module Homebrew
         true
       end
 
-      def self.install(name, preinstall: true, verbose: false, force: false, **_options)
+      def self.install!(name, preinstall: true, verbose: false, force: false, **_options)
         odeprecated "`brew bundle` `whalebrew` support", "using `whalebrew` directly"
         return true unless preinstall
 

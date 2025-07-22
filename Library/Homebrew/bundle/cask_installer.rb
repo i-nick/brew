@@ -18,7 +18,7 @@ module Homebrew
         Homebrew::Bundle::CaskDumper.cask_is_outdated_using_greedy?(name)
       end
 
-      def self.preinstall(name, no_upgrade: false, verbose: false, **options)
+      def self.preinstall!(name, no_upgrade: false, verbose: false, **options)
         if installed_casks.include?(name) && !upgrading?(no_upgrade, name, options)
           puts "Skipping install of #{name} cask. It is already installed." if verbose
           return false
@@ -27,7 +27,7 @@ module Homebrew
         true
       end
 
-      def self.install(name, preinstall: true, no_upgrade: false, verbose: false, force: false, **options)
+      def self.install!(name, preinstall: true, no_upgrade: false, verbose: false, force: false, **options)
         return true unless preinstall
 
         full_name = options.fetch(:full_name, name)
@@ -87,12 +87,25 @@ module Homebrew
         !cask_upgradable?(cask)
       end
 
+      def self.cask_in_array?(cask, array)
+        return true if array.include?(cask)
+        return true if array.include?(cask.split("/").last)
+
+        require "bundle/cask_dumper"
+        old_names = Homebrew::Bundle::CaskDumper.cask_oldnames
+        old_name = old_names[cask]
+        old_name ||= old_names[cask.split("/").last]
+        return true if old_name && array.include?(old_name)
+
+        false
+      end
+
       def self.cask_installed?(cask)
-        installed_casks.include? cask
+        cask_in_array?(cask, installed_casks)
       end
 
       def self.cask_upgradable?(cask)
-        outdated_casks.include? cask
+        cask_in_array?(cask, outdated_casks)
       end
 
       def self.installed_casks

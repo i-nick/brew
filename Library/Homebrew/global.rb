@@ -51,6 +51,7 @@ HOMEBREW_HOME_PLACEHOLDER = "/$HOME"
 HOMEBREW_CASK_APPDIR_PLACEHOLDER = "$APPDIR"
 
 HOMEBREW_MACOS_NEWEST_UNSUPPORTED = ENV.fetch("HOMEBREW_MACOS_NEWEST_UNSUPPORTED").freeze
+HOMEBREW_MACOS_NEWEST_SUPPORTED = ENV.fetch("HOMEBREW_MACOS_NEWEST_SUPPORTED").freeze
 HOMEBREW_MACOS_OLDEST_SUPPORTED = ENV.fetch("HOMEBREW_MACOS_OLDEST_SUPPORTED").freeze
 HOMEBREW_MACOS_OLDEST_ALLOWED = ENV.fetch("HOMEBREW_MACOS_OLDEST_ALLOWED").freeze
 
@@ -138,7 +139,7 @@ require "extend/kernel"
 require "os"
 
 require "extend/array"
-require "extend/cachable"
+require "cachable"
 require "extend/enumerable"
 require "extend/string"
 require "extend/pathname"

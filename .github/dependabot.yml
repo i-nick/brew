@@ -1,90 +1,71 @@
+# This file is synced from the `.github` repository, do not modify it directly.
+---
 version: 2
-
+multi-ecosystem-groups:
+  all:
+    schedule:
+      interval: weekly
+      day: friday
+      time: '08:00'
+      timezone: Etc/UTC
 updates:
-  - package-ecosystem: github-actions
-    directory: /
-    schedule:
-      interval: weekly
-      day: "friday"
-      time: "08:00"
-      timezone: "Etc/UTC"
-    allow:
-      - dependency-type: all
-    groups:
-      github-actions:
-        patterns:
-          - "*"
+- package-ecosystem: github-actions
+  directory: "/"
+  multi-ecosystem-group: all
+  patterns:
+  - "*"
+  allow:
+  - dependency-type: all
+  cooldown:
+    default-days: 1
+    include:
+    - "*"
+- package-ecosystem: bundler
+  directories:
+  - "/Library/Homebrew"
+  multi-ecosystem-group: all
+  patterns:
+  - "*"
+  allow:
+  - dependency-type: all
+  cooldown:
+    default-days: 1
+    semver-major-days: 14
+    semver-minor-days: 7
+    semver-patch-days: 1
+    include:
+    - "*"
+- package-ecosystem: docker
+  directory: "/"
+  multi-ecosystem-group: all
+  patterns:
+  - "*"
+  allow:
+  - dependency-type: all
+- package-ecosystem: devcontainers
+  directory: "/"
+  multi-ecosystem-group: all
+  patterns:
+  - "*"
+  allow:
+  - dependency-type: all
+  cooldown:
+    default-days: 1
+    include:
+    - "*"
+- package-ecosystem: pip
+  directories:
+  - "/Library/Homebrew/formula-analytics/"
+  multi-ecosystem-group: all
+  patterns:
+  - "*"
+  allow:
+  - dependency-type: all
+  cooldown:
+    default-days: 1
+    semver-major-days: 14
+    semver-minor-days: 7
+    semver-patch-days: 1
+    include:
+    - "*"
 
-  - package-ecosystem: bundler
-    directories:
-      - /
-      - /Library/Homebrew
-    schedule:
-      interval: weekly
-      day: "friday"
-      time: "08:00"
-      timezone: "Etc/UTC"
-    allow:
-      - dependency-type: all
-    groups:
-      bundler:
-        patterns:
-          - "*"
-
-  - package-ecosystem: npm
-    directory: /
-    schedule:
-      interval: weekly
-      day: "friday"
-      time: "08:00"
-      timezone: "Etc/UTC"
-    allow:
-      - dependency-type: all
-    groups:
-      npm:
-        patterns:
-          - "*"
-
-  - package-ecosystem: docker
-    directory: /
-    schedule:
-      interval: weekly
-      day: "friday"
-      time: "08:00"
-      timezone: "Etc/UTC"
-    allow:
-      - dependency-type: all
-    groups:
-      docker:
-        patterns:
-          - "*"
-
-  - package-ecosystem: devcontainers
-    directory: /
-    schedule:
-      interval: weekly
-      day: "friday"
-      time: "08:00"
-      timezone: "Etc/UTC"
-    allow:
-      - dependency-type: all
-    groups:
-      devcontainers:
-        patterns:
-          - "*"
-
-  - package-ecosystem: pip
-    directories:
-      - /
-      - /Library/Homebrew/formula-analytics/
-    schedule:
-      interval: weekly
-      day: "friday"
-      time: "08:00"
-      timezone: "Etc/UTC"
-    allow:
-      - dependency-type: all
-    groups:
-      pip:
-        patterns:
-          - "*"

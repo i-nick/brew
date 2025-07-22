@@ -32,12 +32,10 @@ module Homebrew
                             "formula is outdated. Otherwise, the repository's HEAD will only be checked for " \
                             "updates when a new stable or development version has been released."
         switch "-g", "--greedy",
-               env:         :upgrade_greedy,
-               description: "Also include outdated casks with `auto_updates true` or `version :latest`."
-
+               description: "Also include outdated casks with `auto_updates true` or `version :latest`.",
+               env:         :upgrade_greedy
         switch "--greedy-latest",
                description: "Also include outdated casks including those with `version :latest`."
-
         switch "--greedy-auto-updates",
                description: "Also include outdated casks including those with `auto_updates true`."
 

@@ -145,7 +145,7 @@ module OS
             return
           end
 
-          oclp_support_tier = Hardware::CPU.features.include?(:pclmulqdq) ? 2 : 3
+          oclp_support_tier = ::Hardware::CPU.features.include?(:pclmulqdq) ? 2 : 3
 
           <<~EOS
             You have booted macOS using OpenCore Legacy Patcher.
@@ -415,24 +415,12 @@ module OS
           <<~EOS
             Your Cellar and TEMP directories are on different volumes.
             macOS won't move relative symlinks across volumes unless the target file already
-            exists. Brews known to be affected by this are Git and Narwhal.
+            exists. Formulae known to be affected by this are Git and Narwhal.
 
             You should set the "HOMEBREW_TEMP" environment variable to a suitable
             directory on the same volume as your Cellar.
 
             #{support_tier_message(tier: 2)}
-          EOS
-        end
-
-        def check_deprecated_caskroom_taps
-          tapped_caskroom_taps = Tap.select { |t| t.user == "caskroom" || t.name == "phinze/cask" }
-                                    .map(&:name)
-          return if tapped_caskroom_taps.empty?
-
-          <<~EOS
-            You have the following deprecated, cask taps tapped:
-              #{tapped_caskroom_taps.join("\n  ")}
-            Untap them with `brew untap`.
           EOS
         end
 
@@ -495,6 +483,28 @@ module OS
 
             #{installation_instructions}
           EOS
+        end
+
+        def check_cask_software_versions
+          super
+          add_info "macOS", MacOS.full_version
+          add_info "SIP", begin
+            csrutil = "/usr/bin/csrutil"
+            if File.executable?(csrutil)
+              Open3.capture2(csrutil, "status")
+                   .first
+                   .gsub("This is an unsupported configuration, likely to break in " \
+                         "the future and leave your machine in an unknown state.", "")
+                   .gsub("System Integrity Protection status: ", "")
+                   .delete("\t.")
+                   .capitalize
+                   .strip
+            else
+              "N/A"
+            end
+          end
+
+          nil
         end
       end
     end

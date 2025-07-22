@@ -27,7 +27,7 @@ module Cask
 
     sig {
       params(
-        cask: ::Cask::Cask, download: T::Boolean, quarantine: T::Boolean, token_conflicts: T.nilable(T::Boolean),
+        cask: ::Cask::Cask, download: T::Boolean, quarantine: T::Boolean,
         online: T.nilable(T::Boolean), strict: T.nilable(T::Boolean), signing: T.nilable(T::Boolean),
         new_cask: T.nilable(T::Boolean), only: T::Array[String], except: T::Array[String]
       ).void
@@ -35,14 +35,13 @@ module Cask
     def initialize(
       cask,
       download: false, quarantine: false,
-      token_conflicts: nil, online: nil, strict: nil, signing: nil,
+      online: nil, strict: nil, signing: nil,
       new_cask: nil, only: [], except: []
     )
-      # `new_cask` implies `online`, `token_conflicts`, `strict` and `signing`
+      # `new_cask` implies `online`, `strict` and `signing`
       online = new_cask if online.nil?
       strict = new_cask if strict.nil?
       signing = new_cask if signing.nil?
-      token_conflicts = new_cask if token_conflicts.nil?
 
       # `online` and `signing` imply `download`
       download ||= online || signing
@@ -53,7 +52,6 @@ module Cask
       @strict = strict
       @signing = signing
       @new_cask = new_cask
-      @token_conflicts = token_conflicts
       @only = only
       @except = except
     end
@@ -69,9 +67,6 @@ module Cask
 
     sig { returns(T::Boolean) }
     def strict? = !!@strict
-
-    sig { returns(T::Boolean) }
-    def token_conflicts? = !!@token_conflicts
 
     sig { returns(::Cask::Audit) }
     def run!
@@ -430,15 +425,10 @@ module Cask
 
     sig { void }
     def audit_token_conflicts
-      return unless token_conflicts?
-
       Homebrew.with_no_api_env do
         return unless core_formula_names.include?(cask.token)
 
-        add_error(
-          "possible duplicate, cask token conflicts with Homebrew core formula: #{Formatter.url(core_formula_url)}",
-          strict_only: true,
-        )
+        add_error("cask token conflicts with an existing homebrew/core formula: #{Formatter.url(core_formula_url)}")
       end
     end
 
@@ -496,7 +486,13 @@ module Cask
 
     sig { void }
     def audit_signing
-      return if !signing? || download.blank? || (url = cask.url).nil?
+      return if download.blank?
+
+      url = cask.url
+      return if url.nil?
+
+      return if !cask.tap.official? && !signing?
+      return if cask.deprecated? && cask.deprecation_reason != :unsigned
 
       odebug "Auditing signing"
 
@@ -521,9 +517,15 @@ module Cask
             add_error "Unknown artifact type: #{artifact.class}", location: url.location
           end
 
+          if result.success? && cask.deprecated? && cask.deprecation_reason == :unsigned
+            add_error "Cask is deprecated as unsigned but artifacts are signed!"
+          end
+
+          next if cask.deprecated? && cask.deprecation_reason == :unsigned
+
           next if result.success?
 
-          add_error <<~EOS, location: url.location, strict_only: true
+          add_error <<~EOS, location: url.location
             Signature verification failed:
             #{result.merged_output}
             macOS on ARM requires software to be signed.
@@ -653,11 +655,12 @@ module Cask
 
           supports_arm = result.merged_output.include?("arm64")
           mentions_rosetta = cask.caveats.include?("requires Rosetta 2")
+          requires_intel = cask.depends_on.arch&.any? { |arch| arch[:type] == :intel }
 
           if supports_arm && mentions_rosetta
             add_error "Artifacts do not require Rosetta 2 but the caveats say otherwise!",
                       location: url.location
-          elsif !supports_arm && !mentions_rosetta
+          elsif !supports_arm && !mentions_rosetta && !requires_intel
             add_error "Artifacts require Rosetta 2 but this is not indicated by the caveats!",
                       location: url.location
           end
@@ -701,45 +704,53 @@ module Cask
       return unless online?
       return unless strict?
 
-      odebug "Auditing minimum OS version"
+      odebug "Auditing minimum macOS version"
 
-      plist_min_os = cask_plist_min_os
-      sparkle_min_os = livecheck_min_os
+      bundle_min_os = cask_bundle_min_os
+      sparkle_min_os = cask_sparkle_min_os
 
+      app_min_os = [bundle_min_os, sparkle_min_os].compact.max
       debug_messages = []
-      debug_messages << "Plist #{plist_min_os}" if plist_min_os
-      debug_messages << "Sparkle #{sparkle_min_os}" if sparkle_min_os
-      odebug "Detected minimum OS version: #{debug_messages.join(" | ")}" unless debug_messages.empty?
-      min_os = [plist_min_os, sparkle_min_os].compact.max
-
-      return if min_os.nil? || min_os <= HOMEBREW_MACOS_OLDEST_ALLOWED
+      debug_messages << "from artifact: #{bundle_min_os.to_sym}" if bundle_min_os
+      debug_messages << "from upstream: #{sparkle_min_os.to_sym}" if sparkle_min_os
+      odebug "Detected minimum macOS: #{app_min_os.to_sym} (#{debug_messages.join(" | ")})" if app_min_os
+      return if app_min_os.nil? || app_min_os <= HOMEBREW_MACOS_OLDEST_ALLOWED
 
       on_system_block_min_os = cask.on_system_block_min_os
-      cask_min_os = [on_system_block_min_os, cask.depends_on.macos&.minimum_version].compact.max
-      odebug "Declared minimum OS version: #{cask_min_os&.to_sym}"
-      return if cask_min_os&.to_sym == min_os.to_sym
-      return if cask.on_system_blocks_exist? &&
-                OnSystem.arch_condition_met?(:arm) &&
+      depends_on_min_os = cask.depends_on.macos&.minimum_version
+
+      cask_min_os = [on_system_block_min_os, depends_on_min_os].compact.max
+      debug_messages = []
+      debug_messages << "from on_system block: #{on_system_block_min_os.to_sym}" if on_system_block_min_os
+      if depends_on_min_os > HOMEBREW_MACOS_OLDEST_ALLOWED
+        debug_messages << "from depends_on stanza: #{depends_on_min_os.to_sym}"
+      end
+      odebug "Declared minimum macOS: #{cask_min_os.to_sym} (#{debug_messages.join(" | ").presence || "default"})"
+      return if cask_min_os.to_sym == app_min_os.to_sym
+      # ignore declared minimum OS < 11.x when auditing as ARM a cask with arch-specific artifacts
+      return if OnSystem.arch_condition_met?(:arm) &&
+                cask.on_system_blocks_exist? &&
                 cask_min_os.present? &&
                 cask_min_os < MacOSVersion.new("11")
 
-      min_os_definition = if cask_min_os.present?
-        if on_system_block_min_os.present? &&
-           on_system_block_min_os > cask.depends_on.macos&.minimum_version
-          "a block with a minimum OS version of #{cask_min_os.to_sym.inspect}"
+      min_os_definition = if cask_min_os > HOMEBREW_MACOS_OLDEST_ALLOWED
+        definition = if T.must(on_system_block_min_os.to_s <=> depends_on_min_os.to_s).positive?
+          "an on_system block"
         else
-          cask_min_os.to_sym.inspect
+          "a depends_on stanza"
         end
+        "#{definition} with a minimum macOS version of #{cask_min_os.to_sym.inspect}"
       else
-        "no minimum OS version"
+        "no minimum macOS version"
       end
-      add_error "Upstream defined #{min_os.to_sym.inspect} as the minimum OS version " \
+      source = T.must(bundle_min_os.to_s <=> sparkle_min_os.to_s).positive? ? "Artifact" : "Upstream"
+      add_error "#{source} defined #{app_min_os.to_sym.inspect} as the minimum macOS version " \
                 "but the cask declared #{min_os_definition}",
                 strict_only: true
     end
 
     sig { returns(T.nilable(MacOSVersion)) }
-    def livecheck_min_os
+    def cask_sparkle_min_os
       return unless online?
       return unless cask.livecheck_defined?
       return if cask.livecheck.strategy != :sparkle
@@ -772,10 +783,10 @@ module Cask
     end
 
     sig { returns(T.nilable(MacOSVersion)) }
-    def cask_plist_min_os
+    def cask_bundle_min_os
       return unless online?
 
-      plist_min_os = T.let(nil, T.untyped)
+      min_os = T.let(nil, T.untyped)
       @staged_path ||= cask.staged_path
 
       extract_artifacts do |artifacts, tmpdir|
@@ -786,13 +797,33 @@ module Cask
           next unless File.exist?(plist_path)
 
           plist = system_command!("plutil", args: ["-convert", "xml1", "-o", "-", plist_path]).plist
-          plist_min_os = plist["LSMinimumSystemVersion"].presence
-          break if plist_min_os
+          min_os = plist["LSMinimumSystemVersion"].presence
+          break if min_os
+
+          next unless (main_binary = get_plist_main_binary(path))
+          next if !File.exist?(main_binary) || File.open(main_binary, "rb") { |f| f.read(2) == "#!" }
+
+          macho = MachO.open(main_binary)
+          min_os = case macho
+          when MachO::MachOFile
+            [
+              macho[:LC_VERSION_MIN_MACOSX].first&.version_string,
+              macho[:LC_BUILD_VERSION].first&.minos_string,
+            ]
+          when MachO::FatFile
+            macho.machos.map do |slice|
+              [
+                slice[:LC_VERSION_MIN_MACOSX].first&.version_string,
+                slice[:LC_BUILD_VERSION].first&.minos_string,
+              ]
+            end.flatten
+          end.compact.min
+          break if min_os
         end
       end
 
       begin
-        MacOSVersion.new(plist_min_os).strip_patch
+        MacOSVersion.new(min_os).strip_patch
       rescue MacOSVersion::Error
         nil
       end
@@ -1000,6 +1031,15 @@ module Cask
     sig { void }
     def audit_deprecate_disable
       error = SharedAudits.check_deprecate_disable_reason(cask)
+      add_error error if error
+    end
+
+    sig { void }
+    def audit_no_autobump
+      return if cask.autobump?
+      return unless new_cask?
+
+      error = SharedAudits.no_autobump_new_package_message(cask.no_autobump_message)
       add_error error if error
     end
 

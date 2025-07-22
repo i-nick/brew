@@ -12,7 +12,7 @@ RSpec.describe Homebrew::Bundle::Commands::Exec do
     end
   end
 
-  context "when a Brewfile is found" do
+  context "when a Brewfile is found", :no_api do
     let(:brewfile_contents) { "brew 'openssl'" }
 
     before do

@@ -4,7 +4,7 @@
 module Homebrew
   module Bundle
     module TapInstaller
-      def self.preinstall(name, verbose: false, **_options)
+      def self.preinstall!(name, verbose: false, **_options)
         if installed_taps.include? name
           puts "Skipping install of #{name} tap. It is already installed." if verbose
           return false
@@ -13,13 +13,12 @@ module Homebrew
         true
       end
 
-      def self.install(name, preinstall: true, verbose: false, force: false, **options)
+      def self.install!(name, preinstall: true, verbose: false, force: false, **options)
         return true unless preinstall
 
         puts "Installing #{name} tap. It is not currently installed." if verbose
         args = []
         args << "--force" if force
-        args.append("--force-auto-update") if options[:force_auto_update]
 
         success = if options[:clone_target]
           Bundle.brew("tap", name, options[:clone_target], *args, verbose:)

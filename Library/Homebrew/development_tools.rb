@@ -57,6 +57,11 @@ class DevelopmentTools
       :clang
     end
 
+    sig { returns(Version) }
+    def ld64_version
+      Version::NULL
+    end
+
     # Get the Clang version.
     #
     # @api public

@@ -115,16 +115,16 @@ module Homebrew
       def support_tier_message(tier:)
         return if tier.to_s == "1"
 
-        tier_title, tier_slug = if tier.to_s == "unsupported"
-          ["Unsupported", "unsupported"]
+        tier_title, tier_slug, tier_issues = if tier.to_s == "unsupported"
+          ["Unsupported", "unsupported", "Do not report any"]
         else
-          ["Tier #{tier}", "tier-#{tier.to_s.downcase}"]
+          ["Tier #{tier}", "tier-#{tier.to_s.downcase}", "You can report Tier #{tier} unrelated"]
         end
 
         <<~EOS
           This is a #{tier_title} configuration:
             #{Formatter.url("https://docs.brew.sh/Support-Tiers##{tier_slug}")}
-          #{Formatter.bold("Do not report any issues to Homebrew/* repositories!")}
+          #{Formatter.bold("#{tier_issues} issues to Homebrew/* repositories!")}
           Read the above document instead before opening any issues or PRs.
         EOS
       end
@@ -350,7 +350,6 @@ module Homebrew
             sudo chmod +t #{HOMEBREW_TEMP}
         EOS
       end
-      alias generic_check_tmpdir_sticky_bit check_tmpdir_sticky_bit
 
       def check_exist_directories
         return if HOMEBREW_PREFIX.writable?
@@ -607,7 +606,7 @@ module Homebrew
         EOS
       end
 
-      def __check_linked_brew(formula)
+      def __check_linked_brew!(formula)
         formula.installed_prefixes.each do |prefix|
           prefix.find do |src|
             next if src == prefix
@@ -928,24 +927,21 @@ module Homebrew
         EOS
       end
 
+      def check_deprecated_cask_taps
+        tapped_caskroom_taps = ::Tap.select { |t| t.user == "caskroom" || t.name == "phinze/cask" }
+                                    .map(&:name)
+        return if tapped_caskroom_taps.empty?
+
+        <<~EOS
+          You have the following deprecated Cask taps installed:
+            #{tapped_caskroom_taps.join("\n  ")}
+          Please remove them with:
+            brew untap #{tapped_caskroom_taps.join(" ")}
+        EOS
+      end
+
       def check_cask_software_versions
         add_info "Homebrew Version", HOMEBREW_VERSION
-        add_info "macOS", MacOS.full_version
-        add_info "SIP", begin
-          csrutil = "/usr/bin/csrutil"
-          if File.executable?(csrutil)
-            Open3.capture2(csrutil, "status")
-                 .first
-                 .gsub("This is an unsupported configuration, likely to break in " \
-                       "the future and leave your machine in an unknown state.", "")
-                 .gsub("System Integrity Protection status: ", "")
-                 .delete("\t.")
-                 .capitalize
-                 .strip
-          else
-            "N/A"
-          end
-        end
 
         nil
       end
@@ -1032,6 +1028,10 @@ module Homebrew
       end
 
       def check_cask_xattr
+        # If quarantine is not available, a warning is already shown by check_cask_quarantine_support so just return
+        return unless Cask::Quarantine.available?
+        return "Unable to find `xattr`." unless File.exist?("/usr/bin/xattr")
+
         result = system_command "/usr/bin/xattr", args: ["-h"]
 
         return if result.status.success?
@@ -1067,6 +1067,8 @@ module Homebrew
           "No Cask quarantine support available: there's no working version of `xattr` on this system."
         when :no_swift
           "No Cask quarantine support available: there's no available version of `swift` on this system."
+        when :linux
+          "No Cask quarantine support available: not available on Linux."
         else
           "No Cask quarantine support available: unknown reason."
         end

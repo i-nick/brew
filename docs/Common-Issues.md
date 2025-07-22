@@ -110,8 +110,8 @@ Don't follow the advice here but fix by using
 
 When installing Homebrew, if the initial download fails with something like:
 
-    error: Not a valid ref: refs/remotes/origin/master
-    fatal: ambiguous argument 'refs/remotes/origin/master': unknown revision or path not in the working tree.
+    error: Not a valid ref: refs/remotes/origin/main
+    fatal: ambiguous argument 'refs/remotes/origin/main': unknown revision or path not in the working tree.
     Use '--' to separate paths from revisions, like this:
     'git <command> [<revision>...] -- [<file>...]'
 

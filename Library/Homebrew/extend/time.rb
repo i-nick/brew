@@ -5,5 +5,9 @@ require "time"
 
 class Time
   # Backwards compatibility for formulae that used this ActiveSupport extension
-  alias rfc3339 xmlschema
+  sig { returns(String) }
+  def rfc3339
+    odeprecated "Time#rfc3339", "Time#xmlschema"
+    xmlschema
+  end
 end

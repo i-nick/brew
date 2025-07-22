@@ -38,9 +38,9 @@ require "tab"
 require "mktemp"
 require "find"
 require "utils/spdx"
-require "extend/on_system"
+require "on_system"
 require "api"
-require "extend/api_hashable"
+require "api_hashable"
 
 # A formula provides instructions and metadata for Homebrew to install a piece
 # of software. Every Homebrew formula is a {Formula}.
@@ -730,7 +730,9 @@ class Formula
     tab = Tab.for_keg(prefix(version))
 
     return true if tab.version_scheme < version_scheme
-    return true if stable && tab.stable_version && tab.stable_version < T.must(stable).version
+
+    tab_stable_version = tab.stable_version
+    return true if stable && tab_stable_version && tab_stable_version < T.must(stable).version
     return false unless fetch_head
     return false unless head&.downloader.is_a?(VCSDownloadStrategy)
 
@@ -2593,11 +2595,8 @@ class Formula
 
     if path.exist? && on_system_blocks_exist?
       formula_contents = path.read
-      OnSystem::ALL_OS_ARCH_COMBINATIONS.each do |os, arch|
-        bottle_tag = Utils::Bottles::Tag.new(system: os, arch:)
-        next unless bottle_tag.valid_combination?
-
-        Homebrew::SimulateSystem.with(os:, arch:) do
+      OnSystem::VALID_OS_ARCH_TAGS.each do |bottle_tag|
+        Homebrew::SimulateSystem.with_tag(bottle_tag) do
           variations_namespace = Formulary.class_s("Variations#{bottle_tag.to_sym.capitalize}")
           variations_formula_class = Formulary.load_formula(name, path, formula_contents, variations_namespace,
                                                             flags: self.class.build_flags, ignore_errors: true)
@@ -3203,16 +3202,25 @@ class Formula
     end
   end
 
+  sig { params(download_queue: Homebrew::DownloadQueue).void }
+  def enqueue_resources_and_patches(download_queue:)
+    resources.each do |resource|
+      download_queue.enqueue(resource)
+      resource.patches.select(&:external?).each { |patch| download_queue.enqueue(patch.resource) }
+    end
+    patchlist.select(&:external?).each { |patch| download_queue.enqueue(patch.resource) }
+  end
+
   sig { void }
   def fetch_patches
     patchlist.select(&:external?).each(&:fetch)
   end
 
-  sig { void }
-  def fetch_bottle_tab
+  sig { params(quiet: T::Boolean).void }
+  def fetch_bottle_tab(quiet: false)
     return unless bottled?
 
-    T.must(bottle).fetch_tab
+    T.must(bottle).fetch_tab(quiet: quiet)
   end
 
   sig { returns(T::Hash[String, T.untyped]) }

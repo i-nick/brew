@@ -30,19 +30,6 @@ class AbstractDownloadStrategy
 
   abstract!
 
-  # Extension for bottle downloads.
-  module Pourable
-    extend T::Helpers
-
-    requires_ancestor { AbstractDownloadStrategy }
-
-    sig { params(block: T.nilable(T.proc.params(arg0: String).returns(T.anything))).returns(T.nilable(T.anything)) }
-    def stage(&block)
-      ohai "Pouring #{basename}"
-      super
-    end
-  end
-
   # The download URL.
   #
   # @api public
@@ -74,7 +61,6 @@ class AbstractDownloadStrategy
     @cache = T.let(meta.fetch(:cache, HOMEBREW_CACHE), Pathname)
     @meta = T.let(meta, T::Hash[Symbol, T.untyped])
     @quiet = T.let(false, T.nilable(T::Boolean))
-    extend Pourable if meta[:bottle]
   end
 
   # Download and cache the resource at {#cached_location}.
@@ -341,7 +327,7 @@ class AbstractFileDownloadStrategy < AbstractDownloadStrategy
                         .reject { |path| path.extname.end_with?(".incomplete") }
 
     @cached_location = T.let(
-      if downloads.count == 1
+      if downloads.one?
         downloads.fetch(0)
       else
         HOMEBREW_CACHE/"downloads/#{url_sha256}--#{Utils.safe_filename(resolved_basename)}"
@@ -425,8 +411,8 @@ end
 class CurlDownloadStrategy < AbstractFileDownloadStrategy
   include Utils::Curl
 
-  # url, basename, time, file_size, is_redirection
-  URLMetadata = T.type_alias { [String, String, T.nilable(Time), T.nilable(Integer), T::Boolean] }
+  # url, basename, time, file_size, content_type, is_redirection
+  URLMetadata = T.type_alias { [String, String, T.nilable(Time), T.nilable(Integer), T.nilable(String), T::Boolean] }
 
   sig { returns(T::Array[String]) }
   attr_reader :mirrors
@@ -469,10 +455,8 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
         ohai "Downloading #{url}"
 
         cached_location_valid = cached_location.exist?
-        v = version
-        cached_location_valid = false if v.is_a?(Cask::DSL::Version) && v.latest?
 
-        resolved_url, _, last_modified, file_size, is_redirection = begin
+        resolved_url, _, last_modified, file_size, content_type, is_redirection = begin
           resolve_url_basename_time_file_size(url, timeout: Utils::Timer.remaining!(end_time))
         rescue ErrorDuringExecution
           raise unless cached_location_valid
@@ -484,10 +468,19 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
         # The cached location is no longer fresh if either:
         # - Last-Modified value is newer than the file's timestamp
         # - Content-Length value is different than the file's size
-        if cached_location_valid && !is_redirection
-          newer_last_modified = last_modified && last_modified > cached_location.mtime
-          different_file_size = file_size&.nonzero? && file_size != cached_location.size
-          cached_location_valid = !(newer_last_modified || different_file_size)
+        if cached_location_valid && (content_type.nil? || !content_type.start_with?("text/"))
+          if last_modified && last_modified > cached_location.mtime
+            ohai "Ignoring #{cached_location}",
+                 "Cached modified time #{cached_location.mtime.iso8601} is before" \
+                 "Last-Modified header: #{last_modified.iso8601}"
+            cached_location_valid = false
+          end
+          if file_size&.nonzero? && file_size != cached_location.size
+            ohai "Ignoring #{cached_location}",
+                 "Cached size #{cached_location.size} differs from " \
+                 "Content-Length header: #{file_size}"
+            cached_location_valid = false
+          end
         end
 
         if cached_location_valid
@@ -525,7 +518,7 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
 
   sig { params(timeout: T.any(Float, Integer, NilClass)).returns([T.nilable(Time), Integer]) }
   def resolved_time_file_size(timeout: nil)
-    _, _, time, file_size = resolve_url_basename_time_file_size(url, timeout:)
+    _, _, time, file_size, = resolve_url_basename_time_file_size(url, timeout:)
     [time, T.must(file_size)]
   end
 
@@ -545,7 +538,7 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
     begin
       parsed_output = curl_headers(url.to_s, wanted_headers: ["content-disposition"], timeout:)
     rescue ErrorDuringExecution
-      return [url, parse_basename(url), nil, nil, false]
+      return [url, parse_basename(url), nil, nil, nil, false]
     end
 
     parsed_headers = parsed_output.fetch(:responses).map { |r| r.fetch(:headers) }
@@ -597,10 +590,14 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
                 .flat_map { |headers| [*headers["content-length"]&.to_i] }
                 .last
 
+    content_type = parsed_headers
+                   .flat_map { |headers| [*headers["content-type"]] }
+                   .last
+
     is_redirection = url != final_url
     basename = filenames.last || parse_basename(final_url, search_query: !is_redirection)
 
-    @resolved_info_cache[url] = [final_url, basename, time.last, file_size, is_redirection]
+    @resolved_info_cache[url] = [final_url, basename, time.last, file_size, content_type, is_redirection]
   end
 
   sig {
@@ -718,7 +715,7 @@ class CurlGitHubPackagesDownloadStrategy < CurlDownloadStrategy
   def resolve_url_basename_time_file_size(url, timeout: nil)
     return super if @resolved_basename.blank?
 
-    [url, @resolved_basename, nil, nil, false]
+    [url, @resolved_basename, nil, nil, nil, false]
   end
 end
 
@@ -815,7 +812,6 @@ class LocalBottleDownloadStrategy < AbstractFileDownloadStrategy
   sig { params(path: Pathname).void }
   def initialize(path)
     @cached_location = T.let(path, Pathname)
-    extend Pourable
   end
   # rubocop:enable Lint/MissingSuper
 
@@ -1352,7 +1348,7 @@ class CVSDownloadStrategy < VCSDownloadStrategy
     end
 
     command! "cvs",
-             args:    [*quiet_flag, "-d", @url, "checkout", "-d", cached_location.basename, @module],
+             args:    [*quiet_flag, "-d", @url, "checkout", "-d", basename.to_s, @module],
              chdir:   cached_location.dirname,
              timeout: Utils::Timer.remaining(timeout)
   end
@@ -1544,7 +1540,7 @@ class FossilDownloadStrategy < VCSDownloadStrategy
   sig { override.returns(Time) }
   def source_modified_time
     out = silent_command("fossil", args: ["info", "tip", "-R", cached_location]).stdout
-    Time.parse(T.must(out[/^uuid: +\h+ (.+)$/, 1]))
+    Time.parse(T.must(out[/^(hash|uuid): +\h+ (.+)$/, 1]))
   end
 
   # Return last commit's unique identifier for the repository.
@@ -1553,7 +1549,7 @@ class FossilDownloadStrategy < VCSDownloadStrategy
   sig { override.returns(String) }
   def last_commit
     out = silent_command("fossil", args: ["info", "tip", "-R", cached_location]).stdout
-    T.must(out[/^uuid: +(\h+) .+$/, 1])
+    T.must(out[/^(hash|uuid): +(\h+) .+$/, 1])
   end
 
   sig { override.returns(T::Boolean) }

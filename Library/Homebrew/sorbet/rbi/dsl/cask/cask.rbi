@@ -10,9 +10,6 @@ class Cask::Cask
   def app(*args, &block); end
 
   sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
-  def appcast(*args, &block); end
-
-  sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
   def appdir(*args, &block); end
 
   sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }

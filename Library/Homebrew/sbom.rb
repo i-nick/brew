@@ -4,7 +4,7 @@
 require "cxxstdlib"
 require "json"
 require "development_tools"
-require "extend/cachable"
+require "cachable"
 require "utils/curl"
 
 # Rather than calling `new` directly, use one of the class methods like {SBOM.create}.

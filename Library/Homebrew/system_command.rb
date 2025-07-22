@@ -6,7 +6,7 @@ require "shellwords"
 require "uri"
 
 require "context"
-require "extend/io"
+require "readline_nonblock"
 require "utils/timer"
 
 # Class for running sub-processes and capturing their output and exit status.
@@ -361,7 +361,7 @@ class SystemCommand
 
       readable_sources.each do |source|
         loop do
-          line = source.readline_nonblock || ""
+          line = ReadlineNonblock.read(source)
           yield(sources.fetch(source), line)
         end
       rescue EOFError

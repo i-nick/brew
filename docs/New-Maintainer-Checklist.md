@@ -116,7 +116,7 @@ People who are either not eligible or willing to be Homebrew maintainers but hav
 When admitted as members:
 
 - Invite them as a single-channel guest to the #members channel on the [`machomebrew` private Slack](https://machomebrew.slack.com/admin/invites) (and ensure they've read the [communication guidelines](Maintainer-Guidelines.md#communication)) and ask them to use their real name there (rather than a pseudonym they may use on e.g. GitHub).
-- Add them to the current year's membership list in the [governance archives](https://github.com/Homebrew/brew/tree/master/docs/governance).
+- Add them to the current year's membership list in the [governance archives](https://github.com/Homebrew/brew/tree/HEAD/docs/governance).
 
 If they are interested in doing ops/infrastructure/system administration work:
 

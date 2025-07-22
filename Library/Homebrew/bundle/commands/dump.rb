@@ -7,9 +7,10 @@ module Homebrew
   module Bundle
     module Commands
       module Dump
-        def self.run(global:, file:, describe:, force:, no_restart:, taps:, brews:, casks:, mas:, whalebrew:, vscode:)
+        def self.run(global:, file:, describe:, force:, no_restart:, taps:, formulae:, casks:, mas:, whalebrew:,
+                     vscode:)
           Homebrew::Bundle::Dumper.dump_brewfile(
-            global:, file:, describe:, force:, no_restart:, taps:, brews:, casks:, mas:, whalebrew:, vscode:,
+            global:, file:, describe:, force:, no_restart:, taps:, formulae:, casks:, mas:, whalebrew:, vscode:,
           )
         end
       end

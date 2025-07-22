@@ -399,16 +399,19 @@ module Homebrew
               nil
             end
 
-            if github_release_data.present?
+            if github_release_data.present? && github_release_data["body"].present?
               pre = "pre" if github_release_data["prerelease"].present?
               # maximum length of PR body is 65,536 characters so let's truncate release notes to half of that.
               body = Formatter.truncate(github_release_data["body"], max: 32_768)
+
+              # Ensure the URL is properly HTML encoded to handle any quotes or other special characters
+              html_url = CGI.escapeHTML(github_release_data["html_url"])
 
               formula_pr_message += <<~XML
                 <details>
                   <summary>#{pre}release notes</summary>
                   <pre>#{body}</pre>
-                  <p>View the full release notes at #{github_release_data["html_url"]}.</p>
+                  <p>View the full release notes at <a href="#{html_url}">#{html_url}</a>.</p>
                 </details>
               XML
             end
@@ -586,7 +589,7 @@ module Homebrew
             #{leading_spaces}resource "#{resource.name}" do
             #{leading_spaces}  url "#{new_url}"#{new_mirrors.map { |m| "\n#{leading_spaces}  mirror \"#{m}\"" }.join}
             #{leading_spaces}  sha256 "#{new_hash}"
-            #{forced_version ? "#{leading_spaces}  version \"#{version}\"\n" : ""}
+            #{"#{leading_spaces}  version \"#{version}\"\n" if forced_version}
             #{leading_spaces}  livecheck do
             #{leading_spaces}    formula :parent
             #{leading_spaces}  end

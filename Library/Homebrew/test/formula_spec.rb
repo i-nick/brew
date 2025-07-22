@@ -1046,7 +1046,13 @@ RSpec.describe Formula do
     before do
       # Use a more limited os list to shorten the variations hash
       os_list = [:monterey, :big_sur, :catalina, :mojave, :linux]
-      stub_const("OnSystem::ALL_OS_ARCH_COMBINATIONS", os_list.product(OnSystem::ARCH_OPTIONS))
+      valid_tags = os_list.product(OnSystem::ARCH_OPTIONS).filter_map do |os, arch|
+        tag = Utils::Bottles::Tag.new(system: os, arch:)
+        next unless tag.valid_combination?
+
+        tag
+      end
+      stub_const("OnSystem::VALID_OS_ARCH_TAGS", valid_tags)
 
       # For consistency, always run on Monterey and ARM
       allow(MacOS).to receive(:version).and_return(MacOSVersion.new("12"))

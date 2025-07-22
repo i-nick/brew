@@ -8,7 +8,7 @@ require "cask/dsl"
 require "cask/metadata"
 require "cask/tab"
 require "utils/bottles"
-require "extend/api_hashable"
+require "api_hashable"
 
 module Cask
   # An instance of a cask.
@@ -416,16 +416,14 @@ module Cask
 
       if @dsl.on_system_blocks_exist?
         begin
-          OnSystem::ALL_OS_ARCH_COMBINATIONS.each do |os, arch|
-            bottle_tag = ::Utils::Bottles::Tag.new(system: os, arch:)
-            next unless bottle_tag.valid_combination?
+          OnSystem::VALID_OS_ARCH_TAGS.each do |bottle_tag|
             next if bottle_tag.linux? && @dsl.os.nil?
             next if bottle_tag.macos? &&
                     depends_on.macos &&
                     !@dsl.depends_on_set_in_block? &&
                     !depends_on.macos.allows?(bottle_tag.to_macos_version)
 
-            Homebrew::SimulateSystem.with(os:, arch:) do
+            Homebrew::SimulateSystem.with_tag(bottle_tag) do
               refresh
 
               to_h.each do |key, value|

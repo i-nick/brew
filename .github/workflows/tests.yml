@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches:
+      - main
       - master
   pull_request:
   merge_group:
@@ -32,7 +33,7 @@ jobs:
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
           core: false
           cask: false
@@ -80,11 +81,11 @@ jobs:
     name: tap syntax
     needs: syntax
     if: github.repository_owner == 'Homebrew'
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
           core: true
           cask: true
@@ -135,13 +136,13 @@ jobs:
     if: github.repository_owner == 'Homebrew' && github.event_name != 'push'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/homebrew/brew:master
+      image: ghcr.io/homebrew/brew:main
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
-          core: true
+          core: false
           cask: false
           test-bot: false
 
@@ -162,7 +163,7 @@ jobs:
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
           core: true
           cask: true
@@ -185,14 +186,14 @@ jobs:
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
           core: false
           cask: false
           test-bot: false
 
       - name: Configure Git user
-        uses: Homebrew/actions/git-user-config@master
+        uses: Homebrew/actions/git-user-config@main
         with:
           username: BrewTestBot
 
@@ -213,14 +214,14 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: update-test (Ubuntu)
+          - name: update-test (Linux)
             runs-on: ubuntu-latest
           - name: update-test (macOS)
-            runs-on: macos-15
+            runs-on: macos-latest
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
           core: false
           cask: false
@@ -237,7 +238,6 @@ jobs:
     name: ${{ matrix.name }}
     needs: syntax
     runs-on: ${{ matrix.runs-on }}
-    container: ${{ matrix.container }}
     strategy:
       matrix:
         include:
@@ -247,23 +247,16 @@ jobs:
           - name: tests (generic OS)
             test-flags: --generic --coverage
             runs-on: ubuntu-latest
-          - name: tests (Ubuntu 24.04)
+          - name: tests (Linux)
             test-flags: --coverage
             runs-on: ubuntu-24.04
-          - name: tests (Ubuntu 22.04)
-            test-flags: --coverage
-            runs-on: ubuntu-22.04
-          - name: tests (Ubuntu 20.04)
-            test-flags: --coverage
-            runs-on: ubuntu-latest
-            container: ghcr.io/homebrew/ubuntu20.04:latest
-          - name: tests (macOS 15 arm64)
+          - name: tests (macOS)
             test-flags: --coverage
             runs-on: macos-15
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
           # We only test needs_homebrew_core tests on macOS because
           # homebrew/core is not available by default on GitHub-hosted Ubuntu
@@ -349,7 +342,7 @@ jobs:
           disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  test-default-formula:
+  test-bot:
     name: ${{ matrix.name }}
     needs: syntax
     if: github.repository_owner == 'Homebrew' && github.event_name != 'push'
@@ -358,36 +351,76 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: test default formula (Ubuntu 24.04)
-            runs-on: ubuntu-latest
+          - name: test-bot (Linux arm64)
+            runs-on: ubuntu-24.04-arm
             container: ghcr.io/homebrew/ubuntu24.04:latest
-          - name: test default formula (Ubuntu 22.04)
+          - name: test-bot (Linux x86_64)
             runs-on: ubuntu-latest
-            container: ghcr.io/homebrew/ubuntu22.04:master
-          - name: test default formula (Ubuntu 20.04)
+            container: ghcr.io/homebrew/ubuntu22.04:main
+          # Use Debian Old Stable for testing Homebrew's glibc support.
+          - name: test-bot (Linux Homebrew glibc)
             runs-on: ubuntu-latest
-            container: ghcr.io/homebrew/ubuntu20.04:latest
-          - name: test default formula (macOS 13 x86_64)
+            container: debian:oldstable
+          - name: test-bot (macOS x86_64)
             runs-on: macos-13
-          - name: test default formula (macOS 15 arm64)
+          - name: test-bot (macOS arm64)
             runs-on: macos-15
     env:
       HOMEBREW_TEST_BOT_ANALYTICS: 1
       HOMEBREW_ENFORCE_SBOM: 1
     steps:
+      - name: Install Homebrew and Homebrew's dependencies
+        # All other images are built from our Homebrew Dockerfile.
+        # This is the only one that needs to be set up manually.
+        if: matrix.container == 'debian:oldstable'
+        run: |
+          # Slimmed down version from the Homebrew Dockerfile
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            bzip2 \
+            ca-certificates \
+            curl \
+            file \
+            g++ \
+            git-core \
+            less \
+            locales \
+            make \
+            netbase \
+            patch \
+            procps \
+            sudo \
+            uuid-runtime \
+            tzdata
+
+          # Install Homebrew
+          mkdir -p /home/linuxbrew/.linuxbrew/bin
+          # Don't do shallow clone or it's unshallowed by "Set up Homebrew"
+          git clone https://github.com/Homebrew/brew.git /home/linuxbrew/.linuxbrew/Homebrew
+          cd /home/linuxbrew/.linuxbrew/bin
+          ln -s ../Homebrew/bin/brew brew
+          echo "/home/linuxbrew/.linuxbrew/bin" >>"$GITHUB_PATH"
+
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
-          core: true
+          core: false
           cask: false
           test-bot: true
 
       - run: brew test-bot --only-cleanup-before
 
       - name: Setup environment variables
-        if: matrix.container == 'ghcr.io/homebrew/ubuntu20.04:latest'
-        run: echo "HOMEBREW_GLIBC_TESTING=1" >> "$GITHUB_ENV"
+        run: |
+          # Set enviroment variables to bypass `brew doctor` failures on Tier >=2 configurations
+          if [[ "${MATRIX_NAME}" == "test-bot (Linux arm64)" ]]; then
+            echo "HOMEBREW_ARM64_TESTING=1" >> "$GITHUB_ENV"
+          elif [[ "${MATRIX_NAME}" == "test-bot (Linux Homebrew glibc)" ]]; then
+            echo "HOMEBREW_GLIBC_TESTING=1" >> "$GITHUB_ENV"
+          fi
+        env:
+          MATRIX_NAME: ${{ matrix.name }}
 
       - run: brew test-bot --only-setup
 
@@ -395,7 +428,7 @@ jobs:
 
       - run: brew test-bot --only-formulae --only-json-tab --test-default-formula
 
-  test-brew-bundle-services:
+  bundle-and-services:
     name: ${{ matrix.name }}
     needs: syntax
     if: github.repository_owner == 'Homebrew' && github.event_name != 'push'
@@ -403,22 +436,20 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: test brew bundle and brew services (Ubuntu)
+          - name: bundle and services (Linux)
             runs-on: ubuntu-latest
-          - name: test brew bundle and brew services (macOS)
-            runs-on: macos-15
+          - name: bundle and services (macOS)
+            runs-on: macos-latest
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
-          core: true
+          core: false
           cask: false
           test-bot: false
 
       - run: brew test-bot --only-cleanup-before
-
-      - run: brew test-bot --only-setup
 
       - name: Run brew bundle and brew services integration tests
         run: |
@@ -449,19 +480,22 @@ jobs:
           brew services cleanup
           brew bundle cleanup --force
 
-  test-analytics:
-    runs-on: ${{ matrix.os }}
+  analytics:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runs-on }}
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
+        include:
+          - name: analytics (Linux)
+            runs-on: ubuntu-latest
+          - name: analytics (macOS)
+            runs-on: macos-latest
     needs: syntax
     if: github.repository_owner == 'Homebrew' && github.event_name != 'push'
     steps:
     - name: Set up Homebrew
       id: set-up-homebrew
-      uses: Homebrew/actions/setup-homebrew@master
+      uses: Homebrew/actions/setup-homebrew@main
 
     - name: Setup Python
       uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0

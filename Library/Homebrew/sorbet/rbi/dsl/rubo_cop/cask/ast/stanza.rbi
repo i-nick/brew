@@ -130,6 +130,9 @@ class RuboCop::Cask::AST::Stanza
   def on_system_block?(*args, &block); end
 
   sig { returns(T::Boolean) }
+  def on_tahoe?; end
+
+  sig { returns(T::Boolean) }
   def on_ventura?; end
 
   sig { returns(T::Boolean) }

@@ -26,7 +26,7 @@ require "cask/dsl/version"
 require "cask/url"
 require "cask/utils"
 
-require "extend/on_system"
+require "on_system"
 
 module Cask
   # Class representing the domain-specific language used for casks.
@@ -69,7 +69,6 @@ module Cask
     ].freeze
 
     DSL_METHODS = Set.new([
-      :appcast,
       :arch,
       :artifacts,
       :auto_updates,
@@ -123,15 +122,21 @@ module Cask
 
     sig { params(cask: Cask).void }
     def initialize(cask)
-      # NOTE: Variables set by `set_unique_stanza` must be initialized to `nil`.
-      @auto_updates = T.let(nil, T.nilable(T::Boolean))
+      # NOTE: `:"@#{stanza}"` variables set by `set_unique_stanza` must be
+      # initialized to `nil`.
       @arch = T.let(nil, T.nilable(String))
+      @arch_set_in_block = T.let(false, T::Boolean)
       @artifacts = T.let(ArtifactSet.new, ArtifactSet)
+      @auto_updates = T.let(nil, T.nilable(T::Boolean))
+      @auto_updates_set_in_block = T.let(false, T::Boolean)
+      @autobump = T.let(true, T::Boolean)
       @called_in_on_system_block = T.let(false, T::Boolean)
       @cask = T.let(cask, Cask)
       @caveats = T.let(DSL::Caveats.new(cask), DSL::Caveats)
       @conflicts_with = T.let(nil, T.nilable(DSL::ConflictsWith))
+      @conflicts_with_set_in_block = T.let(false, T::Boolean)
       @container = T.let(nil, T.nilable(DSL::Container))
+      @container_set_in_block = T.let(false, T::Boolean)
       @depends_on = T.let(DSL::DependsOn.new, DSL::DependsOn)
       @depends_on_set_in_block = T.let(false, T::Boolean)
       @deprecated = T.let(false, T::Boolean)
@@ -140,27 +145,32 @@ module Cask
       @deprecation_replacement_cask = T.let(nil, T.nilable(String))
       @deprecation_replacement_formula = T.let(nil, T.nilable(String))
       @desc = T.let(nil, T.nilable(String))
+      @desc_set_in_block = T.let(false, T::Boolean)
       @disable_date = T.let(nil, T.nilable(Date))
       @disable_reason = T.let(nil, T.nilable(T.any(String, Symbol)))
       @disable_replacement_cask = T.let(nil, T.nilable(String))
       @disable_replacement_formula = T.let(nil, T.nilable(String))
       @disabled = T.let(false, T::Boolean)
       @homepage = T.let(nil, T.nilable(String))
+      @homepage_set_in_block = T.let(false, T::Boolean)
       @language_blocks = T.let({}, T::Hash[T::Array[String], Proc])
       @language_eval = T.let(nil, T.nilable(String))
       @livecheck = T.let(Livecheck.new(cask), Livecheck)
       @livecheck_defined = T.let(false, T::Boolean)
       @name = T.let([], T::Array[String])
-      @autobump = T.let(true, T::Boolean)
       @no_autobump_defined = T.let(false, T::Boolean)
       @on_system_blocks_exist = T.let(false, T::Boolean)
-      @os = T.let(nil, T.nilable(String))
       @on_system_block_min_os = T.let(nil, T.nilable(MacOSVersion))
+      @os = T.let(nil, T.nilable(String))
+      @os_set_in_block = T.let(false, T::Boolean)
       @sha256 = T.let(nil, T.nilable(T.any(Checksum, Symbol)))
+      @sha256_set_in_block = T.let(false, T::Boolean)
       @staged_path = T.let(nil, T.nilable(Pathname))
       @token = T.let(cask.token, String)
       @url = T.let(nil, T.nilable(URL))
+      @url_set_in_block = T.let(false, T::Boolean)
       @version = T.let(nil, T.nilable(DSL::Version))
+      @version_set_in_block = T.let(false, T::Boolean)
     end
 
     sig { returns(T::Boolean) }
@@ -216,7 +226,7 @@ module Cask
           raise CaskInvalidError.new(cask, "'#{stanza}' stanza may only appear once.")
         end
 
-        if instance_variable_defined?(:"@#{stanza}_set_in_block") && @called_in_on_system_block
+        if instance_variable_get(:"@#{stanza}_set_in_block") && @called_in_on_system_block
           raise CaskInvalidError.new(cask, "'#{stanza}' stanza may only be overridden once.")
         end
       end
@@ -476,7 +486,7 @@ module Cask
     def add_implicit_macos_dependency
       return if (cask_depends_on = @depends_on).present? && cask_depends_on.macos.present?
 
-      depends_on macos: ">= :#{MacOSVersion::SYMBOLS.key MacOSVersion::SYMBOLS.values.min}"
+      depends_on macos: ">= #{MacOSVersion.new(HOMEBREW_MACOS_OLDEST_ALLOWED).to_sym.inspect}"
     end
 
     # Declare conflicts that keep a cask from installing or working correctly.

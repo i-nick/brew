@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-RSpec.describe Cask::DSL, :cask do
+RSpec.describe Cask::DSL, :cask, :no_api do
   let(:cask) { Cask::CaskLoader.load(token) }
   let(:token) { "basic-cask" }
 

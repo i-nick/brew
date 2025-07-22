@@ -8,6 +8,7 @@ module Homebrew
         @casks = nil
         @cask_names = nil
         @cask_hash = nil
+        @cask_oldnames = nil
       end
 
       def self.cask_names
@@ -36,6 +37,25 @@ module Homebrew
           config = ", args: { #{explicit_s(cask.config)} }" if cask.config.present? && cask.config.explicit.present?
           "#{description}cask \"#{cask}\"#{config}"
         end.join("\n")
+      end
+
+      def self.cask_oldnames
+        return @cask_oldnames if @cask_oldnames
+
+        @cask_oldnames = {}
+        casks.each do |c|
+          oldnames = c.old_tokens
+          next if oldnames.blank?
+
+          oldnames.each do |oldname|
+            @cask_oldnames[oldname] = c.full_name
+            if c.full_name.include? "/" # tap cask
+              tap_name = c.full_name.rpartition("/").first
+              @cask_oldnames["#{tap_name}/#{oldname}"] = c.full_name
+            end
+          end
+        end
+        @cask_oldnames
       end
 
       def self.formula_dependencies(cask_list)

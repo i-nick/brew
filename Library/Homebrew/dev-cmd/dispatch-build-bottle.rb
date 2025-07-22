@@ -42,7 +42,7 @@ module Homebrew
       def run
         tap = Tap.fetch(args.tap || CoreTap.instance.name)
         user, repo = tap.full_name.split("/")
-        ref = "master"
+        ref = "main"
         workflow = args.workflow || "dispatch-build-bottle.yml"
 
         runners = []

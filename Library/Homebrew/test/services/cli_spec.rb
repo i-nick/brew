@@ -42,16 +42,16 @@ RSpec.describe Homebrew::Services::Cli do
     end
   end
 
-  describe "#check" do
+  describe "#check!" do
     it "checks the input does not exist" do
       expect do
-        services_cli.check([])
+        services_cli.check!([])
       end.to raise_error(UsageError, "Invalid usage: Formula(e) missing, please provide a formula name or use --all")
     end
 
     it "checks the input exists" do
       expect do
-        services_cli.check("hello")
+        services_cli.check!("hello")
       end.not_to raise_error(UsageError,
                              "Invalid usage: Formula(e) missing, please provide a formula name or use --all")
     end

@@ -64,12 +64,8 @@ module Homebrew
     sig { returns(T::Boolean) }
     def self.enabled?
       return false if Homebrew::EnvConfig.no_verify_attestations?
-      return true if Homebrew::EnvConfig.verify_attestations?
-      return false if ENV.fetch("CI", false)
-      return false if OS.not_tier_one_configuration?
 
-      # Always check credentials last to avoid unnecessary credential extraction.
-      (Homebrew::EnvConfig.developer? || Homebrew::EnvConfig.devcmdrun?) && GitHub::API.credentials.present?
+      Homebrew::EnvConfig.verify_attestations?
     end
 
     # Returns a path to a suitable `gh` executable for attestation verification.

@@ -40,7 +40,8 @@ module Homebrew
         switch "--cask", "--casks",
                description: "Check only casks."
         switch "--eval-all",
-               description: "Evaluate all formulae and casks."
+               description: "Evaluate all formulae and casks.",
+               env:         :eval_all
         switch "--repology",
                description: "Use Repology to check for outdated packages."
         flag   "--tap=",
@@ -71,14 +72,12 @@ module Homebrew
         Homebrew.install_bundler_gems!(groups: ["livecheck"])
 
         Homebrew.with_no_api_env do
-          eval_all = args.eval_all? || Homebrew::EnvConfig.eval_all?
+          eval_all = args.eval_all?
 
           excluded_autobump = []
-          if args.no_autobump?
-            excluded_autobump.concat(autobumped_formulae_or_casks(CoreTap.instance)) if eval_all || args.formula?
-            if eval_all || args.cask?
-              excluded_autobump.concat(autobumped_formulae_or_casks(CoreCaskTap.instance, casks: true))
-            end
+          if args.no_autobump? && eval_all
+            excluded_autobump.concat(autobumped_formulae_or_casks(CoreTap.instance)) if args.formula?
+            excluded_autobump.concat(autobumped_formulae_or_casks(CoreCaskTap.instance, casks: true)) if args.cask?
           end
 
           formulae_and_casks = if args.auto?
@@ -118,7 +117,7 @@ module Homebrew
           else
             raise UsageError,
                   "`brew bump` without named arguments needs `--installed` or `--eval-all` passed or " \
-                  "`HOMEBREW_EVAL_ALL` set!"
+                  "`$HOMEBREW_EVAL_ALL` set!"
           end
 
           if args.start_with
@@ -181,7 +180,7 @@ module Homebrew
 
         formulae_and_casks.each_with_index do |formula_or_cask, i|
           puts if i.positive?
-          next if skip_ineligible_formulae(formula_or_cask)
+          next if skip_ineligible_formulae!(formula_or_cask)
 
           use_full_name = args.full_name? || ambiguous_names.include?(formula_or_cask)
           name = Livecheck.package_or_resource_name(formula_or_cask, full_name: use_full_name)
@@ -205,7 +204,7 @@ module Homebrew
       sig {
         params(formula_or_cask: T.any(Formula, Cask::Cask)).returns(T::Boolean)
       }
-      def skip_ineligible_formulae(formula_or_cask)
+      def skip_ineligible_formulae!(formula_or_cask)
         if formula_or_cask.is_a?(Formula)
           skip = formula_or_cask.disabled? || formula_or_cask.head_only?
           name = formula_or_cask.name

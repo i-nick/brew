@@ -4,7 +4,7 @@
 require "keg_relocate"
 require "language/python"
 require "lock_file"
-require "extend/cachable"
+require "cachable"
 
 # Installation prefix of a formula.
 class Keg

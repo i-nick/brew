@@ -93,6 +93,8 @@ module Superenv
     # Prevent Go from automatically downloading a newer toolchain than the one that we have.
     # https://tip.golang.org/doc/toolchain
     self["GOTOOLCHAIN"] = "local"
+    # Prevent maturin from automatically downloading its own rust
+    self["MATURIN_NO_INSTALL_RUST"] = "1"
     # Prevent Python packages from using bundled libraries by default.
     # Currently for hidapi, pyzmq and pynacl
     self["HIDAPI_SYSTEM_HIDAPI"] = "1"
@@ -125,7 +127,6 @@ module Superenv
     # These flags will also be present:
     # a - apply fix for apr-1-config path
   end
-  alias generic_setup_build_environment setup_build_environment
 
   private
 
@@ -152,7 +153,6 @@ module Superenv
         .reverse
         .map { |d| d.opt_libexec/"bin" }
   end
-  alias generic_homebrew_extra_paths homebrew_extra_paths
 
   sig { returns(T.nilable(PATH)) }
   def determine_path
@@ -372,8 +372,8 @@ module Superenv
     append_to_cccfg "O"
   end
 
+  # This is an exception where we want to use this method name format.
   # rubocop: disable Naming/MethodName
-  # Fixes style error `Naming/MethodName: Use snake_case for method names.`
   sig { params(block: T.nilable(T.proc.void)).void }
   def O0(&block)
     if block

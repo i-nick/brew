@@ -195,7 +195,7 @@ module Homebrew
         return false unless (name = basename.to_s[/\A(.*?)--/, 1])
 
         cask = begin
-          Cask::CaskLoader.load(name)
+          Cask::CaskLoader.load(name, warn: false)
         rescue Cask::CaskError
           nil
         end

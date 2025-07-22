@@ -6,6 +6,8 @@ require "context"
 module Homebrew
   extend Context
 
+  # Need to keep this naming as-is for backwards compatibility.
+  # rubocop:disable Naming/PredicateMethod
   def self._system(cmd, *args, **options)
     pid = fork do
       yield if block_given?
@@ -20,6 +22,7 @@ module Homebrew
     Process.wait(T.must(pid))
     $CHILD_STATUS.success?
   end
+  # rubocop:enable Naming/PredicateMethod
 
   def self.system(cmd, *args, **options)
     if verbose?

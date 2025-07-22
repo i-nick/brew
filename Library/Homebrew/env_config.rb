@@ -463,7 +463,7 @@ module Homebrew
         default_text: "`~/.ssh/config`",
       },
       HOMEBREW_SUDO_THROUGH_SUDO_USER:           {
-        description: "If set, Homebrew will use the `SUDO_USER` environment variable to define the user to " \
+        description: "If set, Homebrew will use the `$SUDO_USER` environment variable to define the user to " \
                      "`sudo`(8) through when running `sudo`(8).",
         boolean:     true,
       },
@@ -629,6 +629,14 @@ module Homebrew
     sig { returns(T::Boolean) }
     def devcmdrun?
       Homebrew::Settings.read("devcmdrun") == "true"
+    end
+
+    sig { returns(Integer) }
+    def download_concurrency
+      # TODO: document this variable when ready to publicly announce it.
+      concurrency = ENV.fetch("HOMEBREW_DOWNLOAD_CONCURRENCY", 1).to_i
+      concurrency = 1 if concurrency <= 1
+      concurrency
     end
   end
 end

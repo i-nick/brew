@@ -3,14 +3,14 @@
 require "bundle"
 require "bundle/commands/dump"
 require "bundle/cask_dumper"
-require "bundle/brew_dumper"
+require "bundle/formula_dumper"
 require "bundle/tap_dumper"
 require "bundle/whalebrew_dumper"
 require "bundle/vscode_extension_dumper"
 
 RSpec.describe Homebrew::Bundle::Commands::Dump do
   subject(:dump) do
-    described_class.run(global:, file: nil, describe: false, force:, no_restart: false, taps: true, brews: true,
+    described_class.run(global:, file: nil, describe: false, force:, no_restart: false, taps: true, formulae: true,
                         casks: true, mas: true, whalebrew: true, vscode: true)
   end
 
@@ -19,7 +19,7 @@ RSpec.describe Homebrew::Bundle::Commands::Dump do
 
   before do
     Homebrew::Bundle::CaskDumper.reset!
-    Homebrew::Bundle::BrewDumper.reset!
+    Homebrew::Bundle::FormulaDumper.reset!
     Homebrew::Bundle::TapDumper.reset!
     Homebrew::Bundle::WhalebrewDumper.reset!
     Homebrew::Bundle::VscodeExtensionDumper.reset!
@@ -39,7 +39,7 @@ RSpec.describe Homebrew::Bundle::Commands::Dump do
 
     it "exits before doing any work" do
       expect(Homebrew::Bundle::TapDumper).not_to receive(:dump)
-      expect(Homebrew::Bundle::BrewDumper).not_to receive(:dump)
+      expect(Homebrew::Bundle::FormulaDumper).not_to receive(:dump)
       expect(Homebrew::Bundle::CaskDumper).not_to receive(:dump)
       expect(Homebrew::Bundle::WhalebrewDumper).not_to receive(:dump)
       expect do

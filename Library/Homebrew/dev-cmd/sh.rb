@@ -13,13 +13,13 @@ module Homebrew
           Enter an interactive shell for Homebrew's build environment. Use years-battle-hardened
           build logic to help your `./configure && make && make install`
           and even your `gem install` succeed. Especially handy if you run Homebrew
-          in an Xcode-only configuration since it adds tools like `make` to your `PATH`
+          in an Xcode-only configuration since it adds tools like `make` to your `$PATH`
           which build systems would not find otherwise.
         EOS
-        flag   "--env=",
-               description: "Use the standard `PATH` instead of superenv's when `std` is passed."
-        flag   "-c=", "--cmd=",
-               description: "Execute commands in a non-interactive shell."
+        flag "--env=",
+             description: "Use the standard `$PATH` instead of superenv's when `std` is passed."
+        flag "-c=", "--cmd=",
+             description: "Execute commands in a non-interactive shell."
 
         named_args :file, max: 1
       end
@@ -29,7 +29,9 @@ module Homebrew
         ENV.activate_extensions!(env: args.env)
 
         if superenv?(args.env)
-          T.cast(ENV, Superenv).deps = Formula.installed.select { |f| f.keg_only? && f.opt_prefix.directory? }
+          ENV.deps = Formula.installed.select do |f|
+            f.keg_only? && f.opt_prefix.directory?
+          end
         end
         ENV.setup_build_environment
         if superenv?(args.env)

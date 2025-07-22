@@ -68,6 +68,7 @@ livecheck
 ln
 log
 ls
+mcp-server
 migrate
 missing
 nodenv-sync
@@ -117,6 +118,7 @@ update
 update-if-needed
 update-license-data
 update-maintainers
+update-perl-resources
 update-python-resources
 update-reset
 update-sponsors

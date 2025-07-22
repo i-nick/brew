@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "abstract_command"
@@ -18,7 +18,7 @@ module Homebrew
     class Info < AbstractCommand
       VALID_DAYS = %w[30 90 365].freeze
       VALID_FORMULA_CATEGORIES = %w[install install-on-request build-error].freeze
-      VALID_CATEGORIES = (VALID_FORMULA_CATEGORIES + %w[cask-install os-version]).freeze
+      VALID_CATEGORIES = T.let((VALID_FORMULA_CATEGORIES + %w[cask-install os-version]).freeze, T::Array[String])
 
       cmd_args do
         description <<~EOS
@@ -57,7 +57,7 @@ module Homebrew
         switch "--eval-all",
                depends_on:  "--json",
                description: "Evaluate all available formulae and casks, whether installed or not, to print their " \
-                            "JSON. Implied if `$HOMEBREW_EVAL_ALL` is set."
+                            "JSON."
         switch "--variations",
                depends_on:  "--json",
                description: "Include the variations hash in each formula's JSON output."
@@ -96,14 +96,15 @@ module Homebrew
           end
 
           print_analytics
-        elsif args.json
-          all = args.eval_all?
-
-          print_json(all)
+        elsif (json = args.json)
+          print_json(json, args.eval_all?)
         elsif args.github?
           raise FormulaOrCaskUnspecifiedError if args.no_named?
 
-          exec_browser(*args.named.to_formulae_and_casks.map { |f| github_info(f) })
+          exec_browser(*args.named.to_formulae_and_casks.map do |formula_keg_or_cask|
+            formula_or_cask = T.cast(formula_keg_or_cask, T.any(Formula, Cask::Cask))
+            github_info(formula_or_cask)
+          end)
         elsif args.no_named?
           print_statistics
         else
@@ -111,6 +112,7 @@ module Homebrew
         end
       end
 
+      sig { params(remote: String, path: String).returns(String) }
       def github_remote_path(remote, path)
         if remote =~ %r{^(?:https?://|git(?:@|://))github\.com[:/](.+)/(.+?)(?:\.git)?$}
           "https://github.com/#{Regexp.last_match(1)}/#{Regexp.last_match(2)}/blob/HEAD/#{path}"
@@ -175,6 +177,7 @@ module Homebrew
         end
       end
 
+      sig { params(version: T.any(T::Boolean, String)).returns(Symbol) }
       def json_version(version)
         version_hash = {
           true => :default,
@@ -187,16 +190,16 @@ module Homebrew
         version_hash[version]
       end
 
-      sig { params(all: T::Boolean).void }
-      def print_json(all)
-        raise FormulaOrCaskUnspecifiedError if !(all || args.installed?) && args.no_named?
+      sig { params(json: T.any(T::Boolean, String), eval_all: T::Boolean).void }
+      def print_json(json, eval_all)
+        raise FormulaOrCaskUnspecifiedError if !(eval_all || args.installed?) && args.no_named?
 
-        json = case json_version(args.json)
+        json = case json_version(json)
         when :v1, :default
           raise UsageError, "Cannot specify `--cask` when using `--json=v1`!" if args.cask?
 
-          formulae = if all
-            Formula.all(eval_all: args.eval_all?).sort
+          formulae = if eval_all
+            Formula.all(eval_all:).sort
           elsif args.installed?
             Formula.installed.sort
           else
@@ -210,10 +213,10 @@ module Homebrew
           end
         when :v2
           formulae, casks = T.let(
-            if all
+            if eval_all
               [
-                Formula.all(eval_all: args.eval_all?).sort,
-                Cask::Cask.all(eval_all: args.eval_all?).sort_by(&:full_name),
+                Formula.all(eval_all:).sort,
+                Cask::Cask.all(eval_all:).sort_by(&:full_name),
               ]
             elsif args.installed?
               [Formula.installed.sort, Cask::Caskroom.casks.sort_by(&:full_name)]
@@ -240,25 +243,31 @@ module Homebrew
         puts JSON.pretty_generate(json)
       end
 
+      sig { params(formula_or_cask: T.any(Formula, Cask::Cask)).returns(String) }
       def github_info(formula_or_cask)
-        return formula_or_cask.path if formula_or_cask.tap.blank? || formula_or_cask.tap.remote.blank?
-
         path = case formula_or_cask
         when Formula
           formula = formula_or_cask
-          formula.path.relative_path_from(T.must(formula.tap).path)
+          tap = formula.tap
+          return formula.path.to_s if tap.blank? || tap.remote.blank?
+
+          formula.path.relative_path_from(tap.path)
         when Cask::Cask
           cask = formula_or_cask
+          tap = cask.tap
+          return cask.sourcefile_path.to_s if tap.blank? || tap.remote.blank?
+
           if cask.sourcefile_path.blank? || cask.sourcefile_path.extname != ".rb"
-            return "#{cask.tap.default_remote}/blob/HEAD/#{cask.tap.relative_cask_path(cask.token)}"
+            return "#{tap.default_remote}/blob/HEAD/#{tap.relative_cask_path(cask.token)}"
           end
 
-          cask.sourcefile_path.relative_path_from(cask.tap.path)
+          cask.sourcefile_path.relative_path_from(tap.path)
         end
 
-        github_remote_path(formula_or_cask.tap.remote, path)
+        github_remote_path(tap.remote, path.to_s)
       end
 
+      sig { params(formula: Formula).void }
       def info_formula(formula)
         specs = []
 
@@ -356,6 +365,7 @@ module Homebrew
         Utils::Analytics.formula_output(formula, args:)
       end
 
+      sig { params(dependencies: T::Array[Dependency]).returns(String) }
       def decorate_dependencies(dependencies)
         deps_status = dependencies.map do |dep|
           if dep.satisfied?([])
@@ -367,6 +377,7 @@ module Homebrew
         deps_status.join(", ")
       end
 
+      sig { params(requirements: T::Array[Requirement]).returns(String) }
       def decorate_requirements(requirements)
         req_status = requirements.map do |req|
           req_s = req.display_s
@@ -375,12 +386,14 @@ module Homebrew
         req_status.join(", ")
       end
 
+      sig { params(dep: Dependency).returns(String) }
       def dep_display_s(dep)
         return dep.name if dep.option_tags.empty?
 
         "#{dep.name} #{dep.option_tags.map { |o| "--#{o}" }.join(" ")}"
       end
 
+      sig { params(cask: Cask::Cask).void }
       def info_cask(cask)
         require "cask/info"
 

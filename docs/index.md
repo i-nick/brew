@@ -16,6 +16,7 @@ last_review_date: "2025-02-08"
 - [`brew` Shell Completion](Shell-Completion.md)
 - [Homebrew on Linux](Homebrew-on-Linux.md)
 - [Homebrew Bundle, `brew bundle` and `Brewfile`](Brew-Bundle-and-Brewfile.md)
+- [Homebrew MCP Server](MCP-Server.md)
 
 - [Bottles (binary packages)](Bottles.md)
 - [Taps (third-party repositories)](Taps.md)
@@ -52,6 +53,7 @@ last_review_date: "2025-02-08"
 - [Node for Formula Authors](Node-for-Formula-Authors.md)
 - [Python for Formula Authors](Python-for-Formula-Authors.md)
 - [`brew livecheck`](Brew-Livecheck.md)
+- [Autobump](Autobump.md)
 - [Migrating a Formula to a Tap](Migrating-A-Formula-To-A-Tap.md)
 - [Renaming a Formula](Rename-A-Formula.md)
 - [Building Against Non-Homebrew Dependencies](Building-Against-Non-Homebrew-Dependencies.md)

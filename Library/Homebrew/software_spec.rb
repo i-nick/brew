@@ -12,7 +12,7 @@ require "utils/bottles"
 require "patch"
 require "compilers"
 require "macos_version"
-require "extend/on_system"
+require "on_system"
 
 class SoftwareSpec
   include Downloadable

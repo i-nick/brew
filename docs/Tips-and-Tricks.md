@@ -1,5 +1,5 @@
 ---
-last_review_date: "1970-01-01"
+last_review_date: 2025-07-15
 redirect_from:
   - /Tips-N'-Tricks
 ---
@@ -26,7 +26,7 @@ Sometimes it's faster to download a file via means other than the strategies tha
 
 Downloads are saved in the `downloads` subdirectory of Homebrew's cache directory (as specified by `brew --cache`, e.g. `~/Library/Caches/Homebrew`) and renamed as `<url-hash>--<formula>-<version>`. The command `brew --cache --build-from-source <formula>` will print the expected path of the cached download, so after downloading the file, you can run `mv the_tarball "$(brew --cache --build-from-source <formula>)"` to relocate it to the cache.
 
-You can also pre-cache the download by using the command `brew fetch <formula>` which also displays the SHA-256 hash. This can be useful for updating formulae to new versions.
+You can also pre-cache the download by using the command `brew fetch <formula>` which also displays its SHA-256 hash. This can be useful for updating formulae to new versions.
 
 ## Install stuff without the Xcode CLT
 
@@ -49,12 +49,17 @@ brew install --only-dependencies <formula>
 $ brew irb
 ==> Interactive Homebrew Shell
 Example commands available with: `brew irb --examples`
-irb(main):001:0> Formulary.factory("ace").methods - Object.methods
-=> [:install, :test, :test_defined?, :sbin, :pkgshare, :elisp,
-:frameworks, :kext_prefix, :any_version_installed?, :etc, :pkgetc,
+brew(main):001> Formulary.factory("ace").methods - Object.methods
+=>
+[:test,
+ :install,
+ :valid_platform?,
 ...
-:on_macos, :on_linux, :debug?, :quiet?, :verbose?, :with_context]
-irb(main):002:0>
+ :debug?,
+ :verbose?,
+ :quiet?]
+ [:install, :test, :test_defined?, :sbin, :pkgshare, :elisp,
+brew(main):002>
 ```
 
 ## Hide the beer mug emoji when finishing a build
@@ -89,6 +94,70 @@ $ brew install --cask --adopt textmate
 🍺  textmate was successfully installed!
 ```
 
+## Define aliases for Homebrew commands
+
+Use [`brew alias`](Manpage.md#alias---edit-aliasaliascommand) to define custom commands that run other commands in `brew` or your shell, similar to the `alias` shell builtin.
+
+```shell
+# Add aliases
+$ brew alias ug='upgrade'
+$ brew alias i='install'
+
+# Print all aliases
+$ brew alias
+
+# Print one alias
+$ brew alias i
+
+# Use your aliases like any other command
+$ brew i git
+
+# Remove an alias
+$ brew unalias i
+
+# Aliases can include other aliases
+$ brew alias show='info'
+$ brew alias print='show'
+$ brew print git # will run `brew info git`
+```
+
+Note that names of stock Homebrew commands can't be used as aliases.
+
+All aliased commands are prefixed with `brew`, unless they start with `!` or `%`:
+
+```shell
+$ brew alias ug='upgrade'
+# `brew ug` → `brew upgrade`
+
+$ brew alias status='!git status'
+# `brew status` → `git status`
+```
+
+You may need single quotes to prevent your shell from interpreting `!`, but `%` will work for both quote types.
+
+```shell
+# Use shell expansion to preserve a local variable
+$ mygit=/path/to/my/git
+$ brew alias git="%$mygit"
+# `brew git status` → `/path/to/my/git status`
+```
+
+Aliases can be opened in `$EDITOR` with the `--edit` flag.
+
+```shell
+# Edit alias 'brew foo', creating if necessary
+$ brew alias --edit foo
+# Create and edit alias 'brew foo'
+$ brew alias --edit foo=bar
+
+# This works too
+$ brew alias foo --edit
+$ brew alias foo=bar --edit
+
+# Open all aliases in $EDITOR
+$ brew alias --edit
+```
+
 ## Editor plugins
 
 ### Visual Studio Code
@@ -119,7 +188,7 @@ Terminal needs an extra hint on where to find manpages installed by Homebrew bec
 
 ```sh
 sudo mkdir -p /usr/local/etc/man.d
-echo "MANPATH /opt/homebrew/share/man" | sudo tee -a /usr/local/etc/man.d/homebrew.man.conf
+echo "MANPATH $(brew --prefix)/share/man" | sudo tee -a /usr/local/etc/man.d/homebrew.man.conf
 ```
 
 If you're using Homebrew on macOS Intel, you should also fix permissions afterwards with:

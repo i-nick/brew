@@ -2,7 +2,7 @@
 
 require "bundle"
 require "bundle/dumper"
-require "bundle/brew_dumper"
+require "bundle/formula_dumper"
 require "bundle/tap_dumper"
 require "bundle/cask_dumper"
 require "bundle/mac_app_store_dumper"
@@ -22,7 +22,7 @@ RSpec.describe Homebrew::Bundle::Dumper do
         cask_installed?: true, mas_installed?: false, whalebrew_installed?: false,
         vscode_installed?: false
       )
-    Homebrew::Bundle::BrewDumper.reset!
+    Homebrew::Bundle::FormulaDumper.reset!
     Homebrew::Bundle::TapDumper.reset!
     Homebrew::Bundle::CaskDumper.reset!
     Homebrew::Bundle::MacAppStoreDumper.reset!
@@ -49,7 +49,7 @@ RSpec.describe Homebrew::Bundle::Dumper do
 
   it "generates output" do
     expect(dumper.build_brewfile(
-             describe: false, no_restart: false, brews: true, taps: true, casks: true, mas: true,
+             describe: false, no_restart: false, formulae: true, taps: true, casks: true, mas: true,
              whalebrew: true, vscode: true
            )).to eql("cask \"google-chrome\"\ncask \"java\"\ncask \"iterm2-beta\"\n")
   end

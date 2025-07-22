@@ -4,6 +4,7 @@
 require "formula_installer"
 require "unpack_strategy"
 require "utils/topological_hash"
+require "utils/analytics"
 
 require "cask/config"
 require "cask/download"
@@ -149,7 +150,7 @@ module Cask
 
       oh1 "Installing Cask #{Formatter.identifier(@cask)}"
       # GitHub Actions globally disables Gatekeeper.
-      opoo "macOS's Gatekeeper has been disabled for this Cask" if !quarantine? && !GitHub::Actions.env_set?
+      opoo_outside_github_actions "macOS's Gatekeeper has been disabled for this Cask" unless quarantine?
       stage
 
       @cask.config = @cask.default_config.merge(old_config)
@@ -188,7 +189,7 @@ on_request: true)
       when :deprecated
         opoo message_full
       when :disabled
-        GitHub::Actions.puts_annotation_if_env_set(:error, message)
+        GitHub::Actions.puts_annotation_if_env_set!(:error, message)
         raise CaskCannotBeInstalledError.new(@cask, message)
       end
     end
@@ -302,6 +303,20 @@ on_request: true)
         odebug "Installing artifact of class #{artifact.class}"
 
         next if artifact.is_a?(Artifact::Binary) && !binaries?
+
+        artifact = T.cast(
+          artifact,
+          T.any(
+            Artifact::AbstractFlightBlock,
+            Artifact::Installer,
+            Artifact::KeyboardLayout,
+            Artifact::Mdimporter,
+            Artifact::Moved,
+            Artifact::Pkg,
+            Artifact::Qlplugin,
+            Artifact::Symlinked,
+          ),
+        )
 
         artifact.install_phase(
           command: @command, verbose: verbose?, adopt: adopt?, auto_updates: @cask.auto_updates,
@@ -548,6 +563,18 @@ on_request: true)
 
       artifacts.each do |artifact|
         if artifact.respond_to?(:uninstall_phase)
+          artifact = T.cast(
+            artifact,
+            T.any(
+              Artifact::AbstractFlightBlock,
+              Artifact::KeyboardLayout,
+              Artifact::Moved,
+              Artifact::Qlplugin,
+              Artifact::Symlinked,
+              Artifact::Uninstall,
+            ),
+          )
+
           odebug "Uninstalling artifact of class #{artifact.class}"
           artifact.uninstall_phase(
             command:   @command,
@@ -562,6 +589,8 @@ on_request: true)
 
         next unless artifact.respond_to?(:post_uninstall_phase)
 
+        artifact = T.cast(artifact, Artifact::Uninstall)
+
         odebug "Post-uninstalling artifact of class #{artifact.class}"
         artifact.post_uninstall_phase(
           command:   @command,
@@ -575,7 +604,6 @@ on_request: true)
 
     def zap
       load_installed_caskfile!
-      ohai "Implied `brew uninstall --cask #{@cask}`"
       uninstall_artifacts
       if (zap_stanzas = @cask.artifacts.select { |a| a.is_a?(Artifact::Zap) }).empty?
         opoo "No zap stanza present for Cask '#{@cask}'"
@@ -764,10 +792,10 @@ on_request: true)
 
       if installed_caskfile&.exist?
         begin
-          @cask = CaskLoader.load(installed_caskfile)
+          @cask = CaskLoader.load_from_installed_caskfile(installed_caskfile)
           return
-        rescue CaskInvalidError
-          # could be caused by trying to load outdated caskfile
+        rescue CaskInvalidError, CaskUnavailableError
+          # could be caused by trying to load outdated or deleted caskfile
         end
       end
 

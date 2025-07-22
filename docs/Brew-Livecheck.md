@@ -438,6 +438,8 @@ livecheck do
 end
 ```
 
+Note that if a package uses this livecheck strategy it will be excluded from [autobumping](Autobump.md) as this strategy has negative impact on CI time.
+
 ### `throttle`
 
 For software with extremely frequent releases that don't all need to be published as formula/cask updates, livecheck can be set to reduce how many versions it surfaces by using `throttle`. In this example, only versions whose last component is divisible by 10 will be returned.

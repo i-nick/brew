@@ -500,7 +500,6 @@ RSpec.describe Tap do
       end
 
       it "includes the core tap with the api" do
-        ENV.delete("HOMEBREW_NO_INSTALL_FROM_API")
         expect(described_class.to_a).to include(CoreTap.instance)
       end
 
@@ -580,7 +579,7 @@ RSpec.describe Tap do
         let(:cask_tap) { CoreCaskTap.instance }
         let(:core_tap) { CoreTap.instance }
 
-        it "returns expected renames" do
+        it "returns expected renames", :no_api do
           [
             [cask_tap, "gimp", []],
             [core_tap, "schism-tracker", []],
@@ -744,11 +743,11 @@ RSpec.describe Tap do
       expect(core_tap).to be_a_core_tap
     end
 
-    specify "forbidden operations" do
+    specify "forbidden operations", :no_api do
       expect { core_tap.uninstall }.to raise_error(RuntimeError)
     end
 
-    specify "files" do
+    specify "files", :no_api do
       path = HOMEBREW_TAP_DIRECTORY/"homebrew/homebrew-core"
       formula_file = core_tap.formula_dir/"foo.rb"
       core_tap.formula_dir.mkpath

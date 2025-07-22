@@ -46,13 +46,13 @@ RSpec.describe Cask::Cask, :cask do
       expect(c.token).to eq("caffeine")
     end
 
-    it "returns an instance of the Cask from a URL", :needs_utils_curl, :no_api do
+    it "returns an instance of the Cask from a URL", :needs_utils_curl do
       c = Cask::CaskLoader.load("file://#{tap_path}/Casks/local-caffeine.rb")
       expect(c).to be_a(described_class)
       expect(c.token).to eq("local-caffeine")
     end
 
-    it "raises an error when failing to download a Cask from a URL", :needs_utils_curl, :no_api do
+    it "raises an error when failing to download a Cask from a URL", :needs_utils_curl do
       expect do
         Cask::CaskLoader.load("file://#{tap_path}/Casks/notacask.rb")
       end.to raise_error(Cask::CaskUnavailableError)
@@ -324,6 +324,9 @@ RSpec.describe Cask::Cask, :cask do
     let(:expected_versions_variations) do
       <<~JSON
         {
+          "tahoe": {
+            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/darwin/1.2.3/intel.zip"
+          },
           "sequoia": {
             "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/darwin/1.2.3/intel.zip"
           },
@@ -377,6 +380,10 @@ RSpec.describe Cask::Cask, :cask do
     let(:expected_sha256_variations) do
       <<~JSON
         {
+          "tahoe": {
+            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel.zip",
+            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
+          },
           "sequoia": {
             "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel.zip",
             "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
@@ -423,6 +430,10 @@ RSpec.describe Cask::Cask, :cask do
     let(:expected_sha256_variations_os) do
       <<~JSON
         {
+          "tahoe": {
+            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel-darwin.zip",
+            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
+          },
           "sequoia": {
             "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel-darwin.zip",
             "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"

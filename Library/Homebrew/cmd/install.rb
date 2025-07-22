@@ -33,8 +33,8 @@ module Homebrew
                description: "If brewing fails, open an interactive debugging session with access to IRB " \
                             "or a shell inside the temporary build directory."
         switch "--display-times",
-               env:         :display_install_times,
-               description: "Print install times for each package at the end of the run."
+               description: "Print install times for each package at the end of the run.",
+               env:         :display_install_times
         switch "-f", "--force",
                description: "Install formulae without checking for previously installed keg-only or " \
                             "non-migrated versions. When installing casks, overwrite existing files " \
@@ -44,9 +44,9 @@ module Homebrew
         switch "-n", "--dry-run",
                description: "Show what would be installed, but do not actually install anything."
         switch "--ask",
-               env:         :ask,
                description: "Ask for confirmation before downloading and installing formulae. " \
-                            "Print bottles and dependencies download size and install size."
+                            "Print download and install sizes of bottles and dependencies.",
+               env:         :ask
         [
           [:switch, "--formula", "--formulae", {
             description: "Treat all named arguments as formulae.",
@@ -259,7 +259,7 @@ module Homebrew
           if !Homebrew::EnvConfig.no_install_upgrade? && installed_casks.any?
             require "cask/upgrade"
 
-            Cask::Upgrade.upgrade_casks(
+            Cask::Upgrade.upgrade_casks!(
               *installed_casks,
               force:          args.force?,
               dry_run:        args.dry_run?,
@@ -310,9 +310,7 @@ module Homebrew
         Install.perform_preinstall_checks_once
         Install.check_cc_argv(args.cc)
 
-        Install.ask_formulae(installed_formulae, args: args) if args.ask?
-
-        Install.install_formulae(
+        formulae_installer = Install.formula_installers(
           installed_formulae,
           installed_on_request:       !args.as_dependency?,
           installed_as_dependency:    args.as_dependency?,
@@ -338,9 +336,10 @@ module Homebrew
           skip_link:                  args.skip_link?,
         )
 
-        Upgrade.check_installed_dependents(
+        dependants = Upgrade.dependants(
           installed_formulae,
           flags:                      args.flags_only,
+          ask:                        args.ask?,
           installed_on_request:       !args.as_dependency?,
           force_bottle:               args.force_bottle?,
           build_from_source_formulae: args.build_from_source_formulae,
@@ -352,6 +351,28 @@ module Homebrew
           quiet:                      args.quiet?,
           verbose:                    args.verbose?,
           dry_run:                    args.dry_run?,
+        )
+
+        # Main block: if asking the user is enabled, show dependency and size information.
+        Install.ask_formulae(formulae_installer, dependants, args: args) if args.ask?
+
+        Install.install_formulae(formulae_installer,
+                                 dry_run: args.dry_run?,
+                                 verbose: args.verbose?)
+
+        Upgrade.upgrade_dependents(
+          dependants, installed_formulae,
+          flags:                      args.flags_only,
+          dry_run:                    args.dry_run?,
+          force_bottle:               args.force_bottle?,
+          build_from_source_formulae: args.build_from_source_formulae,
+          interactive:                args.interactive?,
+          keep_tmp:                   args.keep_tmp?,
+          debug_symbols:              args.debug_symbols?,
+          force:                      args.force?,
+          debug:                      args.debug?,
+          quiet:                      args.quiet?,
+          verbose:                    args.verbose?
         )
 
         Cleanup.periodic_clean!(dry_run: args.dry_run?)

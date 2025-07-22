@@ -15,7 +15,7 @@ RSpec.describe Homebrew::Cmd::Desc do
       .and be_a_success
   end
 
-  it "errors when searching without --eval-all", :integration_test do
+  it "errors when searching without --eval-all", :integration_test, :no_api do
     setup_test_formula "testball"
 
     expect { brew "desc", "--search", "testball" }
@@ -23,7 +23,7 @@ RSpec.describe Homebrew::Cmd::Desc do
       .and be_a_failure
   end
 
-  it "successfully searches with --search --eval-all", :integration_test do
+  it "successfully searches with --search --eval-all", :integration_test, :no_api do
     setup_test_formula "testball"
 
     expect { brew "desc", "--search", "--eval-all", "ball" }
@@ -34,7 +34,6 @@ RSpec.describe Homebrew::Cmd::Desc do
   it "successfully searches without --eval-all, with API", :integration_test, :needs_network do
     setup_test_formula "testball"
 
-    expect { brew "desc", "--search", "testball", "HOMEBREW_NO_INSTALL_FROM_API" => nil }
-      .to be_a_success
+    expect { brew "desc", "--search", "testball" }.to be_a_success
   end
 end

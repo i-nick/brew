@@ -9,10 +9,9 @@ module Homebrew
     class Edit < AbstractCommand
       cmd_args do
         description <<~EOS
-          Open a <formula>, <cask> or <tap> in the editor set by `EDITOR` or `HOMEBREW_EDITOR`,
+          Open a <formula>, <cask> or <tap> in the editor set by `$EDITOR` or `$HOMEBREW_EDITOR`,
           or open the Homebrew repository for editing if no argument is provided.
         EOS
-
         switch "--formula", "--formulae",
                description: "Treat all named arguments as formulae."
         switch "--cask", "--casks",

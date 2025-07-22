@@ -1,4 +1,4 @@
-# typed: false # rubocop:todo Sorbet/TrueSigil
+# typed: true
 # frozen_string_literal: true
 
 require "English"
@@ -13,6 +13,16 @@ module Homebrew
       module Exec
         PATH_LIKE_ENV_REGEX = /.+#{File::PATH_SEPARATOR}/
 
+        sig {
+          params(
+            args:       String,
+            global:     T::Boolean,
+            file:       T.nilable(String),
+            subcommand: String,
+            services:   T::Boolean,
+            check:      T::Boolean,
+          ).void
+        }
         def self.run(*args, global: false, file: nil, subcommand: "", services: false, check: false)
           if check
             require "bundle/commands/check"
@@ -25,9 +35,9 @@ module Homebrew
 
           # Setup Homebrew's ENV extensions
           ENV.activate_extensions!
-          raise UsageError, "No command to execute was specified!" if args.blank?
 
           command = args.first
+          raise UsageError, "No command to execute was specified!" if command.blank?
 
           require "bundle/brewfile"
           @dsl = Brewfile.read(global:, file:)
@@ -64,14 +74,8 @@ module Homebrew
             ENV.prepend_path "PATH", Pathname.new(dep_root)/"shims"
           end
 
-          # Setup pkg-config, if present, to help locate packages
-          # Only need this on Linux as Homebrew provides a shim on macOS
-          # TODO: use extend/OS here
-          # rubocop:todo Homebrew/MoveToExtendOS
-          if OS.linux? && (pkgconf = Formulary.factory("pkgconf")) && pkgconf.any_version_installed?
-            ENV.prepend_path "PATH", pkgconf.opt_bin.to_s
-          end
-          # rubocop:enable Homebrew/MoveToExtendOS
+          # Setup pkgconf, if needed, to help locate packages
+          Bundle.prepend_pkgconf_path_if_needed!
 
           # For commands which aren't either absolute or relative
           # Add the command directory to PATH, since it may get blown away by superenv
@@ -170,12 +174,24 @@ module Homebrew
               end
             end
             return
+          elsif subcommand == "sh"
+            preferred_path = Utils::Shell.preferred_path(default: "/bin/bash")
+            notice = unless Homebrew::EnvConfig.no_env_hints?
+              <<~EOS
+                Your shell has been configured to use a build environment from your `Brewfile`.
+                This should help you build stuff.
+                Hide these hints with HOMEBREW_NO_ENV_HINTS (see `man brew`).
+                When done, type `exit`.
+              EOS
+            end
+            ENV["HOMEBREW_FORCE_API_AUTO_UPDATE"] = nil
+            args = [Utils::Shell.shell_with_prompt("brew bundle", preferred_path:, notice:)]
           end
 
           if services
             require "bundle/brew_services"
 
-            exit_code = 0
+            exit_code = T.let(0, Integer)
             run_services(@dsl.entries) do
               Kernel.system(*args)
               if (system_exit_code = $CHILD_STATUS&.exitstatus)
@@ -193,7 +209,7 @@ module Homebrew
             entries: T::Array[Homebrew::Bundle::Dsl::Entry],
             _block:  T.proc.params(
               entry:                Homebrew::Bundle::Dsl::Entry,
-              info:                 T::Hash[String, T.anything],
+              info:                 T::Hash[String, T.untyped],
               service_file:         Pathname,
               conflicting_services: T::Array[T::Hash[String, T.anything]],
             ).void,
@@ -273,7 +289,7 @@ module Homebrew
           map_service_info(entries) do |entry, info, service_file, conflicting_services|
             # Don't restart if already running this version
             loaded_file = Pathname.new(info["loaded_file"].to_s)
-            next if info["running"] && loaded_file&.file? && loaded_file&.realpath == service_file.realpath
+            next if info["running"] && loaded_file.file? && loaded_file.realpath == service_file.realpath
 
             if info["running"] && !Bundle::BrewServices.stop(info["name"], keep: true)
               opoo "Failed to stop #{info["name"]} service"

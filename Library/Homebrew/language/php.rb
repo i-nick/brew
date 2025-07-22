@@ -15,7 +15,7 @@ module Language
       module_function
 
       # A regex to match potential shebang permutations.
-      PHP_SHEBANG_REGEX = %r{^#! ?(?:/usr/bin/(?:env )?)?php( |$)}
+      PHP_SHEBANG_REGEX = %r{\A#! ?(?:/usr/bin/(?:env )?)?php( |$)}
 
       # The length of the longest shebang matching `SHEBANG_REGEX`.
       PHP_SHEBANG_MAX_LENGTH = T.let("#! /usr/bin/env php ".length, Integer)

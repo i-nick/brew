@@ -45,6 +45,9 @@ class Homebrew::Cmd::Bundle::Args < Homebrew::CLI::Args
   def formula?; end
 
   sig { returns(T::Boolean) }
+  def formulae?; end
+
+  sig { returns(T::Boolean) }
   def global?; end
 
   sig { returns(T::Boolean) }

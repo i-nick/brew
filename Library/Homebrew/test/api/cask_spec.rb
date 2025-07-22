@@ -54,6 +54,7 @@ RSpec.describe Homebrew::API::Cask do
     end
 
     before do
+      allow(Homebrew::API).to receive(:fetch_json_api_file).and_return([[], true])
       allow_any_instance_of(Homebrew::API::Download).to receive(:fetch)
       allow_any_instance_of(Homebrew::API::Download).to receive(:symlink_location).and_return(
         TEST_FIXTURE_DIR/"cask/Casks/everything.rb",

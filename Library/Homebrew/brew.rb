@@ -88,6 +88,24 @@ begin
     cmd_class = Homebrew::AbstractCommand.command(cmd)
     Homebrew.running_command = cmd
     if cmd_class
+      if !Homebrew::EnvConfig.no_install_from_api? && Homebrew::EnvConfig.download_concurrency > 1
+        require "download_queue"
+        require "api"
+        require "api/formula"
+        require "api/cask"
+        download_queue = Homebrew::DownloadQueue.new
+        stale_seconds = 86400 # 1 day
+        Homebrew::API::Formula.fetch_api!(download_queue:, stale_seconds:)
+        Homebrew::API::Formula.fetch_tap_migrations!(download_queue:, stale_seconds:)
+        Homebrew::API::Cask.fetch_api!(download_queue:, stale_seconds:)
+        Homebrew::API::Cask.fetch_tap_migrations!(download_queue:, stale_seconds:)
+        begin
+          download_queue.fetch
+        ensure
+          download_queue.shutdown
+        end
+      end
+
       command_instance = cmd_class.new
 
       require "utils/analytics"

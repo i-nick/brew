@@ -61,7 +61,14 @@ To install build tools, paste at a terminal prompt:
   sudo apt-get install build-essential procps curl file git
   ```
 
-- **Fedora, CentOS Stream, or RHEL**
+- **Fedora**
+
+  ```sh
+  sudo dnf group install development-tools
+  sudo dnf install procps-ng curl file
+  ```
+
+- **CentOS Stream or RHEL**
 
   ```sh
   sudo dnf group install 'Development Tools'

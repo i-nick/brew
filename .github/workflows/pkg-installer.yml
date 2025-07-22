@@ -43,7 +43,7 @@ jobs:
 
       - name: Set up Homebrew
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@main
         with:
           core: false
           cask: false
@@ -135,7 +135,7 @@ jobs:
           fi
 
       - name: Generate build provenance
-        uses: actions/attest-build-provenance@db473fddc028af60658334401dc6fa3ffd8669fd # v2.3.0
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
         with:
           subject-path: Homebrew-${{ steps.homebrew-version.outputs.version }}.pkg
 
@@ -233,7 +233,7 @@ jobs:
       - name: Upload installer to GitHub release
         if: github.event_name == 'release'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INSTALLER_PATH: ${{ needs.build.outputs.installer_path }}
         run: |
           VERSION="${INSTALLER_PATH#Homebrew-}"
@@ -251,7 +251,7 @@ jobs:
       issues: write
     steps:
       - name: Open, update, or close pkg installer issue
-        uses: Homebrew/actions/create-or-update-issue@master
+        uses: Homebrew/actions/create-or-update-issue@main
         with:
           title: Failed to publish pkg installer
           body: >
@@ -259,7 +259,7 @@ jobs:
             ${{ github.ref_name }}. No pkg installer was uploaded to the GitHub
             release.
           labels: bug,release blocker
-          update-existing: ${{ contains(needs.*.result, 'failure') }}
+          update-existing: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}
           close-existing: ${{ needs.upload.result == 'success' }}
           close-from-author: github-actions[bot]
           close-comment: >

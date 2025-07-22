@@ -1,4 +1,4 @@
-# typed: false # rubocop:todo Sorbet/TrueSigil
+# typed: true
 # frozen_string_literal: true
 
 module Homebrew
@@ -23,7 +23,7 @@ module Homebrew
           else
             "needs to be installed or updated."
           end
-          "#{self.class::PACKAGE_TYPE_NAME} #{name} #{reason}"
+          "#{self.class.const_get(:PACKAGE_TYPE_NAME)} #{name} #{reason}"
         end
 
         def full_check(packages, no_upgrade:)
@@ -33,7 +33,7 @@ module Homebrew
 
         def checkable_entries(all_entries)
           require "bundle/skipper"
-          all_entries.select { |e| e.type == self.class::PACKAGE_TYPE }
+          all_entries.select { |e| e.type == self.class.const_get(:PACKAGE_TYPE) }
                      .reject(&Bundle::Skipper.method(:skip?))
         end
 
@@ -139,14 +139,14 @@ module Homebrew
 
       def self.reset!
         require "bundle/cask_dumper"
-        require "bundle/brew_dumper"
+        require "bundle/formula_dumper"
         require "bundle/mac_app_store_dumper"
         require "bundle/tap_dumper"
         require "bundle/brew_services"
 
         @dsl = nil
         Homebrew::Bundle::CaskDumper.reset!
-        Homebrew::Bundle::BrewDumper.reset!
+        Homebrew::Bundle::FormulaDumper.reset!
         Homebrew::Bundle::MacAppStoreDumper.reset!
         Homebrew::Bundle::TapDumper.reset!
         Homebrew::Bundle::BrewServices.reset!

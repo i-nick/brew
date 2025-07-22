@@ -31,9 +31,6 @@ class Tap
   HOMEBREW_TAP_STYLE_EXCEPTIONS_DIR = "style_exceptions"
   private_constant :HOMEBREW_TAP_STYLE_EXCEPTIONS_DIR
 
-  TAP_MIGRATIONS_STALE_SECONDS = 86400 # 1 day
-  private_constant :TAP_MIGRATIONS_STALE_SECONDS
-
   HOMEBREW_TAP_JSON_FILES = %W[
     #{HOMEBREW_TAP_FORMULA_RENAMES_FILE}
     #{HOMEBREW_TAP_CASK_RENAMES_FILE}
@@ -988,19 +985,20 @@ class Tap
   # Array with autobump names
   sig { returns(T::Array[String]) }
   def autobump
-    # TODO: uncomment when official taps are prepared to use new autobump system
-    #
-    # autobump_packages = if core_cask_tap?
-    #   Homebrew::API::Cask.all_casks
-    # elsif core_tap?
-    #   Homebrew::API::Formula.all_formulae
-    # else
-    #   {}
-    # end
-    #
-    # @autobump ||= autobump_packages.select do |_, p|
-    #   p["autobump"] == true && !p["skip_livecheck"] && !(p["deprecated"] || p["disabled"])
-    # end.keys
+    autobump_packages = if core_cask_tap?
+      Homebrew::API::Cask.all_casks
+    elsif core_tap?
+      Homebrew::API::Formula.all_formulae
+    else
+      {}
+    end
+
+    @autobump ||= autobump_packages.select do |_, p|
+      next if p["deprecated"] || p["disabled"]
+      next if p["skip_livecheck"]
+
+      p["autobump"] == true
+    end.keys
 
     if @autobump.blank?
       @autobump = if (autobump_file = path/HOMEBREW_TAP_AUTOBUMP_FILE).file?
@@ -1079,15 +1077,12 @@ class Tap
   # All locally installed and core taps. Core taps might not be installed locally when using the API.
   sig { returns(T::Array[Tap]) }
   def self.all
-    cache[:all] ||= begin
-      core_taps = [
-        CoreTap.instance,
-        # The conditional is valid here because we only want the cask tap on macOS.
-        (CoreCaskTap.instance if OS.mac?), # rubocop:disable Homebrew/MoveToExtendOS
-      ].compact
+    cache[:all] ||= installed | core_taps
+  end
 
-      installed | core_taps
-    end
+  sig { returns(T::Array[Tap]) }
+  def self.core_taps
+    [CoreTap.instance].freeze
   end
 
   # Enumerate all available {Tap}s.
@@ -1314,9 +1309,7 @@ class CoreTap < AbstractCoreTap
       ensure_installed!
       super
     else
-      migrations, = Homebrew::API.fetch_json_api_file "formula_tap_migrations.jws.json",
-                                                      stale_seconds: TAP_MIGRATIONS_STALE_SECONDS
-      migrations
+      Homebrew::API::Formula.tap_migrations
     end
   end
 
@@ -1473,9 +1466,7 @@ class CoreCaskTap < AbstractCoreTap
     @tap_migrations ||= if Homebrew::EnvConfig.no_install_from_api?
       super
     else
-      migrations, = Homebrew::API.fetch_json_api_file "cask_tap_migrations.jws.json",
-                                                      stale_seconds: TAP_MIGRATIONS_STALE_SECONDS
-      migrations
+      Homebrew::API::Cask.tap_migrations
     end
   end
 end
@@ -1517,3 +1508,5 @@ class TapConfig
     Homebrew::Settings.delete key, repo: tap.path
   end
 end
+
+require "extend/os/tap"

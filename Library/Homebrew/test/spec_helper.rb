@@ -59,6 +59,7 @@ TEST_DIRECTORIES = [
   CoreTap.instance.path/"Formula",
   HOMEBREW_CACHE,
   HOMEBREW_CACHE_FORMULA,
+  HOMEBREW_CACHE/"api",
   HOMEBREW_CELLAR,
   HOMEBREW_LOCKS,
   HOMEBREW_LOGS,
@@ -248,6 +249,11 @@ RSpec.configure do |config|
     @__stdout = $stdout.clone
     @__stderr = $stderr.clone
     @__stdin = $stdin.clone
+
+    # Link original API cache files to test cache directory.
+    Pathname("#{ENV.fetch("HOMEBREW_CACHE")}/api").glob("*.json").each do |path|
+      FileUtils.ln_s path, HOMEBREW_CACHE/"api/#{path.basename}"
+    end
 
     begin
       if example.metadata.keys.exclude?(:focus) && !ENV.key?("HOMEBREW_VERBOSE_TESTS")

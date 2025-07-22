@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require "ipaddr"
-require "extend/on_system"
+require "on_system"
 require "utils/service"
 
 module Homebrew

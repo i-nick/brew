@@ -11,11 +11,11 @@ module GitHub
   # @param artifact_id [String] a value that uniquely identifies the downloaded artifact
   sig { params(url: String, artifact_id: String).void }
   def self.download_artifact(url, artifact_id)
-    raise API::MissingAuthenticationError if API.credentials == :none
+    token = API.credentials
+    raise API::MissingAuthenticationError if token.blank?
 
     # We use a download strategy here to leverage the Homebrew cache
     # to avoid repeated downloads of (possibly large) bottles.
-    token = API.credentials
     downloader = GitHubArtifactDownloadStrategy.new(url, artifact_id, token:)
     downloader.fetch
     downloader.stage

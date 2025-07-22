@@ -9,21 +9,8 @@ module Homebrew
       class << self
         sig { params(entry: Dsl::Entry, silent: T::Boolean).returns(T::Boolean) }
         def skip?(entry, silent: false)
-          require "bundle/brew_dumper"
+          require "bundle/formula_dumper"
 
-          # TODO: use extend/OS here
-          # rubocop:todo Homebrew/MoveToExtendOS
-          if (Hardware::CPU.arm? || OS.linux?) &&
-             Homebrew.default_prefix? &&
-             entry.type == :brew && entry.name.exclude?("/") &&
-             (formula = BrewDumper.formulae_by_full_name(entry.name)) &&
-             formula[:official_tap] &&
-             !formula[:bottled]
-            reason = Hardware::CPU.arm? ? "Apple Silicon" : "Linux"
-            puts Formatter.warning "Skipping #{entry.name} (no bottle for #{reason})" unless silent
-            return true
-          end
-          # rubocop:enable Homebrew/MoveToExtendOS
           return true if @failed_taps&.any? do |tap|
             prefix = "#{tap}/"
             entry.name.start_with?(prefix) || entry.options[:full_name]&.start_with?(prefix)

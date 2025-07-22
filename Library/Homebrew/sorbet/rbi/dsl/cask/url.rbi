@@ -32,7 +32,7 @@ class Cask::URL
   sig { returns(T.untyped) }
   def revision; end
 
-  sig { returns(T.nilable(T::Array[::String])) }
+  sig { returns(T.nilable(T::Hash[T.any(::String, ::Symbol), ::String])) }
   def revisions; end
 
   sig { returns(T.untyped) }

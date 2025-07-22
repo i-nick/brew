@@ -42,7 +42,7 @@ module Homebrew
       end
 
       # Check if formula has been found.
-      def self.check(targets)
+      def self.check!(targets)
         raise UsageError, "Formula(e) missing, please provide a formula name or use --all" if targets.empty?
 
         true

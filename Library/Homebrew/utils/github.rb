@@ -627,6 +627,12 @@ module GitHub
     pull_requests || []
   end
 
+  # Check for duplicate pull requests that modify the same file.
+  #
+  # Exits the process on duplicates if `strict` or both `version` and
+  # `official_tap`, otherwise warns.
+  #
+  # @api internal
   sig {
     params(
       name:            String,
@@ -636,10 +642,11 @@ module GitHub
       state:           T.nilable(String),
       version:         T.nilable(String),
       official_tap:    T::Boolean,
+      strict:          T::Boolean,
     ).void
   }
   def self.check_for_duplicate_pull_requests(name, tap_remote_repo, file:, quiet: false, state: nil,
-                                             version: nil, official_tap: true)
+                                             version: nil, official_tap: true, strict: false)
     pull_requests = fetch_pull_requests(name, tap_remote_repo, state:, version:)
 
     pull_requests.select! do |pr|
@@ -659,13 +666,13 @@ module GitHub
       Manually open these PRs if you are sure that they are not duplicates (and tell us that in the PR).
     EOS
 
-    if !official_tap
-      opoo duplicates_message
-    elsif version
+    if strict || (version && official_tap)
       odie <<~EOS
         #{duplicates_message.chomp}
         #{error_message}
       EOS
+    elsif !official_tap
+      opoo duplicates_message
     elsif quiet
       opoo error_message
     else
@@ -961,8 +968,12 @@ module GitHub
         pull_requests.fetch("pageInfo")
       end
     rescue => e
-      # Ignore SAML access errors (https://github.com/Homebrew/brew/issues/18610)
-      raise unless e.message.include?("Resource protected by organization SAML enforcement")
+      # Ignore SAML access errors (https://github.com/Homebrew/brew/issues/18610) and related
+      # IP allow list errors (https://github.com/orgs/Homebrew/discussions/6263)
+      return false if e.message.include?("Resource protected by organization SAML enforcement") ||
+                      e.message.include?("your IP address is not permitted to access this resource")
+
+      raise
     end
 
     false

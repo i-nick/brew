@@ -95,6 +95,27 @@ RSpec.describe Homebrew::Bundle::CaskDumper do
     end
   end
 
+  describe "#cask_oldnames" do
+    before do
+      described_class.reset!
+    end
+
+    it "returns an empty string when no casks are installed" do
+      expect(dumper.cask_oldnames).to eql({})
+    end
+
+    it "returns a hash with installed casks old names" do
+      foo = instance_double(Cask::Cask, to_s: "foo", old_tokens: ["oldfoo"], full_name: "qux/quuz/foo")
+      bar = instance_double(Cask::Cask, to_s: "bar", old_tokens: [], full_name: "bar")
+      allow(Cask::Caskroom).to receive(:casks).and_return([foo, bar])
+      allow(Homebrew::Bundle).to receive(:cask_installed?).and_return(true)
+      expect(dumper.cask_oldnames).to eql({
+        "qux/quuz/oldfoo" => "qux/quuz/foo",
+        "oldfoo"          => "qux/quuz/foo",
+      })
+    end
+  end
+
   describe "#formula_dependencies" do
     context "when the given casks don't have formula dependencies" do
       before do

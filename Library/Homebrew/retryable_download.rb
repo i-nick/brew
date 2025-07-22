@@ -5,10 +5,6 @@ module Homebrew
   class RetryableDownload
     include Downloadable
 
-    sig { returns(Downloadable) }
-    attr_reader :downloadable
-    private :downloadable
-
     sig { override.returns(T.any(NilClass, String, URL)) }
     def url = downloadable.url
 
@@ -19,7 +15,7 @@ module Homebrew
     def mirrors = downloadable.mirrors
 
     sig { params(downloadable: Downloadable, tries: Integer).void }
-    def initialize(downloadable, tries: 3)
+    def initialize(downloadable, tries:)
       super()
 
       @downloadable = downloadable
@@ -72,7 +68,7 @@ module Homebrew
       downloadable.verify_download_integrity(download) if verify_download_integrity
 
       download
-    rescue DownloadError, ChecksumMismatchError
+    rescue DownloadError, ChecksumMismatchError, Resource::BottleManifest::Error
       tries_remaining = @tries - @try
       raise if tries_remaining.zero?
 
@@ -92,5 +88,16 @@ module Homebrew
 
     sig { override.returns(String) }
     def download_name = downloadable.download_name
+
+    sig { returns(T::Boolean) }
+    def bottle? = downloadable.is_a?(Bottle)
+
+    sig { returns(T::Boolean) }
+    def api? = downloadable.is_a?(API::Download)
+
+    private
+
+    sig { returns(Downloadable) }
+    attr_reader :downloadable
   end
 end

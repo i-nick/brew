@@ -4,9 +4,11 @@ require "bundle"
 require "bundle/commands/list"
 
 RSpec.describe Homebrew::Bundle::Commands::List do
-  subject(:list) { described_class.run(global: false, file: nil, brews:, casks:, taps:, mas:, whalebrew:, vscode:) }
+  subject(:list) do
+    described_class.run(global: false, file: nil, formulae:, casks:, taps:, mas:, whalebrew:, vscode:)
+  end
 
-  let(:brews) { true }
+  let(:formulae) { true }
   let(:casks) { false }
   let(:taps) { false }
   let(:mas) { false }
@@ -38,7 +40,7 @@ RSpec.describe Homebrew::Bundle::Commands::List do
     describe "limiting when certain options are passed" do
       types_and_deps = {
         taps:      "phinze/cask",
-        brews:     "mysql",
+        formulae:  "mysql",
         casks:     "google-chrome",
         mas:       "1Password",
         whalebrew: "whalebrew/imagemagick",
@@ -56,7 +58,7 @@ RSpec.describe Homebrew::Bundle::Commands::List do
         verb = (options_list.length == 1 && "is") || "are"
 
         context "when #{opts} #{verb} passed" do
-          let(:brews) { args_hash[:brews] }
+          let(:formulae) { args_hash[:formulae] }
           let(:casks) { args_hash[:casks] }
           let(:taps) { args_hash[:taps] }
           let(:mas) { args_hash[:mas] }

@@ -1,79 +1,9 @@
 # typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
-module DiskUsageExtension
-  extend T::Helpers
-
-  requires_ancestor { Pathname }
-
-  sig { returns(Integer) }
-  def disk_usage
-    return @disk_usage if defined?(@disk_usage)
-
-    compute_disk_usage
-    @disk_usage
-  end
-
-  sig { returns(Integer) }
-  def file_count
-    return @file_count if defined?(@file_count)
-
-    compute_disk_usage
-    @file_count
-  end
-
-  sig { returns(String) }
-  def abv
-    out = +""
-    compute_disk_usage
-    out << "#{number_readable(@file_count)} files, " if @file_count > 1
-    out << disk_usage_readable(@disk_usage).to_s
-    out.freeze
-  end
-
-  private
-
-  sig { void }
-  def compute_disk_usage
-    if symlink? && !exist?
-      @file_count = 1
-      @disk_usage = 0
-      return
-    end
-
-    path = if symlink?
-      resolved_path
-    else
-      self
-    end
-
-    if path.directory?
-      scanned_files = Set.new
-      @file_count = 0
-      @disk_usage = 0
-      path.find do |f|
-        if f.directory?
-          @disk_usage += f.lstat.size
-        else
-          @file_count += 1 if f.basename.to_s != ".DS_Store"
-          # use Pathname#lstat instead of Pathname#stat to get info of symlink itself.
-          stat = f.lstat
-          file_id = [stat.dev, stat.ino]
-          # count hardlinks only once.
-          unless scanned_files.include?(file_id)
-            @disk_usage += stat.size
-            scanned_files.add(file_id)
-          end
-        end
-      end
-    else
-      @file_count = 1
-      @disk_usage = path.lstat.size
-    end
-  end
-end
-
 require "system_command"
+require "extend/pathname/disk_usage_extension"
+require "extend/pathname/observer_pathname_extension"
 
 # Homebrew extends Ruby's `Pathname` to make our code more readable.
 # @see https://ruby-doc.org/stdlib-2.6.3/libdoc/pathname/rdoc/Pathname.html Ruby's Pathname API
@@ -410,8 +340,10 @@ class Pathname
     Pathname.glob("#{self}/*") do |file|
       next if file.directory?
 
-      dst.install(file)
       new_file = dst.join(file.basename)
+      raise Errno::EEXIST, new_file if new_file.exist?
+
+      dst.install(file)
       file.write_env_script(new_file, env)
     end
   end
@@ -519,97 +451,8 @@ class Pathname
     # This is why monkeypatching is non-ideal (but right solution to get
     # Ruby 3.3 over the line).
     odisabled "rmtree", "FileUtils#rm_r"
-    FileUtils.rm_r(@path, noop:, verbose:, secure:)
+    FileUtils.rm_r(T.must(@path), noop:, verbose:, secure:)
     nil
   end
 end
 require "extend/os/pathname"
-
-require "context"
-
-module ObserverPathnameExtension
-  extend T::Helpers
-
-  requires_ancestor { Pathname }
-
-  class << self
-    include Context
-
-    sig { returns(Integer) }
-    attr_accessor :n, :d
-
-    sig { void }
-    def reset_counts!
-      @n = @d = 0
-      @put_verbose_trimmed_warning = false
-    end
-
-    sig { returns(Integer) }
-    def total
-      n + d
-    end
-
-    sig { returns([Integer, Integer]) }
-    def counts
-      [n, d]
-    end
-
-    MAXIMUM_VERBOSE_OUTPUT = 100
-    private_constant :MAXIMUM_VERBOSE_OUTPUT
-
-    sig { returns(T::Boolean) }
-    def verbose?
-      return super unless ENV["CI"]
-      return false unless super
-
-      if total < MAXIMUM_VERBOSE_OUTPUT
-        true
-      else
-        unless @put_verbose_trimmed_warning
-          puts "Only the first #{MAXIMUM_VERBOSE_OUTPUT} operations were output."
-          @put_verbose_trimmed_warning = true
-        end
-        false
-      end
-    end
-  end
-
-  sig { void }
-  def unlink
-    super
-    puts "rm #{self}" if ObserverPathnameExtension.verbose?
-    ObserverPathnameExtension.n += 1
-  end
-
-  sig { void }
-  def mkpath
-    super
-    puts "mkdir -p #{self}" if ObserverPathnameExtension.verbose?
-  end
-
-  sig { void }
-  def rmdir
-    super
-    puts "rmdir #{self}" if ObserverPathnameExtension.verbose?
-    ObserverPathnameExtension.d += 1
-  end
-
-  sig { params(src: Pathname).void }
-  def make_relative_symlink(src)
-    super
-    puts "ln -s #{src.relative_path_from(dirname)} #{basename}" if ObserverPathnameExtension.verbose?
-    ObserverPathnameExtension.n += 1
-  end
-
-  sig { void }
-  def install_info
-    super
-    puts "info #{self}" if ObserverPathnameExtension.verbose?
-  end
-
-  sig { void }
-  def uninstall_info
-    super
-    puts "uninfo #{self}" if ObserverPathnameExtension.verbose?
-  end
-end

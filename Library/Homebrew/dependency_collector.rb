@@ -5,7 +5,7 @@ require "dependency"
 require "dependencies"
 require "requirement"
 require "requirements"
-require "extend/cachable"
+require "cachable"
 
 # A dependency is a formula that another formula needs to install.
 # A requirement is something other than a formula that another formula

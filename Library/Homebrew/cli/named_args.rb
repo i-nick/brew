@@ -571,6 +571,7 @@ module Homebrew
         end
         return unless available
         return if Context.current.quiet?
+        return if cask&.old_tokens&.include?(ref)
 
         opoo package_conflicts_message(ref, loaded_type, cask)
       end
