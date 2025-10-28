@@ -50,9 +50,6 @@ module Homebrew::EnvConfig
     def brew_git_remote; end
 
     sig { returns(T.nilable(::String)) }
-    def brew_wrapper; end
-
-    sig { returns(T.nilable(::String)) }
     def browser; end
 
     sig { returns(T.nilable(::String)) }
@@ -109,6 +106,9 @@ module Homebrew::EnvConfig
     sig { returns(T.nilable(::String)) }
     def docker_registry_token; end
 
+    sig { returns(Integer) }
+    def download_concurrency; end
+
     sig { returns(T.nilable(::String)) }
     def editor; end
 
@@ -124,8 +124,8 @@ module Homebrew::EnvConfig
     sig { returns(T::Boolean) }
     def forbid_casks?; end
 
-    sig { returns(T::Boolean) }
-    def forbid_packages_from_paths?; end
+    sig { returns(T.nilable(::String)) }
+    def forbidden_cask_artifacts; end
 
     sig { returns(T.nilable(::String)) }
     def forbidden_casks; end
@@ -245,9 +245,6 @@ module Homebrew::EnvConfig
     def no_env_hints?; end
 
     sig { returns(T::Boolean) }
-    def no_force_brew_wrapper?; end
-
-    sig { returns(T::Boolean) }
     def no_github_api?; end
 
     sig { returns(T::Boolean) }
@@ -285,6 +282,9 @@ module Homebrew::EnvConfig
 
     sig { returns(T::Boolean) }
     def skip_or_later_bottles?; end
+
+    sig { returns(T::Boolean) }
+    def sorbet_recursive?; end
 
     sig { returns(T::Boolean) }
     def sorbet_runtime?; end

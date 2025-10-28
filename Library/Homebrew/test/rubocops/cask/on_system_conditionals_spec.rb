@@ -105,6 +105,16 @@ RSpec.describe RuboCop::Cop::Cask::OnSystemConditionals, :config do
       CASK
     end
 
+    it "reports an offense when `sha256` has identical values for different architectures" do
+      expect_offense <<~CASK
+        cask 'foo' do
+          sha256 arm:   "5f42cb017dd07270409eaee7c3b4a164ffa7c0f21d85c65840c4f81aab21d457",
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ sha256 values for different architectures should not be identical.
+                 intel: "5f42cb017dd07270409eaee7c3b4a164ffa7c0f21d85c65840c4f81aab21d457"
+        end
+      CASK
+    end
+
     it "accepts when there is only one `on_arch` block" do
       expect_no_offenses <<~CASK
         cask 'foo' do

@@ -25,9 +25,9 @@ The most common reasons for deprecation are when the upstream project is depreca
 Formulae should only be deprecated if at least one of the following are true:
 
 - the formula does not build on any supported OS versions
-- the formula has outstanding CVEs
-- the formula has [zero installs in the last 90 days](https://formulae.brew.sh/analytics/install/90d/)
+- the software installed by the formula has outstanding CVEs
 - the software installed by the formula has been discontinued or abandoned upstream
+- the formula has [zero installs in the last 90 days](https://formulae.brew.sh/analytics/install/90d/)
 
 Formulae with dependents should not be deprecated unless all dependents are also deprecated.
 
@@ -41,7 +41,7 @@ The `date` parameter should be set to the date that the deprecation period shoul
 
 The `because` parameter can be a preset reason (using a symbol) or a custom reason. See the [Deprecate and Disable Reasons](#deprecate-and-disable-reasons) section below for more details about the `because` parameter.
 
-An optional `replacement_formula` or `replacement_cask` parameter may also be specified to suggest a replacement formula or cask to the user. The value of the parameter is a string.
+An optional `replacement_formula` or `replacement_cask` parameter may also be specified to suggest a replacement formula or cask to the user. The value for the parameter is a string.
 
 ```ruby
 deprecate! date: "YYYY-MM-DD", because: :reason, replacement_formula: "foo"
@@ -74,7 +74,7 @@ The `date` parameter should be set to the date that the reason for disabling cam
 
 The `because` parameter can be a preset reason (using a symbol) or a custom reason. See the [Deprecate and Disable Reasons](#deprecate-and-disable-reasons) section below for more details about the `because` parameter.
 
-Similar to deprecated formulae, an optional `replacement_formula` or `replacement_cask` parameter may also be specified for disabled formulae to suggest a replacement formula or cask to the user. The value of the parameter is a string.
+Similar to deprecated formulae, an optional `replacement_formula` or `replacement_cask` parameter may also be specified for disabled formulae to suggest a replacement formula or cask to the user. The value for the parameter is a string.
 
 ```ruby
 disable! date: "YYYY-MM-DD", because: :reason, replacement_cask: "foo"
@@ -90,7 +90,7 @@ A formula should be removed if it does not meet our criteria for [acceptable for
 
 When a formula is deprecated or disabled, a reason explaining the action must be provided.
 
-There are two ways to indicate the reason. The preferred way is to use a pre-existing symbol to indicate the reason. The available symbols are listed below and can be found in the [`DeprecateDisable` module](https://rubydoc.brew.sh/DeprecateDisable.html):
+There are two ways to indicate the reason. The preferred way is to use a pre-existing symbol to indicate the reason. The available symbols are listed below and can be found in the [`DeprecateDisable` module](/rubydoc/DeprecateDisable.html.html):
 
 - `:does_not_build`: the formula cannot be built from source on any supported macOS version or Linux.
 - `:no_license`: we cannot identify a license for the formula

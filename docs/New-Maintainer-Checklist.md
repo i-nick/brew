@@ -66,7 +66,7 @@ Thanks for all your work so far!
 
 If they accept, follow a few steps to get them set up:
 
-- Invite them to the [**@Homebrew/maintainers** team](https://github.com/orgs/Homebrew/teams/maintainers) (or any relevant [subteams](https://github.com/orgs/Homebrew/teams/maintainers/teams)) to give them write access to relevant repositories (but don't make them owners). They will need to enable [GitHub's Two Factor Authentication](https://help.github.com/articles/about-two-factor-authentication/).
+- Invite them to the [**@Homebrew/maintainers** team](https://github.com/Homebrew/private/blob/main/user-management/.tfvars#L23) (or any relevant subteams) by making a pull request to linked file. This gives them write access to relevant repositories (but doesn't make them owners). They will need to enable [GitHub's Two Factor Authentication](https://help.github.com/articles/about-two-factor-authentication/).
 - Invite them as a full member to the [`machomebrew` private Slack](https://machomebrew.slack.com/admin/invites) (and ensure they've read the [communication guidelines](Maintainer-Guidelines.md#communication)) and ask them to use their real name there (rather than a pseudonym they may use on e.g. GitHub).
 - Ask them to disable SMS as a 2FA device or fallback on their GitHub account in favour of using one of the other authentication methods.
 - Ask them to (regularly) review remove any unneeded [GitHub personal access tokens](https://github.com/settings/tokens).
@@ -74,7 +74,7 @@ If they accept, follow a few steps to get them set up:
 
 If there are problems, ask them to step down as a maintainer.
 
-When they cease to be a maintainer for any reason, revoke their access to all of the above.
+When they cease to be a maintainer for any reason, revoke their access to all of the above, and don't forget to remove them from the [user-management tooling](https://github.com/Homebrew/private/blob/main/user-management/.tfvars#L23).
 
 In the interests of loosely verifying maintainer identity and building camaraderie, if you find yourself in the same town (e.g living, visiting or at a conference) as another Homebrew maintainer you should make the effort to meet up. If you do so, you can [expense your meal](https://docs.opencollective.com/help/expenses-and-getting-paid/submitting-expenses) (within [Homebrew's reimbursable expense policies](https://opencollective.com/homebrew/expenses)). This is a more relaxed version of similar policies used by other projects, e.g. the Debian system to meet in person to sign keys with legal ID verification.
 

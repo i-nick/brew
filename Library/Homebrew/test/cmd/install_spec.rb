@@ -5,6 +5,7 @@ require "cmd/shared_examples/args_parse"
 
 RSpec.describe Homebrew::Cmd::InstallCmd do
   include FileUtils
+
   it_behaves_like "parseable arguments"
 
   it "installs formulae", :integration_test do
@@ -94,5 +95,15 @@ RSpec.describe Homebrew::Cmd::InstallCmd do
     end.to output(/.*Formula\s*\(1\):\s*testball1.*/).to_stdout.and not_to_output.to_stderr
 
     expect(HOMEBREW_CELLAR/"testball1/0.1/bin/test").to be_a_file
+  end
+
+  it "refuses to install forbidden formulae", :integration_test do
+    setup_test_formula "testball1"
+
+    expect { brew "install", "testball1", { "HOMEBREW_FORBIDDEN_FORMULAE" => "testball1" } }
+      .to not_to_output(%r{#{HOMEBREW_CELLAR}/testball1/0\.1}o).to_stdout
+      .and output(/testball1 was forbidden/).to_stderr
+      .and be_a_failure
+    expect(HOMEBREW_CELLAR/"testball1").not_to exist
   end
 end

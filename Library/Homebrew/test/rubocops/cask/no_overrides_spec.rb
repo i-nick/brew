@@ -187,7 +187,7 @@ RSpec.describe RuboCop::Cop::Cask::NoOverrides, :config do
     CASK
   end
 
-  it "reports an offense when `on_*` blocks contain a `depends_on macos:` stanza" do
+  it "reports an offense when `on_*` blocks contain the samne `depends_on macos:` stanza" do
     expect_offense <<~CASK
       cask 'foo' do
         version '1.2.3'
@@ -208,6 +208,25 @@ RSpec.describe RuboCop::Cop::Cask::NoOverrides, :config do
           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Do not use a `depends_on macos:` stanza inside an `on_{system}` block. Add it once to specify the oldest macOS supported by any version in the cask.
         end
 
+        name 'Foo'
+      end
+    CASK
+  end
+
+  it "accepts when multiple `on_*` blocks contain different `depends_on macos:` stanzas" do
+    expect_no_offenses <<~CASK
+      cask "foo" do
+        version "1.2.3"
+
+        on_arm do
+          depends_on macos: ">= :monterey"
+        end
+        on_intel do
+          depends_on macos: ">= :ventura"
+        end
+
+        sha256 "aaa"
+        url "https://brew.sh/foo-mac.dmg"
         name 'Foo'
       end
     CASK

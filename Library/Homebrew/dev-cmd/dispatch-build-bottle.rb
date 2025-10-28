@@ -35,6 +35,7 @@ module Homebrew
                description: "Use Debian Wheezy container for building the bottle on Linux."
 
         conflicts "--linux", "--linux-self-hosted"
+
         named_args :formula, min: 1
       end
 

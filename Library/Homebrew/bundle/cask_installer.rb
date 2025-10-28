@@ -4,6 +4,8 @@
 module Homebrew
   module Bundle
     module CaskInstaller
+      extend ::Utils::Output::Mixin
+
       def self.reset!
         @installed_casks = nil
         @outdated_casks = nil
@@ -11,7 +13,7 @@ module Homebrew
 
       private_class_method def self.upgrading?(no_upgrade, name, options)
         return false if no_upgrade
-        return true if outdated_casks.include?(name)
+        return true if cask_upgradable?(name)
         return false unless options[:greedy]
 
         require "bundle/cask_dumper"
@@ -19,7 +21,7 @@ module Homebrew
       end
 
       def self.preinstall!(name, no_upgrade: false, verbose: false, **options)
-        if installed_casks.include?(name) && !upgrading?(no_upgrade, name, options)
+        if cask_installed?(name) && !upgrading?(no_upgrade, name, options)
           puts "Skipping install of #{name} cask. It is already installed." if verbose
           return false
         end
@@ -32,7 +34,7 @@ module Homebrew
 
         full_name = options.fetch(:full_name, name)
 
-        install_result = if installed_casks.include?(name) && upgrading?(no_upgrade, name, options)
+        install_result = if cask_installed?(name) && upgrading?(no_upgrade, name, options)
           status = "#{options[:greedy] ? "may not be" : "not"} up-to-date"
           puts "Upgrading #{name} cask. It is installed but #{status}." if verbose
           Bundle.brew("upgrade", "--cask", full_name, verbose:)
@@ -89,19 +91,23 @@ module Homebrew
 
       def self.cask_in_array?(cask, array)
         return true if array.include?(cask)
-        return true if array.include?(cask.split("/").last)
+
+        array.include?(cask.split("/").last)
+      end
+
+      def self.cask_installed?(cask)
+        return true if cask_in_array?(cask, installed_casks)
 
         require "bundle/cask_dumper"
         old_names = Homebrew::Bundle::CaskDumper.cask_oldnames
         old_name = old_names[cask]
         old_name ||= old_names[cask.split("/").last]
-        return true if old_name && array.include?(old_name)
+        return false unless old_name
+        return false unless cask_in_array?(old_name, installed_casks)
 
-        false
-      end
+        opoo "#{cask} was renamed to #{old_name}"
 
-      def self.cask_installed?(cask)
-        cask_in_array?(cask, installed_casks)
+        true
       end
 
       def self.cask_upgradable?(cask)

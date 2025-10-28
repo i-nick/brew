@@ -2,10 +2,13 @@
 # frozen_string_literal: true
 
 require "cask/audit"
+require "utils/output"
 
 module Cask
   # Helper class for auditing all available languages of a cask.
   class Auditor
+    include ::Utils::Output::Mixin
+
     # TODO: use argument forwarding (...) when Sorbet supports it in strict mode
     sig {
       params(

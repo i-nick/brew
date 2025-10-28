@@ -26,14 +26,4 @@ RSpec.describe Homebrew::Cmd::FetchCmd do
     expect(HOMEBREW_CACHE/"testball2--0.1.tbz").to be_a_symlink
     expect(HOMEBREW_CACHE/"testball2--0.1.tbz").to exist
   end
-
-  it "errors when concurrently downloading to the same destination", :integration_test do
-    # This test will fail if the fetch is not performed concurrently.
-    # N.B. this test relies on how we set up test formulae, see the `integration_test` shared context.
-    setup_test_formula "testball1"
-    setup_test_formula "testball3"
-
-    expect { brew "fetch", "testball1", "testball3", "HOMEBREW_DOWNLOAD_CONCURRENCY" => "2" }.to be_a_failure
-      .and output(/Error:.*process has already locked/).to_stderr
-  end
 end

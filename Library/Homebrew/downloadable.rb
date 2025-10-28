@@ -4,15 +4,17 @@
 require "url"
 require "checksum"
 require "download_strategy"
+require "utils/output"
 
 module Downloadable
   include Context
+  include Utils::Output::Mixin
   extend T::Helpers
 
   abstract!
   requires_ancestor { Kernel }
 
-  sig { overridable.returns(T.any(NilClass, String, URL)) }
+  sig { overridable.returns(T.nilable(T.any(String, URL))) }
   attr_reader :url
 
   sig { overridable.returns(T.nilable(Checksum)) }
@@ -32,7 +34,7 @@ module Downloadable
     @download_name = T.let(nil, T.nilable(String))
   end
 
-  sig { params(other: Object).void }
+  sig { overridable.params(other: Downloadable).void }
   def initialize_dup(other)
     super
     @checksum = @checksum.dup
@@ -48,14 +50,11 @@ module Downloadable
     super
   end
 
-  sig { abstract.returns(String) }
-  def name; end
-
   sig { returns(String) }
-  def download_type
-    class_name = T.let(self.class, T::Class[Downloadable]).name&.split("::")&.last
-    T.must(class_name).gsub(/([[:lower:]])([[:upper:]])/, '\1 \2').downcase
-  end
+  def download_queue_name = download_name
+
+  sig { abstract.returns(String) }
+  def download_queue_type; end
 
   sig(:final) { returns(T::Boolean) }
   def downloaded?
@@ -135,12 +134,32 @@ module Downloadable
     EOS
   end
 
+  sig { returns(Integer) }
+  def hash
+    [self.class, cached_download].hash
+  end
+
+  sig { params(other: Object).returns(T::Boolean) }
+  def eql?(other)
+    return false if self.class != other.class
+
+    other = T.cast(other, Downloadable)
+    cached_download == other.cached_download
+  end
+
+  sig { returns(String) }
+  def to_s
+    short_cached_download = cached_download.to_s
+                                           .delete_prefix("#{HOMEBREW_CACHE}/downloads/")
+    "#<#{self.class}: #{short_cached_download}>"
+  end
+
+  private
+
   sig { overridable.returns(String) }
   def download_name
     @download_name ||= File.basename(determine_url.to_s).freeze
   end
-
-  private
 
   sig { overridable.returns(T::Boolean) }
   def silence_checksum_missing_error?

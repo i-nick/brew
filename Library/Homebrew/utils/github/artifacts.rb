@@ -31,7 +31,7 @@ class GitHubArtifactDownloadStrategy < AbstractFileDownloadStrategy
     @token = T.let(token, String)
   end
 
-  sig { override.params(timeout: T.any(Float, Integer, NilClass)).void }
+  sig { override.params(timeout: T.nilable(T.any(Float, Integer))).void }
   def fetch(timeout: nil)
     ohai "Downloading #{url}"
     if cached_location.exist?

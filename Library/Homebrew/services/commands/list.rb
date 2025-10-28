@@ -3,11 +3,14 @@
 
 require "services/cli"
 require "services/formulae"
+require "utils/output"
 
 module Homebrew
   module Services
     module Commands
       module List
+        extend Utils::Output::Mixin
+
         TRIGGERS = [nil, "list", "ls"].freeze
 
         sig { params(json: T::Boolean).void }

@@ -97,11 +97,16 @@ module Homebrew
               current_version = if f.alias_changed? && !f.latest_formula.latest_version_installed?
                 latest = f.latest_formula
                 "#{latest.name} (#{latest.pkg_version})"
-              elsif f.head? && outdated_kegs.any? { |k| k.version.to_s == f.pkg_version.to_s }
-                # There is a newer HEAD but the version number has not changed.
-                "latest HEAD"
+              elsif f.head?
+                latest_head_version = f.latest_head_pkg_version(fetch_head: args.fetch_HEAD?)
+                if outdated_kegs.any? { |k| k.version.to_s == latest_head_version.to_s }
+                  # There is a newer HEAD but the version number has not changed.
+                  "latest HEAD"
+                else
+                  latest_head_version.to_s
+                end
               else
-                f.pkg_version.to_s
+                f.latest_formula.pkg_version.to_s
               end
 
               outdated_versions = outdated_kegs.group_by { |keg| Formulary.from_keg(keg).full_name }
@@ -127,9 +132,7 @@ module Homebrew
       sig {
         params(
           formulae_or_casks: T::Array[T.any(Formula, Cask::Cask)],
-        ).returns(
-          T::Array[T.any(T::Hash[String, T.untyped], T::Hash[String, T.untyped])],
-        )
+        ).returns(T::Array[T::Hash[Symbol, T.untyped]])
       }
       def json_info(formulae_or_casks)
         formulae_or_casks.map do |formula_or_cask|

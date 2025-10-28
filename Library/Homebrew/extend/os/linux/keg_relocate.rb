@@ -1,10 +1,11 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "compilers"
 
 class Keg
-  def relocate_dynamic_linkage(relocation)
+  sig { params(relocation: Relocation, skip_protodesc_cold: T::Boolean).void }
+  def relocate_dynamic_linkage(relocation, skip_protodesc_cold: false)
     # Patching the dynamic linker of glibc breaks it.
     return if name.match? Version.formula_optionally_versioned_regex(:glibc)
 
@@ -12,13 +13,22 @@ class Keg
 
     elf_files.each do |file|
       file.ensure_writable do
-        change_rpath!(file, old_prefix, new_prefix)
+        change_rpath!(file, old_prefix, new_prefix, skip_protodesc_cold:)
       end
     end
   end
 
-  def change_rpath!(file, old_prefix, new_prefix)
+  sig {
+    params(file: Pathname, old_prefix: T.any(String, Regexp), new_prefix: String,
+           skip_protodesc_cold: T::Boolean).returns(T::Boolean)
+  }
+  def change_rpath!(file, old_prefix, new_prefix, skip_protodesc_cold: false)
     return false if !file.elf? || !file.dynamic_elf?
+
+    # Skip relocation of files with `protodesc_cold` sections because patchelf.rb seems to break them,
+    # but only when bottling (as we don't want to break existing bottles that require relocation).
+    # https://github.com/Homebrew/homebrew-core/pull/232490#issuecomment-3161362452
+    return false if skip_protodesc_cold && file.section_names.include?("protodesc_cold")
 
     updated = {}
     old_rpath = file.rpath
@@ -54,6 +64,7 @@ class Keg
     true
   end
 
+  sig { params(options: T::Hash[Symbol, T::Boolean]).returns(T::Array[Symbol]) }
   def detect_cxx_stdlibs(options = {})
     skip_executables = options.fetch(:skip_executables, false)
     results = Set.new
@@ -68,6 +79,7 @@ class Keg
     results.to_a
   end
 
+  sig { returns(T::Array[Pathname]) }
   def elf_files
     hardlinks = Set.new
     elf_files = []

@@ -1,10 +1,13 @@
 # typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
+require "utils/output"
+
 module Cask
   # Helper module for reading and writing cask metadata.
   module Metadata
     extend T::Helpers
+    include ::Utils::Output::Mixin
 
     METADATA_SUBDIR = ".metadata"
     TIMESTAMP_FORMAT = "%Y%m%d%H%M%S.%L"

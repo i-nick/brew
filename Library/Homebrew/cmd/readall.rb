@@ -50,7 +50,7 @@ module Homebrew
 
           taps = if args.no_named?
             unless args.eval_all?
-              raise UsageError, "`brew readall` needs a tap or `--eval-all` passed or `$HOMEBREW_EVAL_ALL` set!"
+              raise UsageError, "`brew readall` needs a tap or `--eval-all` passed or `HOMEBREW_EVAL_ALL=1` set!"
             end
 
             Tap.installed

@@ -2,10 +2,13 @@
 # frozen_string_literal: true
 
 require "installed_dependents"
+require "utils/output"
 
 module Homebrew
   # Helper module for uninstalling kegs.
   module Uninstall
+    extend ::Utils::Output::Mixin
+
     def self.uninstall_kegs(kegs_by_rack, casks: [], force: false, ignore_dependencies: false, named_args: [])
       handle_unsatisfied_dependents(kegs_by_rack,
                                     casks:,
@@ -68,10 +71,10 @@ module Homebrew
 
               unversioned_name = f.name.gsub(/@.+$/, "")
               maybe_paths = Dir.glob("#{f.etc}/#{unversioned_name}*")
-              excluded_names = Homebrew::API::Formula.all_formulae.keys
+              excluded_names = Homebrew::API.formula_names
               maybe_paths = maybe_paths.reject do |path|
                 # Remove extension only if a file
-                # (f.e. directory with name "openssl@1.1" will be trimmed to "openssl@1")
+                # (e.g. directory with name "openssl@1.1" will be trimmed to "openssl@1")
                 basename = if File.directory?(path)
                   File.basename(path)
                 else
@@ -122,6 +125,8 @@ module Homebrew
     end
 
     class DependentsMessage
+      include ::Utils::Output::Mixin
+
       attr_reader :reqs, :deps, :named_args
 
       def initialize(requireds, dependents, named_args: [])

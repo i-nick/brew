@@ -17,7 +17,6 @@ module Homebrew
         description <<~EOS
           Generate the template files for a new tap.
         EOS
-
         switch "--no-git",
                description: "Don't initialize a Git repository for the tap."
         flag   "--pull-label=",
@@ -42,8 +41,8 @@ module Homebrew
 
         titleized_user = tap.user.dup
         titleized_repository = tap.repository.dup
-        titleized_user[0] = titleized_user[0].upcase
-        titleized_repository[0] = titleized_repository[0].upcase
+        titleized_user[0] = T.must(titleized_user[0]).upcase
+        titleized_repository[0] = T.must(titleized_repository[0]).upcase
         # Duplicate assignment to silence `assigned but unused variable` warning
         root_url = root_url = GitHubPackages.root_url(tap.user, "homebrew-#{tap.repository}") if args.github_packages?
 
@@ -84,7 +83,7 @@ module Homebrew
             test-bot:
               strategy:
                 matrix:
-                  os: [ ubuntu-22.04, macos-13, macos-15 ]
+                  os: [ ubuntu-22.04, macos-15-intel, macos-26 ]
               runs-on: ${{ matrix.os }}
               permissions:
                 actions: read

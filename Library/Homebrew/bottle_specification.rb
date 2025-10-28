@@ -4,18 +4,27 @@
 class BottleSpecification
   RELOCATABLE_CELLARS = [:any, :any_skip_relocation].freeze
 
+  sig { returns(T.nilable(Tap)) }
   attr_accessor :tap
-  attr_reader :collector, :root_url_specs, :repository
+
+  attr_reader :collector
+
+  sig { returns(T::Hash[Symbol, T.untyped]) }
+  attr_reader :root_url_specs
+
+  sig { returns(String) }
+  attr_reader :repository
 
   sig { void }
   def initialize
-    @rebuild = 0
-    @repository = Homebrew::DEFAULT_REPOSITORY
-    @collector = Utils::Bottles::Collector.new
-    @root_url_specs = {}
+    @rebuild = T.let(0, Integer)
+    @repository = T.let(Homebrew::DEFAULT_REPOSITORY, String)
+    @collector = T.let(Utils::Bottles::Collector.new, Utils::Bottles::Collector)
+    @root_url_specs = T.let({}, T::Hash[Symbol, T.untyped])
+    @root_url = T.let(nil, T.nilable(String))
   end
 
-  sig { params(val: Integer).returns(T.nilable(Integer)) }
+  sig { params(val: Integer).returns(Integer) }
   def rebuild(val = T.unsafe(nil))
     val.nil? ? @rebuild : @rebuild = val
   end

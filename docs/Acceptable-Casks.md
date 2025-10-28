@@ -61,9 +61,9 @@ Unfortunately, in the world of software there are bad actors that bundle malware
 
 But we’d still like for users to enjoy some kind of protection while minimising occurrences of legitimate developers being branded as malware carriers. To do so, we evaluate casks on a case-by-case basis and any user is free to bring a potential malware case to our attention. However, it is important to never forget the last line of defence is *always* the user.
 
-If an app that bundles malware was not signed with an Apple Developer ID and you purposefully disabled or bypassed Gatekeeper, no action will be taken on our part. When you disable security features, you do so at your own risk. If, however, an app that bundles malware is signed, Apple can revoke its permissions and it will no longer run on the computers of users that keep security features on—we all benefit, Homebrew Cask users or not. To report a signed app that bundles malware, use [Apple’s Feedback Assistant](https://feedbackassistant.apple.com).
+If an app that bundles malware was not signed with an Apple Developer ID and you purposefully disabled or bypassed Gatekeeper, no action will be taken on our part. When you disable security features, you do so at your own risk. If, however, an app that bundles malware is signed, Apple can revoke its permissions and it will no longer run on the computers of users that keep security features on—we all benefit, Homebrew Cask users or not. To report a signed app that bundles malware, use [Apple’s Feedback Assistant](https://feedbackassistant.apple.com/).
 
-We are also open to removing casks where we feel there is enough evidence that the app is malicious. To suggest a cask for removal, submit a pull request to delete it along with your reasoning. Typically, this will mean presenting a [VirusTotal](https://www.virustotal.com) scan of the app showing it is malicious, ideally with some other reporting indicating it’s not a false positive.
+We are also open to removing casks where we feel there is enough evidence that the app is malicious. To suggest a cask for removal, submit a pull request to delete it along with your reasoning. Typically, this will mean presenting a [VirusTotal](https://www.virustotal.com/) scan of the app showing it is malicious, ideally with some other reporting indicating it’s not a false positive.
 
 Likewise, software which provides both “clean” and malware-infested versions might be removed from the repository; even if we could have access to the *good* version—if its developers push for users to install the *bad* version. We do so because in these cases there’s a higher than normal risk that both versions are (or will soon become) compromised in some manner.
 
@@ -129,6 +129,19 @@ Common reasons to reject a cask entirely:
 Common reasons to reject a cask from the main `homebrew/cask` repository:
 
 * Cask was submitted to the wrong repository. When drafting a cask, consult [Finding a Home For Your Cask](#finding-a-home-for-your-cask) to see where it belongs.
+
+### Adult Content
+
+Homebrew is a tool where the vast majority of users are adults.
+We have users all over the world with different views on sex, violence, etc.
+As a result, we do not see it as our role to enforce any particular culture's views on adult content onto our users.
+That said, we want to ensure our maintainers don't have to interact with adult content unless they choose to.
+
+We will accept casks with adult content but require the `homepage` and root of the `url` domain to be "safe for work" e.g. not display any images of violence or adult content.
+It is acceptable for these pages to have textual descriptions of adult content.
+
+Homebrew reserves the right to add or remove casks based on how it affects the wider Homebrew ecosystem.
+For a hypothetical example, if a critical infrastructure host said we needed to remove the cask to maintain our infrastructure: we may begrudgingly remove it to maintain continuity for our users.
 
 ### No cask is guaranteed to be accepted
 

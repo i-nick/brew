@@ -51,6 +51,9 @@ class Homebrew::Cmd::Bundle::Args < Homebrew::CLI::Args
   def global?; end
 
   sig { returns(T::Boolean) }
+  def go?; end
+
+  sig { returns(T::Boolean) }
   def install?; end
 
   sig { returns(T::Boolean) }

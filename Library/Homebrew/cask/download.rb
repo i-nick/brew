@@ -24,11 +24,6 @@ module Cask
       @quarantine = quarantine
     end
 
-    sig { override.returns(String) }
-    def name
-      cask.token
-    end
-
     sig { override.returns(T.nilable(::URL)) }
     def url
       return if (cask_url = cask.url).nil?
@@ -72,7 +67,7 @@ module Cask
       downloaded_path
     end
 
-    sig { params(timeout: T.any(Float, Integer, NilClass)).returns([T.nilable(Time), Integer]) }
+    sig { params(timeout: T.nilable(T.any(Float, Integer))).returns([T.nilable(Time), Integer]) }
     def time_file_size(timeout: nil)
       raise ArgumentError, "not supported for this download strategy" unless downloader.is_a?(CurlDownloadStrategy)
 
@@ -95,14 +90,10 @@ module Cask
     end
 
     sig { override.returns(String) }
-    def download_name
-      cask.token
-    end
+    def download_queue_name = "#{cask.token} (#{version})"
 
     sig { override.returns(String) }
-    def download_type
-      "cask"
-    end
+    def download_queue_type = "Cask"
 
     private
 
@@ -144,6 +135,24 @@ module Cask
     sig { override.returns(Pathname) }
     def cache
       Cache.path
+    end
+
+    sig { override.returns(String) }
+    def download_name
+      url_basename = super
+      version = self.version
+      url = self.url
+      return url_basename if version.nil? || url.nil?
+
+      temp_downloader = download_strategy.new(url.to_s, url_basename, version, mirrors: [], cache:, **url.specs)
+      return url_basename unless temp_downloader.is_a?(AbstractFileDownloadStrategy)
+
+      potential_symlink_length = temp_downloader.symlink_location.basename.to_s.length
+      max_filesystem_symlink_length = 255
+
+      return url_basename if potential_symlink_length < max_filesystem_symlink_length
+
+      cask.full_token.gsub("/", "--")
     end
   end
 end

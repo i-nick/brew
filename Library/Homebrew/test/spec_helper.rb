@@ -76,6 +76,7 @@ RSpec.configure do |config|
 
   config.raise_errors_for_deprecations!
   config.warnings = true
+  config.raise_on_warning = true
   config.disable_monkey_patching!
 
   config.filter_run_when_matching :focus

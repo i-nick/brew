@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 module OS
@@ -21,6 +21,11 @@ module OS
         end
       end
 
+      sig { void }
+      def initialize
+        @formula = T.let(nil, T.nilable(Formula))
+      end
+
       sig {
         params(
           formula:         T.nilable(Formula),
@@ -40,6 +45,14 @@ module OS
         self["HOMEBREW_RPATH_PATHS"] = determine_rpath_paths(@formula)
         m4_path_deps = ["libtool", "bison"]
         self["M4"] = "#{HOMEBREW_PREFIX}/opt/m4/bin/m4" if deps.any? { m4_path_deps.include?(_1.name) }
+        if ::Hardware::CPU.arch == :arm64
+          # Build jemalloc-sys rust crate on ARM64/AArch64 with support for page sizes up to 64K.
+          self["JEMALLOC_SYS_WITH_LG_PAGE"] = "16"
+
+          # Workaround patchelf.rb bug causing segfaults and preventing bottling on ARM64/AArch64
+          # https://github.com/Homebrew/homebrew-core/issues/163826
+          self["CGO_ENABLED"] = "0"
+        end
 
         # Pointer authentication and BTI are hardening techniques most distros
         # use by default on their packages. arm64 Linux we're packaging
@@ -47,6 +60,7 @@ module OS
         append_to_cccfg "b" if ::Hardware::CPU.arch == :arm64 && ::DevelopmentTools.gcc_version("gcc") >= 9
       end
 
+      sig { returns(T::Array[Pathname]) }
       def homebrew_extra_paths
         paths = super
         paths += %w[binutils make].filter_map do |f|
@@ -58,6 +72,7 @@ module OS
         paths
       end
 
+      sig { returns(T::Array[Pathname]) }
       def homebrew_extra_isystem_paths
         paths = []
         # Add paths for GCC headers when building against versioned glibc because we have to use -nostdinc.
@@ -66,9 +81,10 @@ module OS
           gcc_include_fixed_dir = Utils.safe_popen_read(cc, "--print-file-name=include-fixed").chomp
           paths << gcc_include_dir << gcc_include_fixed_dir
         end
-        paths
+        paths.map { |p| Pathname(p) }
       end
 
+      sig { params(formula: T.nilable(Formula)).returns(PATH) }
       def determine_rpath_paths(formula)
         PATH.new(
           *formula&.lib,

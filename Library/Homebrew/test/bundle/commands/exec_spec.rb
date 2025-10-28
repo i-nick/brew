@@ -137,7 +137,7 @@ RSpec.describe Homebrew::Bundle::Commands::Exec do
           plist_name:               "homebrew.mxcl.nginx",
           service_name:             "nginx",
           versioned_formulae_names: [],
-          conflicts:                [instance_double(FormulaConflict, name: "httpd")],
+          conflicts:                [instance_double(Formula::FormulaConflict, name: "httpd")],
           keg_only?:                false,
         )
       end

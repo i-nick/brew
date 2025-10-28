@@ -1,11 +1,11 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 module OS
   module Mac
     # Helper module for querying Xcode information.
     module Xcode
-      DEFAULT_BUNDLE_PATH = Pathname("/Applications/Xcode.app").freeze
+      DEFAULT_BUNDLE_PATH = T.let(Pathname("/Applications/Xcode.app").freeze, Pathname)
       BUNDLE_ID = "com.apple.dt.Xcode"
       OLD_BUNDLE_ID = "com.apple.Xcode"
       APPLE_DEVELOPER_DOWNLOAD_URL = "https://developer.apple.com/download/all/"
@@ -17,6 +17,7 @@ module OS
       def self.latest_version(macos: MacOS.version)
         macos = macos.strip_patch
         case macos
+        when "26" then "26.0"
         when "15" then "16.4"
         when "14" then "16.2"
         when "13" then "15.2"
@@ -43,6 +44,7 @@ module OS
       def self.minimum_version
         macos = MacOS.version
         case macos
+        when "26" then "26.0"
         when "15" then "16.0"
         when "14" then "15.0"
         when "13" then "14.1"
@@ -98,7 +100,7 @@ module OS
       # directory or nil if Xcode.app is not installed.
       sig { returns(T.nilable(Pathname)) }
       def self.prefix
-        @prefix ||= begin
+        @prefix ||= T.let(begin
           dir = MacOS.active_developer_dir
 
           if dir.empty? || dir == CLT::PKG_PATH || !File.directory?(dir)
@@ -108,7 +110,7 @@ module OS
             # Use cleanpath to avoid pathological trailing slash
             Pathname.new(dir).cleanpath
           end
-        end
+        end, T.nilable(Pathname))
       end
 
       sig { returns(Pathname) }
@@ -134,7 +136,7 @@ module OS
 
       sig { returns(XcodeSDKLocator) }
       def self.sdk_locator
-        @sdk_locator ||= XcodeSDKLocator.new
+        @sdk_locator ||= T.let(XcodeSDKLocator.new, T.nilable(OS::Mac::XcodeSDKLocator))
       end
 
       sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(SDK)) }
@@ -183,7 +185,7 @@ module OS
         # may return a version string
         # that is guessed based on the compiler, so do not
         # use it in order to check if Xcode is installed.
-        if @version ||= detect_version
+        if @version ||= T.let(detect_version, T.nilable(String))
           ::Version.new @version
         else
           ::Version::NULL
@@ -293,7 +295,7 @@ module OS
 
       sig { returns(CLTSDKLocator) }
       def self.sdk_locator
-        @sdk_locator ||= CLTSDKLocator.new
+        @sdk_locator ||= T.let(CLTSDKLocator.new, T.nilable(OS::Mac::CLTSDKLocator))
       end
 
       sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(SDK)) }
@@ -327,6 +329,19 @@ module OS
         end
       end
 
+      sig { params(reason: String).returns(String) }
+      def self.reinstall_instructions(reason: "resolve your issues")
+        <<~EOS
+          If that doesn't #{reason}, run:
+            sudo rm -rf /Library/Developer/CommandLineTools
+            sudo xcode-select --install
+
+          Alternatively, manually download them from:
+            #{Formatter.url(MacOS::Xcode::APPLE_DEVELOPER_DOWNLOAD_URL)}.
+          You should download the Command Line Tools for Xcode #{MacOS::Xcode.latest_version}.
+        EOS
+      end
+
       sig { returns(String) }
       def self.update_instructions
         return installation_instructions if OS::Mac.version.prerelease?
@@ -342,13 +357,15 @@ module OS
         <<~EOS
           Update them from Software Update in #{software_update_location}.
 
-          If that doesn't show you any updates, run:
-            sudo rm -rf /Library/Developer/CommandLineTools
-            sudo xcode-select --install
+          #{reinstall_instructions(reason: "show you any updates")}
+        EOS
+      end
 
-          Alternatively, manually download them from:
-            #{Formatter.url(MacOS::Xcode::APPLE_DEVELOPER_DOWNLOAD_URL)}.
-          You should download the Command Line Tools for Xcode #{MacOS::Xcode.latest_version}.
+      sig { returns(String) }
+      def self.installation_then_reinstall_instructions
+        <<~EOS
+          #{installation_instructions}
+          #{reinstall_instructions}
         EOS
       end
 
@@ -357,7 +374,7 @@ module OS
       sig { returns(String) }
       def self.latest_clang_version
         case MacOS.version
-        when "26" then "1700.3.9.908"
+        when "26" then "1700.3.19.1"
         when "15" then "1700.0.13.5"
         when "14" then "1600.0.26.6"
         when "13" then "1500.1.0.2.5"
@@ -429,7 +446,7 @@ module OS
       # @api internal
       sig { returns(::Version) }
       def self.version
-        if @version ||= detect_version
+        if @version ||= T.let(detect_version, T.nilable(String))
           ::Version.new @version
         else
           ::Version::NULL

@@ -20,13 +20,6 @@ class GitRepository
     pathname.join(".git").exist?
   end
 
-  sig { returns(T::Boolean) }
-  def git_repo?
-    # delete this whole function when removing odisabled
-    odisabled "GitRepository#git_repo?", "GitRepository#git_repository?"
-    git_repository?
-  end
-
   # Gets the URL of the Git origin remote.
   sig { returns(T.nilable(String)) }
   def origin_url
@@ -34,7 +27,7 @@ class GitRepository
   end
 
   # Sets the URL of the Git origin remote.
-  sig { params(origin: String).returns(T.nilable(T::Boolean)) }
+  sig { params(origin: String).void }
   def origin_url=(origin)
     return if !git_repository? || !Utils::Git.available?
 

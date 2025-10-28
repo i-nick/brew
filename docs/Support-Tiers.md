@@ -87,6 +87,8 @@ Tier 3 configurations include:
 - installing deprecated or disabled formulae
 - devices using OpenCore Legacy Patcher with an Intel CPU older than Westmere
 
+We build a Portable Ruby for some Tier 3 supported configurations.
+
 ## Unsupported
 
 An unsupported configuration is one in which:
@@ -97,7 +99,7 @@ An unsupported configuration is one in which:
 Unsupported configurations include:
 
 - FreeBSD
-- macOS 10.6
+- Mac OS X 10.6
 - Beowulf clusters
 - Nokia 3210s
 - CPUs built inside of Minecraft
@@ -110,3 +112,23 @@ All packages installed from third-party taps outside of the Homebrew GitHub orga
 We may assist the maintainers/contributors/developers of such packages to fix bugs with the Homebrew formula/cask/tap system, but we are not responsible for resolving issues when using that software.
 
 Bugs that only manifest when using third-party formulae/casks may be closed.
+
+## Future macOS Support
+
+Apple has announced that macOS Tahoe 26 will be the last version of macOS that runs on Intel x86_64.
+As a result, Homebrew will also drop macOS Intel x86_64 support in a future release.
+
+Here's the timescale for planned future Tier support:
+
+- Today (September 2025):
+  - Tier 1: macOS Tahoe 26, Sequoia 15, Sonoma 14 on Apple Silicon and Intel x86_64
+  - Tier 3: macOS Catalina 10.15 - Ventura 13
+  - Unsupported: macOS Mojave 10.14 and earlier
+- September (or later) 2026:
+  - Tier 1: macOS 27, Tahoe 26, Sequoia 15 on Apple Silicon
+  - Tier 3: macOS Big Sur 11 - Sonoma 14 on Apple Silicon, macOS Big Sur 11 - Tahoe 26 on Intel x86_64
+  - Unsupported: macOS Catalina 10.15 and earlier
+- September (or later) 2027:
+  - Tier 1: macOS 28, macOS 27, macOS Tahoe 26 on Apple Silicon
+  - Tier 3: macOS Monterey 12 - Sequoia 15 on Apple Silicon
+  - Unsupported: macOS Big Sur 11 and earlier on Apple Silicon, macOS on Intel x86_64

@@ -10,7 +10,7 @@ class MacOSRequirement < Requirement
   attr_reader :comparator, :version
 
   # TODO: when Yosemite is removed here, keep these around as empty arrays so we
-  # can keep the deprecation/disabling code the same.
+  #       can keep the deprecation/disabling code the same.
   DISABLED_MACOS_VERSIONS = [
     :yosemite,
   ].freeze

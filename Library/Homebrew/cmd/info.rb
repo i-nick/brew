@@ -16,6 +16,12 @@ require "api"
 module Homebrew
   module Cmd
     class Info < AbstractCommand
+      class NameSize < T::Struct
+        const :name, String
+        const :size, Integer
+      end
+      private_constant :NameSize
+
       VALID_DAYS = %w[30 90 365].freeze
       VALID_FORMULA_CATEGORIES = %w[install install-on-request build-error].freeze
       VALID_CATEGORIES = T.let((VALID_FORMULA_CATEGORIES + %w[cask-install os-version]).freeze, T::Array[String])
@@ -67,9 +73,10 @@ module Homebrew
                description: "Treat all named arguments as formulae."
         switch "--cask", "--casks",
                description: "Treat all named arguments as casks."
+        switch "--sizes",
+               description: "Show the size of installed formulae and casks."
 
         conflicts "--installed", "--eval-all"
-        conflicts "--installed", "--all"
         conflicts "--formula", "--cask"
         conflicts "--fetch-manifest", "--cask"
         conflicts "--fetch-manifest", "--json"
@@ -79,7 +86,15 @@ module Homebrew
 
       sig { override.void }
       def run
-        if args.analytics?
+        if args.sizes?
+          if args.no_named?
+            print_sizes
+          else
+            formulae, casks = args.named.to_formulae_to_casks
+            formulae = T.cast(formulae, T::Array[Formula])
+            print_sizes(formulae:, casks:)
+          end
+        elsif args.analytics?
           if args.days.present? && VALID_DAYS.exclude?(args.days)
             raise UsageError, "`--days` must be one of #{VALID_DAYS.join(", ")}."
           end
@@ -143,9 +158,9 @@ module Homebrew
 
           case obj
           when Formula
-            Utils::Analytics.formula_output(obj, args:)
+            Utils::Analytics.formula_output(obj, args:) if obj.core_formula?
           when Cask::Cask
-            Utils::Analytics.cask_output(obj, args:)
+            Utils::Analytics.cask_output(obj, args:) if obj.tap.core_cask_tap?
           when FormulaOrCaskUnavailableError
             Utils::Analytics.output(filter: obj.name, args:)
           else
@@ -360,7 +375,11 @@ module Homebrew
         end
 
         caveats = Caveats.new(formula)
-        ohai "Caveats", caveats.to_s unless caveats.empty?
+        if (caveats_string = caveats.to_s.presence)
+          ohai "Caveats", caveats_string
+        end
+
+        return unless formula.core_formula?
 
         Utils::Analytics.formula_output(formula, args:)
       end
@@ -398,6 +417,64 @@ module Homebrew
         require "cask/info"
 
         Cask::Info.info(cask, args:)
+      end
+
+      sig { params(title: String, items: T::Array[NameSize]).void }
+      def print_sizes_table(title, items)
+        return if items.blank?
+
+        ohai title
+
+        total_size = items.sum(&:size)
+        total_size_str = disk_usage_readable(total_size)
+
+        name_width = (items.map { |item| item.name.length } + [5]).max
+        size_width = (items.map { |item| disk_usage_readable(item.size).length } + [total_size_str.length]).max
+
+        items.each do |item|
+          puts format("%-#{name_width}s %#{size_width}s", item.name,
+                      disk_usage_readable(item.size))
+        end
+
+        puts format("%-#{name_width}s %#{size_width}s", "Total", total_size_str)
+      end
+
+      sig { params(formulae: T::Array[Formula], casks: T::Array[Cask::Cask]).void }
+      def print_sizes(formulae: [], casks: [])
+        if formulae.blank? &&
+           (args.formulae? || (!args.casks? && args.no_named?))
+          formulae = Formula.installed
+        end
+
+        if casks.blank? &&
+           (args.casks? || (!args.formulae? && args.no_named?))
+          casks = Cask::Caskroom.casks
+        end
+
+        unless args.casks?
+          formula_sizes = formulae.map do |formula|
+            kegs = formula.installed_kegs
+            size = kegs.sum(&:disk_usage)
+            NameSize.new(name: formula.full_name, size:)
+          end
+          formula_sizes.sort_by! { |f| -f.size }
+          print_sizes_table("Formulae sizes:", formula_sizes)
+        end
+
+        return if casks.blank? || args.formulae?
+
+        cask_sizes = casks.filter_map do |cask|
+          installed_version = cask.installed_version
+          next unless installed_version.present?
+
+          versioned_staged_path = cask.caskroom_path.join(installed_version)
+          next unless versioned_staged_path.exist?
+
+          size = versioned_staged_path.children.sum(&:disk_usage)
+          NameSize.new(name: cask.full_name, size:)
+        end
+        cask_sizes.sort_by! { |c| -c.size }
+        print_sizes_table("Casks sizes:", cask_sizes)
       end
     end
   end

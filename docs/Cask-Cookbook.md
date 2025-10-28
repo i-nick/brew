@@ -1,5 +1,5 @@
 ---
-last_review_date: 2025-05-18
+last_review_date: "2025-05-18"
 ---
 
 # Cask Cookbook
@@ -66,6 +66,8 @@ Having a common order for stanzas makes casks easier to update and parse. Below 
     depends_on
     container
 
+    rename
+
     suite
     app
     pkg
@@ -82,7 +84,6 @@ Having a common order for stanzas makes casks easier to update and parse. Below 
     internet_plugin
     keyboard_layout
     prefpane
-    qlplugin
     mdimporter
     screen_saver
     service
@@ -118,7 +119,7 @@ Each of the following stanzas is required for every cask.
 | ---------------------------------- | :---------------------------: | ----- |
 | [`version`](#stanza-version)       | no                            | Application version, or the special value `:latest`. |
 | [`sha256`](#stanza-sha256)         | no                            | SHA-256 checksum of the file downloaded from `url` as calculated by the command `shasum -a 256 <file>`, or the special value `:no_check`. |
-| [`url`](#stanza-url)               | no                            | URL to the `.dmg`/`.zip`/`.tgz`/`.tbz2` file that contains the application. A [comment](#when-url-and-homepage-domains-differ-add-verified) should be added if the domains in the `url` and `homepage` stanzas differ. |
+| [`url`](#stanza-url)               | no                            | URL to the `.dmg`/`.zip`/`.tgz` file (or other common archive formats) that contains the application. A [comment](#when-url-and-homepage-domains-differ-add-verified) should be added if the domains in the `url` and `homepage` stanzas differ. |
 | [`name`](#stanza-name)             | yes                           | String providing the full and proper name defined by the vendor. |
 | [`desc`](#stanza-desc)             | no                            | One-line description of the cask. Shown when running `brew info`. |
 | `homepage`                         | no                            | Application homepage; used for the `brew home` command. |
@@ -128,7 +129,7 @@ Each of the following stanzas is required for every cask.
 
 ### At least one artifact stanza is also required
 
-Each cask must declare one or more [artifacts](https://rubydoc.brew.sh/Cask/Artifact) (i.e. something to install).
+Each cask must declare one or more [artifacts](/rubydoc/Cask/Artifact.html) (i.e. something to install).
 
 | name                             | multiple occurrences allowed? | value |
 | -------------------------------- | :---------------------------: | ----- |
@@ -148,7 +149,6 @@ Each cask must declare one or more [artifacts](https://rubydoc.brew.sh/Cask/Arti
 | `internet_plugin`                | yes                           | Relative path to an Internet Plugin that should be moved into the `~/Library/Internet Plug-Ins` folder on installation. |
 | `keyboard_layout`                | yes                           | Relative path to a Keyboard Layout that should be moved into the `/Library/Keyboard Layouts` folder on installation. |
 | `prefpane`                       | yes                           | Relative path to a Preference Pane that should be moved into the `~/Library/PreferencePanes` folder on installation. |
-| `qlplugin`                       | yes                           | Relative path to a Quick Look Plugin that should be moved into the `~/Library/QuickLook` folder on installation. |
 | `mdimporter`                     | yes                           | Relative path to a Spotlight Metadata Importer that should be moved into the `~/Library/Spotlight` folder on installation. |
 | `screen_saver`                   | yes                           | Relative path to a Screen Saver that should be moved into the `~/Library/Screen Savers` folder on installation. |
 | `service`                        | yes                           | Relative path to a Service that should be moved into the `~/Library/Services` folder on installation. |
@@ -176,6 +176,7 @@ Each cask must declare one or more [artifacts](https://rubydoc.brew.sh/Cask/Arti
 | `container type:`                          | no                            | Symbol to override container-type autodetect. May be one of: `:air`, `:bz2`, `:cab`, `:dmg`, `:generic_unar`, `:gzip`, `:otf`, `:pkg`, `:rar`, `:seven_zip`, `:sit`, `:tar`, `:ttf`, `:xar`, `:zip`, `:naked`. (Example: [parse.rb](https://github.com/Homebrew/homebrew-cask/blob/aa461148bbb5119af26b82cccf5003e2b4e50d95/Casks/p/parse.rb#L10)) |
 | `auto_updates`                             | no                            | `true`. Asserts that the cask artifacts auto-update. Use if `Check for Updates…` or similar is present in an app menu, but not if it only opens a webpage and does not do the download and installation for you. |
 | [`no_autobump!`](#stanza-no_autobump)      | no                            | Allowed symbol or a string. Excludes cask from autobumping if set. |
+| [`rename`](#stanza-rename)      | yes                            | A pair of strings. |
 
 ## Stanza descriptions
 
@@ -211,7 +212,7 @@ artifact "sapmachine-jdk-#{version}.jdk", target: "/Library/Java/JavaVirtualMach
 
 #### *target* works on most artifact types
 
-The `target:` key works similarly for most cask artifacts, such as `app`, `binary`, `bash_completion`, `fish_completion`, `zsh_completion`, `colorpicker`, `dictionary`, `font`, `input_method`, `internet_plugin`, `keyboard_layout`, `prefpane`, `qlplugin`, `mdimporter`, `screen_saver`, `service`, `suite`, `audio_unit_plugin`, `vst_plugin`, `vst3_plugin`, and `artifact`.
+The `target:` key works similarly for most cask artifacts, such as `app`, `binary`, `bash_completion`, `fish_completion`, `zsh_completion`, `colorpicker`, `dictionary`, `font`, `input_method`, `internet_plugin`, `keyboard_layout`, `prefpane`, `mdimporter`, `screen_saver`, `service`, `suite`, `audio_unit_plugin`, `vst_plugin`, `vst3_plugin`, and `artifact`.
 
 #### *target* should only be used in select cases
 
@@ -252,6 +253,18 @@ binary "#{appdir}/Atom.app/Contents/Resources/app/atom.sh", target: "atom"
 
 Behaviour and usage of `target:` is [the same as with `app`](#renaming-the-target). However, for `binary` the select cases don’t apply as rigidly. It’s fine to take extra liberties with `target:` to be consistent with other command-line tools, like [changing case](https://github.com/Homebrew/homebrew-cask/blob/aa461148bbb5119af26b82cccf5003e2b4e50d95/Casks/g/godot.rb#L19), [removing an extension](https://github.com/Homebrew/homebrew-cask/blob/aa461148bbb5119af26b82cccf5003e2b4e50d95/Casks/f/filebot.rb#L19), or [cleaning up the name](https://github.com/Homebrew/homebrew-cask/blob/aa461148bbb5119af26b82cccf5003e2b4e50d95/Casks/f/fig.rb#L21).
 
+### Stanza: `rename`
+
+The `rename` stanza provides a convenience method to rename files to provide more practical access to them.
+This stanza should be used sparingly, and is reserved for scenarios where a the path of a file/directory is impossible to pre-determine.
+
+The example below can be used when the `pkg` path has a value such as timestamp that can't be detected without extracting the archive it is distributed within.
+
+```ruby
+# Upstream provides a `pkg` - "foobar-<timestamp>.pkg"
+rename "foobar-*.pkg", "foobar.pkg"
+```
+
 ### Stanza: `caveats`
 
 Sometimes there are particularities with the installation of a piece of software that cannot or should not be handled programmatically by Homebrew Cask. In those instances, `caveats` is the way to inform the user. Information in `caveats` is displayed when a cask is invoked with either `install` or `info`.
@@ -278,7 +291,7 @@ caveats "Using #{token} may be hazardous to your health."
 
 #### `caveats` as a block
 
-When `caveats` is a Ruby block, evaluation is deferred until install time. Within a block you may refer to the `@cask` instance variable, and invoke [any method available on `@cask`](https://rubydoc.brew.sh/Cask/Cask).
+When `caveats` is a Ruby block, evaluation is deferred until install time. Within a block you may refer to the `@cask` instance variable, and invoke [any method available on `@cask`](/rubydoc/Cask/Cask.html).
 
 #### `caveats` mini-DSL
 
@@ -322,18 +335,6 @@ Example: [macFUSE](https://github.com/Homebrew/homebrew-cask/blob/aa461148bbb511
 conflicts_with cask: "macfuse-dev"
 ```
 
-#### `conflicts_with` *formula*
-
-**Note:** `conflicts_with formula:` is a stub and is not yet functional.
-
-The value should be another formula name.
-
-Example: [MacVim](https://github.com/Homebrew/homebrew-cask/blob/aa461148bbb5119af26b82cccf5003e2b4e50d95/Casks/m/macvim.rb#L16), which conflicts with the `macvim` formula.
-
-```ruby
-conflicts_with formula: "macvim"
-```
-
 ### Stanza: `depends_on`
 
 `depends_on` is used to declare dependencies and requirements for a cask. `depends_on` is not consulted until `install` is attempted.
@@ -370,7 +371,7 @@ depends_on formula: "unar"
 
 ##### Requiring an exact macOS release
 
-The value for `depends_on macos:` may be a symbol or an array of symbols, listing the exact compatible macOS releases. The values for supported macOS releases can be found in the [`MacOSVersion` class](https://rubydoc.brew.sh/MacOSVersion) documentation.
+The value for `depends_on macos:` may be a symbol or an array of symbols, listing the exact compatible macOS releases. The values for supported macOS releases can be found in the [`MacOSVersion` class](/rubydoc/MacOSVersion.html) documentation.
 
 Only major releases are covered (10.x numbers containing a single dot or whole numbers since macOS 11). The symbol form is used for readability. The following are all valid ways to enumerate the exact macOS release requirements for a cask:
 
@@ -448,7 +449,7 @@ The `because:` parameter can also accept a symbol that corresponds to a preset r
 deprecate! date: "YYYY-MM-DD", because: :discontinued
 ```
 
-A complete list of allowable symbols can be found in the [`DeprecateDisable` module](https://rubydoc.brew.sh/DeprecateDisable) documentation.
+A complete list of allowable symbols can be found in the [`DeprecateDisable` module](/rubydoc/DeprecateDisable.html) documentation.
 
 #### `replacement_formula:` / `replacement_cask:` parameter
 
@@ -526,7 +527,7 @@ The stanzas `preflight`, `postflight`, `uninstall_preflight`, and `uninstall_pos
 
 #### Evaluation of blocks is always deferred
 
-The Ruby blocks defined by these stanzas are not evaluated until install time or uninstall time. Within a block you may refer to the `@cask` instance variable, and invoke [any method available on `@cask`](https://rubydoc.brew.sh/Cask/Cask).
+The Ruby blocks defined by these stanzas are not evaluated until install time or uninstall time. Within a block you may refer to the `@cask` instance variable, and invoke [any method available on `@cask`](/rubydoc/Cask/Cask.html).
 
 #### `*flight` mini-DSL
 
@@ -646,21 +647,19 @@ Refer to the [`brew livecheck`](Brew-Livecheck.md) documentation for how to writ
 
 ### Stanza: `no_autobump!`
 
-The `no_autobump!` stanza excludes the cask for autobump list. That means the future updates will be handled by Homebrew contributors rather than by an automated process.
+The `no_autobump!` stanza excludes a cask from the autobump list. This means all updates are to be handled manually by submitting pull requests to the `Homebrew/homebrew-cask` repository.
 
-To use this stanza, a reason must be provided. The preferred way is to use one of the available symbols. These symbols can be found in the [`NO_AUTOBUMP_REASONS_LIST`](https://rubydoc.brew.sh/top-level-namespace.html#NO_AUTOBUMP_REASONS_LIST-constant).
+`no_autobump!` requires a reason to be provided with the `because:` paramater. It accepts a string or a symbol that corresponds to a preset reason, for example:
 
 ```ruby
 no_autobump! because: :incompatible_version_format
 ```
 
-A custom reason can be provided if none of the available symbols fits:
+A complete list of allowed symbols can be found in [`NO_AUTOBUMP_REASONS_LIST`](/rubydoc/top-level-namespace.html#NO_AUTOBUMP_REASONS_LIST-constant).
 
-```ruby
-no_autobump! because: "some unique reason"
-```
+Casks that use `strategy :extract_plist` in their `livecheck` block or have `version :latest` are always excluded from the autobump list and do not require `no_autobump!` to be declared.
 
-Refer to [Autobump](Autobump.md) page for more information about the autobump process in Homebrew.
+Refer to the [Autobump](Autobump.md) page for more information about the autobump process in Homebrew.
 
 ### Stanza: `name`
 
@@ -668,7 +667,7 @@ Refer to [Autobump](Autobump.md) page for more information about the autobump pr
 
 Unlike the [token](#token-reference), which is simplified and reduced to a limited set of characters, the `name` stanza can include the proper capitalization, spacing and punctuation to match the official name of the software. For disambiguation purposes, it is recommended to spell out the name of the application, including the vendor name if necessary. A good example is the [`pycharm-ce`](https://github.com/Homebrew/homebrew-cask/blob/aa461148bbb5119af26b82cccf5003e2b4e50d95/Casks/p/pycharm-ce.rb#L9-L10) cask, whose name is spelled out as `Jetbrains PyCharm Community Edition`, even though it is likely never referenced as such anywhere.
 
-Additional details about the software can be provided in the [`desc` stanza](#stanza-desc).
+Additional details about the software can be provided in the [`desc`](#stanza-desc) stanza.
 
 The `name` stanza can be repeated multiple times if there are useful alternative names. The first instance should use the Latin alphabet. For example, see the [`cave-story`](https://github.com/Homebrew/homebrew-cask/blob/aa461148bbb5119af26b82cccf5003e2b4e50d95/Casks/c/cave-story.rb#L58-L60) cask, whose original name does not use the Latin alphabet.
 
@@ -955,7 +954,7 @@ Arguments to `uninstall delete:` should use the following basic rules:
 * Paths must be absolute.
 * Glob expansion is performed using the [standard set of characters](https://en.wikipedia.org/wiki/Glob_(programming)).
 
-To remove user-specific files, use the [`zap` stanza](#stanza-zap).
+To remove user-specific files, use the [`zap`](#stanza-zap) stanza.
 
 #### `uninstall` *trash*
 
@@ -1069,50 +1068,11 @@ If these formats are not available, and the application is macOS-exclusive (othe
 
 Some hosting providers actively block command-line HTTP clients. Such URLs cannot be used in casks.
 
-Other providers may use URLs that change periodically, or even on each visit (example: FossHub). While some cases [could be circumvented](#using-a-block-to-defer-code-execution), they tend to occur when the vendor is actively trying to prevent automated downloads, so we prefer to not add those casks to the main repository.
-
-#### Using a block to defer code execution
-
-Some applications—notably nightlies—have versioned download URLs that are updated so often that they become impractical to keep current with the usual process. For those, we want to dynamically determine `url`.
-
-**Note:** Casks with a dynamically-determined `url` are not allowed in Homebrew/homebrew-cask as they interfere with API generation.
-
-##### The Problem
-
-In theory, one can write arbitrary Ruby code right in the cask definition to fetch and construct a disposable URL.
-
-However, this typically involves an HTTP round trip to a landing site, which may take a long time. Because of the way Homebrew Cask loads and parses casks, it is not acceptable that such expensive operations be performed directly in the body of a cask definition.
-
-##### Writing the block
-
-Similar to the `preflight`, `postflight`, `uninstall_preflight` and `uninstall_postflight` blocks, the `url` stanza offers an optional *block syntax*:
-
-```ruby
-url "https://handbrake.fr/nightly.php" do |page|
-  file_path = page[/href=["']?([^"' >]*Handbrake[._-][^"' >]+\.dmg)["' >]/i, 1]
-  file_path ? URI.join(page.url, file_path) : nil
-end
-```
-
-You can also nest `url do` blocks inside `url do` blocks to follow a chain of URLs.
-
-The block is only evaluated when needed, for example at download time or when auditing a cask. Inside a block, you may safely do things such as HTTP(S) requests that may take a long time to execute. You may also refer to the `@cask` instance variable, and invoke [any method available on `@cask`](https://rubydoc.brew.sh/Cask/Cask).
-
-The block will be called immediately before downloading; its resulting value is assumed to be a `String` (or a pair of a `String` and `Hash` containing parameters) and subsequently used as a download URL.
-
-You can use the `url` stanza with either a direct argument or a block but not with both.
-
-Historical example of using block syntax: [vlc@nightly.rb](https://github.com/Homebrew/homebrew-cask/blob/0b2b76ad8c3fbf4e1ee2f5e758640c4963ad6aaf/Casks/v/vlc%40nightly.rb#L7-L12)
-
-##### Mixing additional URL parameters with block syntax
-
-In rare cases, you might need to set URL parameters like `cookies` or `referer` while also using block syntax.
-
-This is possible by returning a two-element array as a block result. The first element of the array must be the download URL; the second element must be a `Hash` containing the parameters.
+Other providers may use URLs that change periodically, or even on each visit (example: FossHub). These cases tend to occur when the vendor is actively trying to prevent automated downloads, so we prefer to not add those casks to the main repository.
 
 ### Stanza: `version`
 
-`version`, while related to the app’s own versioning, doesn’t have to follow it exactly. It is common to change it slightly so it can be [interpolated](https://en.wikipedia.org/wiki/String_interpolation#Ruby_/_Crystal) in other stanzas, usually in `url` to create a cask that only needs `version` and `sha256` changes when updated. This can be taken further, when needed, with [Ruby `String` methods](https://ruby-doc.org/core/String.html).
+`version`, while related to the app’s own versioning, doesn’t have to follow it exactly. It is common to change it slightly so it can be [interpolated](https://en.wikipedia.org/wiki/String_interpolation#Ruby/Crystal) in other stanzas, usually in `url` to create a cask that only needs `version` and `sha256` changes when updated. This can be taken further, when needed, with [Ruby `String` methods](https://ruby-doc.org/core/String.html).
 
 For example, instead of:
 
@@ -1199,7 +1159,7 @@ brew uninstall --zap --force firefox
 
 #### `zap` syntax
 
-The form of the `zap` stanza follows the [`uninstall` stanza](#stanza-uninstall). All the same directives are available. The `trash:` key is preferred over `delete:`.
+The form of the `zap` stanza follows the [`uninstall`](#stanza-uninstall) stanza. All the same directives are available. The `trash:` key is preferred over `delete:`.
 
 Example: [dropbox.rb](https://github.com/Homebrew/homebrew-cask/blob/974a55ade77bb4edc8bbb80ef72eec83ae0e76c0/Casks/d/dropbox.rb#L30-L68)
 
@@ -1291,11 +1251,11 @@ cask "calibre" do
 end
 ```
 
-Such `on_<system>` blocks can be nested and contain other stanzas not listed here. However, they should not contain `depends_on macos:` stanzas, which should occur once below the `on_<system>` blocks and encompass all releases listed in the cask. Examples: [calhash.rb](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/c/calhash.rb), [openzfs.rb](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/o/openzfs.rb), [r.rb](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/r/r.rb), [wireshark.rb](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/w/wireshark.rb)
+Such `on_<system>` blocks can be nested and contain other stanzas not listed here. However, they should not contain `depends_on macos:` stanzas, which should occur once below the `on_<system>` blocks and encompass all releases listed in the cask. Examples: [calhash.rb](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/c/calhash.rb), [r.rb](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/r/r.rb), [wireshark.rb](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/w/wireshark.rb)
 
 ### Switch between languages or regions
 
-If a cask is available in multiple languages, you can use the [`language` stanza](#stanza-language) to switch between languages or regions based on the system locale.
+If a cask is available in multiple languages, you can use the [`language`](#stanza-language) stanza to switch between languages or regions based on the system locale.
 
 ## Arbitrary Ruby methods
 
@@ -1435,7 +1395,7 @@ To convert the App’s simplified name (above) to a token:
 
 #### Casks pinned to specific versions
 
-Casks pinned to a specific version of the application (i.e. [`carbon-copy-cloner@5`](https://github.com/Homebrew/homebrew-cask/blob/1b8f44198e5e184c597ee07454a1e10f97f36b15/Casks/c/carbon-copy-cloner%405.rb)) should use the same token as the standard cask with a suffix of `@<version-number>`. For Carbon Copy Cloner (`carbon-copy-cloner`), pinned to version 5, the token should be `carbon-copy-cloner@5`.
+Casks pinned to a specific version of the application (e.g. [`carbon-copy-cloner@5`](https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/c/carbon-copy-cloner%405.rb)) should use the same token as the standard cask with a suffix of `@<version-number>`. For Carbon Copy Cloner (`carbon-copy-cloner`), pinned to version 6, the token is `carbon-copy-cloner@6`.
 
 #### Casks pinned to development channels
 

@@ -5,11 +5,18 @@ require "options"
 
 # Shared functions for classes which can be depended upon.
 module Dependable
+  extend T::Helpers
+
   # `:run` and `:linked` are no longer used but keep them here to avoid their
   # misuse in future.
-  RESERVED_TAGS = [:build, :optional, :recommended, :run, :test, :linked, :implicit].freeze
+  RESERVED_TAGS = [:build, :optional, :recommended, :run, :test, :linked, :implicit, :no_linkage].freeze
 
   attr_reader :tags
+
+  abstract!
+
+  sig { abstract.returns(T::Array[String]) }
+  def option_names; end
 
   def build?
     tags.include? :build
@@ -29,6 +36,10 @@ module Dependable
 
   def implicit?
     tags.include? :implicit
+  end
+
+  def no_linkage?
+    tags.include? :no_linkage
   end
 
   def required?

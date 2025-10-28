@@ -23,7 +23,7 @@ RSpec.describe BottleSpecification do
 
     it "works with cellar" do
       checksums = [
-        { cellar: :any_skip_relocation, tag: :arm64_big_sur,  digest: "deadbeef" * 8 },
+        { cellar: :any_skip_relocation, tag: :arm64_big_sur, digest: "deadbeef" * 8 },
         { cellar: :any, tag: :big_sur, digest: "faceb00c" * 8 },
         { cellar: "/usr/local/Cellar", tag: :catalina, digest: "baadf00d" * 8 },
         { cellar: Homebrew::DEFAULT_CELLAR, tag: :mojave, digest: "8badf00d" * 8 },

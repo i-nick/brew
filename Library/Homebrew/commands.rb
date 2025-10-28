@@ -1,6 +1,8 @@
 # typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
+require "utils"
+
 # Helper functions for commands.
 module Commands
   HOMEBREW_CMD_PATH = (HOMEBREW_LIBRARY_PATH/"cmd").freeze
@@ -34,11 +36,11 @@ module Commands
   DESCRIPTION_SPLITTING_PATTERN = /\.(?>\s|$)/
 
   def self.valid_internal_cmd?(cmd)
-    require?(HOMEBREW_CMD_PATH/cmd)
+    Homebrew.require?(HOMEBREW_CMD_PATH/cmd)
   end
 
   def self.valid_internal_dev_cmd?(cmd)
-    require?(HOMEBREW_DEV_CMD_PATH/cmd)
+    Homebrew.require?(HOMEBREW_DEV_CMD_PATH/cmd)
   end
 
   def self.valid_ruby_cmd?(cmd)
@@ -76,7 +78,7 @@ module Commands
   # Ruby commands which can be `require`d without being run.
   def self.external_ruby_v2_cmd_path(cmd)
     path = which("#{cmd}.rb", tap_cmd_directories)
-    path if require?(path)
+    path if Homebrew.require?(path)
   end
 
   # Ruby commands which are run by being `require`d.
@@ -120,16 +122,6 @@ module Commands
     find_commands HOMEBREW_DEV_CMD_PATH
   end
 
-  def self.official_external_commands_paths(quiet:)
-    require "tap"
-
-    OFFICIAL_CMD_TAPS.flat_map do |tap_name, cmds|
-      tap = Tap.fetch(tap_name)
-      tap.install(quiet:) unless tap.installed?
-      cmds.map(&method(:external_ruby_v2_cmd_path)).compact
-    end
-  end
-
   def self.internal_commands
     find_internal_commands(HOMEBREW_CMD_PATH).map(&:to_s)
   end
@@ -144,14 +136,14 @@ module Commands
 
   def self.find_internal_commands(path)
     find_commands(path).map(&:basename)
-                       .map { basename_without_extension(_1) }
+                       .map { |basename| basename_without_extension(basename) }
                        .uniq
   end
 
   def self.external_commands
     tap_cmd_directories.flat_map do |path|
       find_commands(path).select(&:executable?)
-                         .map { basename_without_extension(_1) }
+                         .map { |basename| basename_without_extension(basename) }
                          .map { |p| p.to_s.delete_prefix("brew-").strip }
     end.map(&:to_s)
        .sort
@@ -202,7 +194,7 @@ module Commands
       cmd_parser.processed_options.filter_map do |short, long, desc, hidden|
         next if hidden
 
-        [long || short, desc]
+        [T.must(long || short), desc]
       end
     else
       options = []

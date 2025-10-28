@@ -453,6 +453,7 @@ RSpec.describe Cask::Audit, :cask do
 
     describe "signing checks" do
       let(:only) { ["signing"] }
+      let(:tap) { CoreCaskTap.instance }
       let(:download_double) { instance_double(Cask::Download) }
       let(:unpack_double) { instance_double(UnpackStrategy::Zip) }
 
@@ -493,6 +494,31 @@ RSpec.describe Cask::Audit, :cask do
           allow(download_double).to receive(:fetch).and_return(Pathname.new("/tmp/test.zip"))
           allow(UnpackStrategy).to receive(:detect).and_return(nil)
           expect(run).not_to error_with(/Audit\.app/)
+        end
+      end
+
+      context "when quarantine support is not available" do
+        let(:cask) do
+          tmp_cask "signing-cask-test", <<~RUBY
+            cask 'signing-cask-test' do
+              version '1.0'
+              url "https://brew.sh/"
+              app 'Audit.app'
+            end
+          RUBY
+        end
+
+        before do
+          allow(cask).to receive(:tap).and_return(tap)
+
+          allow(Cask::Quarantine).to receive(:available?).and_return(false)
+        end
+
+        it "skips signing audit with warning" do
+          allow(cask).to receive(:tap).and_return(tap)
+
+          expect(audit).to receive(:odebug).with("Quarantine support is not available, skipping signing audit")
+          expect(run).not_to error_with(/Signature verification failed/)
         end
       end
     end

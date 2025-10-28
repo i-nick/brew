@@ -20,14 +20,16 @@ If a user attempts to install a deprecated cask, they will be shown a warning me
 
 A cask should be deprecated to indicate to users that the cask should not be used and will be disabled in the future. Deprecated casks should continue to be maintained by the Homebrew maintainers if they continue to be installable. If this is not possible, they should be immediately disabled.
 
-The most common reasons for deprecation are when the upstream project is deprecated, unmaintained or archived.
+The most common reasons for deprecation are when the upstream project is deprecated, unmaintained or archived,
+or the software does not pass macOS Gatekeeper checks.
 
 Casks should only be deprecated if at least one of the following are true:
 
+- the software installed by the cask fails macOS Gatekeeper checks for supported OS versions
 - the software installed by the cask cannot be run on any supported OS versions
-- the cask has outstanding CVEs
-- the cask has [zero installs in the last 90 days](https://formulae.brew.sh/analytics/cask-install/90d/)
+- the software installed by the cask has outstanding CVEs
 - the software installed by the cask has been discontinued or abandoned upstream
+- the cask has [zero installs in the last 90 days](https://formulae.brew.sh/analytics/cask-install/90d/)
 
 To deprecate a cask, add a `deprecate!` call. This call should include a deprecation date in the ISO 8601 format and a deprecation reason:
 
@@ -39,7 +41,7 @@ The `date` parameter should be set to the date that the deprecation period shoul
 
 The `because` parameter can be a preset reason (using a symbol) or a custom reason. See the [Deprecate and Disable Reasons](#deprecate-and-disable-reasons) section below for more details about the `because` parameter.
 
-An optional `replacement_formula` or `replacement_cask` parameter may also be specified to suggest a replacement formula or cask to the user. The value of the parameter is a string.
+An optional `replacement_formula` or `replacement_cask` parameter may also be specified to suggest a replacement formula or cask to the user. The value for the parameter is a string.
 
 ```ruby
 deprecate! date: "YYYY-MM-DD", because: :reason, replacement_formula: "foo"
@@ -72,7 +74,7 @@ The `date` parameter should be set to the date that the reason for disabling cam
 
 The `because` parameter can be a preset reason (using a symbol) or a custom reason. See the [Deprecate and Disable Reasons](#deprecate-and-disable-reasons) section below for more details about the `because` parameter.
 
-Similar to deprecated casks, an optional `replacement_formula` or `replacement_cask` parameter may also be specified for disabled casks to suggest a replacement formula or cask to the user. The value of the parameter is a string.
+Similar to deprecated casks, an optional `replacement_formula` or `replacement_cask` parameter may also be specified for disabled casks to suggest a replacement formula or cask to the user. The value for the parameter is a string.
 
 ```ruby
 disable! date: "YYYY-MM-DD", because: :reason, replacement_cask: "foo"
@@ -88,14 +90,14 @@ A cask should be removed if it does not meet our criteria for [acceptable casks]
 
 When a cask is deprecated or disabled, a reason explaining the action must be provided.
 
-There are two ways to indicate the reason. The preferred way is to use a pre-existing symbol to indicate the reason. The available symbols are listed below and can be found in the [`DeprecateDisable` module](https://rubydoc.brew.sh/DeprecateDisable.html):
+There are two ways to indicate the reason. The preferred way is to use a pre-existing symbol to indicate the reason. The available symbols are listed below and can be found in the [`DeprecateDisable` module](/rubydoc/DeprecateDisable.html.html):
 
 - `:discontinued`: the cask is discontinued upstream
 - `:moved_to_mas`: the cask is now exclusively distributed on the Mac App Store
 - `:no_longer_available`: the cask is no longer available upstream
 - `:no_longer_meets_criteria`: the cask no longer meets the criteria for acceptable casks
 - `:unmaintained`: the cask is not maintained upstream
-- `:unsigned`: the cask is unsigned or does not meet signature requirements
+- `:fails_gatekeeper_check`: the cask fails macOS Gatekeeper checks
 
 These reasons can be specified by their symbols (the comments show the message that will be displayed to users):
 

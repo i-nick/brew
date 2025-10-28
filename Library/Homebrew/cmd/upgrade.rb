@@ -9,6 +9,7 @@ require "cask/utils"
 require "cask/upgrade"
 require "cask/macos"
 require "api"
+require "reinstall"
 
 module Homebrew
   module Cmd
@@ -91,6 +92,7 @@ module Homebrew
           }],
           [:switch, "-g", "--greedy", {
             description: "Also include casks with `auto_updates true` or `version :latest`.",
+            env:         :upgrade_greedy,
           }],
           [:switch, "--greedy-latest", {
             description: "Also include casks with `version :latest`.",
@@ -102,13 +104,15 @@ module Homebrew
             description: "Disable/enable linking of helper executables (default: enabled).",
             env:         :cask_opts_binaries,
           }],
-          [:switch, "--require-sha",  {
+          [:switch, "--require-sha", {
             description: "Require all casks to have a checksum.",
             env:         :cask_opts_require_sha,
           }],
+          # odeprecated deprecate for 4.7.0
           [:switch, "--[no-]quarantine", {
             description: "Disable/enable quarantining of downloads (default: enabled).",
             env:         :cask_opts_quarantine,
+            hidden:      true,
           }],
         ].each do |args|
           options = args.pop
@@ -125,7 +129,7 @@ module Homebrew
       sig { override.void }
       def run
         if args.build_from_source? && args.named.empty?
-          raise ArgumentError, "--build-from-source requires at least one formula"
+          raise ArgumentError, "`--build-from-source` requires at least one formula"
         end
 
         formulae, casks = args.named.to_resolved_formulae_to_casks
@@ -141,6 +145,8 @@ module Homebrew
         upgrade_outdated_casks!(casks) unless only_upgrade_formulae
 
         Cleanup.periodic_clean!(dry_run: args.dry_run?)
+
+        Homebrew::Reinstall.reinstall_pkgconf_if_needed!(dry_run: args.dry_run?)
 
         Homebrew.messages.display_messages(display_times: args.display_times?)
       end
@@ -195,10 +201,13 @@ module Homebrew
         end
 
         if pinned.any?
-          Kernel.public_send(
-            formulae.any? ? :ofail : :opoo, # only fail when pinned formulae are named explicitly
-            "Not upgrading #{pinned.count} pinned #{Utils.pluralize("package", pinned.count)}:",
-          )
+          message = "Not upgrading #{pinned.count} pinned #{Utils.pluralize("package", pinned.count)}:"
+          # only fail when pinned formulae are named explicitly
+          if formulae.any?
+            ofail message
+          else
+            opoo message
+          end
           puts pinned.map { |f| "#{f.full_specified_name} #{f.pkg_version}" } * ", "
         end
 

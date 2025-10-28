@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "system_command"
@@ -22,7 +22,7 @@ module OS
       sig { params(version: MacOSVersion, path: T.any(String, Pathname), source: Symbol).void }
       def initialize(version, path, source)
         @version = version
-        @path = Pathname.new(path)
+        @path = T.let(Pathname(path), Pathname)
         @source = source
       end
     end
@@ -35,6 +35,12 @@ module OS
       abstract!
 
       class NoSDKError < StandardError; end
+
+      sig { void }
+      def initialize
+        @all_sdks = T.let(nil, T.nilable(T::Array[SDK]))
+        @sdk_prefix = T.let(nil, T.nilable(String))
+      end
 
       sig { params(version: MacOSVersion).returns(SDK) }
       def sdk_for(version)

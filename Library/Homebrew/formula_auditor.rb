@@ -6,12 +6,14 @@ require "formula_versions"
 require "formula_name_cask_token_auditor"
 require "resource_auditor"
 require "utils/shared_audits"
+require "utils/output"
 
 module Homebrew
   # Auditor for checking common violations in {Formula}e.
   class FormulaAuditor
     include FormulaCellarChecks
     include Utils::Curl
+    include Utils::Output::Mixin
 
     attr_reader :formula, :text, :problems, :new_formula_problems
 
@@ -172,7 +174,10 @@ module Homebrew
 
       return unless @core_tap
 
-      if CoreCaskTap.instance.cask_tokens.include?(name)
+      cask_tokens = CoreCaskTap.instance.cask_tokens.presence
+      cask_tokens ||= Homebrew::API.cask_tokens
+
+      if cask_tokens.include?(name)
         problem "Formula name conflicts with an existing Homebrew/cask cask's token."
         return
       end
@@ -191,7 +196,7 @@ module Homebrew
         return
       end
 
-      if CoreCaskTap.instance.cask_tokens.include?(name)
+      if cask_tokens.include?(name)
         problem "Formula name conflicts with an existing Homebrew/cask cask's token."
         return
       end
@@ -497,21 +502,6 @@ module Homebrew
       problem "Formulae in homebrew/core should not have a Linux-only dependency on GCC."
     end
 
-    def audit_postgresql
-      return if formula.name != "postgresql"
-      return unless @core_tap
-
-      major_version = formula.version.major.to_i
-      previous_major_version = major_version - 1
-      previous_formula_name = "postgresql@#{previous_major_version}"
-      begin
-        Formula[previous_formula_name]
-      rescue FormulaUnavailableError
-        problem "Versioned #{previous_formula_name} in homebrew/core must be created for " \
-                "`brew postgresql-upgrade-database` and `pg_upgrade` to work."
-      end
-    end
-
     def audit_glibc
       return unless @core_tap
       return if formula.name != "glibc"
@@ -523,24 +513,12 @@ module Homebrew
               "which allows them to use our Linux bottles, which were compiled against system glibc on CI."
     end
 
-    RELICENSED_FORMULAE_VERSIONS = {
-      "boundary"           => "0.14",
-      "consul"             => "1.17",
-      "nomad"              => "1.7",
-      "packer"             => "1.10",
-      "terraform"          => "1.6",
-      "vagrant"            => "2.4",
-      "vagrant-completion" => "2.4",
-      "vault"              => "1.15",
-      "waypoint"           => "0.12",
-    }.freeze
-
     def audit_relicensed_formulae
-      return unless RELICENSED_FORMULAE_VERSIONS.key? formula.name
       return unless @core_tap
 
-      relicensed_version = Version.new(RELICENSED_FORMULAE_VERSIONS[formula.name])
-      return if formula.version < relicensed_version
+      relicensed_version = formula.tap&.audit_exception :relicensed_formulae_versions, formula.name
+      return unless relicensed_version
+      return if formula.version < Version.new(relicensed_version)
 
       problem "#{formula.name} was relicensed to a non-open-source license from version #{relicensed_version}. " \
               "It must not be upgraded to version #{relicensed_version} or newer."
@@ -677,6 +655,19 @@ module Homebrew
       problem "GitLab repository is archived" if metadata["archived"]
     end
 
+    sig { void }
+    def audit_forgejo_repository_archived
+      return if formula.deprecated? || formula.disabled?
+
+      user, repo = get_repo_data(%r{https?://codeberg\.org/([^/]+)/([^/]+)/?.*}) if @online
+      return if user.blank?
+
+      metadata = SharedAudits.forgejo_repo_data(user, repo)
+      return if metadata.nil?
+
+      problem "Forgejo repository is archived since #{metadata["archived_at"]}" if metadata["archived"]
+    end
+
     def audit_github_repository
       user, repo = get_repo_data(%r{https?://github\.com/([^/]+)/([^/]+)/?.*}) if @new_formula
 
@@ -708,6 +699,17 @@ module Homebrew
       new_formula_problem warning
     end
 
+    sig { void }
+    def audit_forgejo_repository
+      user, repo = get_repo_data(%r{https?://codeberg\.org/([^/]+)/([^/]+)/?.*}) if @new_formula
+      return if user.blank?
+
+      warning = SharedAudits.forgejo(user, repo)
+      return if warning.nil?
+
+      new_formula_problem warning
+    end
+
     def get_repo_data(regex)
       return unless @core_tap
       return unless @online
@@ -723,7 +725,7 @@ module Homebrew
     end
 
     def audit_specs
-      problem "HEAD-only (no stable download)" if head_only?(formula)
+      problem "HEAD-only (no stable download)" if head_only?(formula) && @core_tap
 
       %w[Stable HEAD].each do |name|
         spec_name = name.downcase.to_sym
@@ -737,7 +739,7 @@ module Homebrew
 
         ra = ResourceAuditor.new(
           spec, spec_name,
-          online: @online, strict: @strict, only: @only, except:,
+          online: @online, strict: @strict, only: @only, core_tap: @core_tap, except:,
           use_homebrew_curl: spec.using == :homebrew_curl
         ).audit
         ra.problems.each do |message|
@@ -791,7 +793,7 @@ module Homebrew
       formula_suffix = stable.version.patch.to_i
       throttled_rate = formula.livecheck.throttle
       if throttled_rate && formula_suffix.modulo(throttled_rate).nonzero?
-        problem "should only be updated every #{throttled_rate} releases on multiples of #{throttled_rate}"
+        problem "Should only be updated every #{throttled_rate} releases on multiples of #{throttled_rate}"
       end
 
       case (url = stable.url)
@@ -805,6 +807,7 @@ module Homebrew
       when %r{download\.gnome\.org/sources}, %r{ftp\.gnome\.org/pub/GNOME/sources}i
         version_prefix = stable.version.major_minor
         return if formula.tap&.audit_exception :gnome_devel_allowlist, formula.name, version_prefix
+        return if formula.tap&.audit_exception :gnome_devel_allowlist, formula.name, "all"
         return if stable_url_version < Version.new("1.0")
         # All minor versions are stable in the new GNOME version scheme (which starts at version 40.0)
         # https://discourse.gnome.org/t/new-gnome-versioning-scheme/4235
@@ -837,6 +840,16 @@ module Homebrew
 
         if @online && !tag.nil?
           error = SharedAudits.github_release(owner, repo, tag, formula:)
+          problem error if error
+        end
+      when %r{^https://codeberg\.org/([\w-]+)/([\w-]+)}
+        owner = T.must(Regexp.last_match(1))
+        repo = T.must(Regexp.last_match(2))
+        tag = SharedAudits.forgejo_tag_from_url(url)
+        tag ||= formula.stable.specs[:tag]
+
+        if @online && !tag.nil?
+          error = SharedAudits.forgejo_release(owner, repo, tag, formula:)
           problem error if error
         end
       end

@@ -13,6 +13,57 @@
 # shellcheck disable=SC2154
 source "${HOMEBREW_LIBRARY}/Homebrew/utils/lock.sh"
 
+macos_version_name() {
+  # NOTE: Changes to this list must match `SYMBOLS` in `macos_version.rb`.
+  if [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "260000" ]]
+  then
+    echo "tahoe"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "150000" ]]
+  then
+    echo "sequoia"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "140000" ]]
+  then
+    echo "sonoma"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "130000" ]]
+  then
+    echo "ventura"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "120000" ]]
+  then
+    echo "monterey"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "110000" ]]
+  then
+    echo "big_sur"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101500" ]]
+  then
+    echo "catalina"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101400" ]]
+  then
+    echo "mojave"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101300" ]]
+  then
+    echo "high_sierra"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101200" ]]
+  then
+    echo "sierra"
+  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101100" ]]
+  then
+    echo "el_capitan"
+  fi
+}
+
+bottle_tag() {
+  if [[ -n "${HOMEBREW_MACOS}" && "${HOMEBREW_PHYSICAL_PROCESSOR}" == "x86_64" ]]
+  then
+    macos_version_name
+  elif [[ -n "${HOMEBREW_MACOS}" ]]
+  then
+    echo "${HOMEBREW_PHYSICAL_PROCESSOR}_$(macos_version_name)"
+  elif [[ -n "${HOMEBREW_LINUX}" ]]
+  then
+    echo "${HOMEBREW_PHYSICAL_PROCESSOR}_linux"
+  fi
+}
+
 # Replaces the function in Library/Homebrew/brew.sh to cache the Curl/Git executable to
 # provide speedup when using Curl/Git repeatedly (as update.sh does).
 curl() {
@@ -211,9 +262,8 @@ merge_or_rebase() {
   if [[ "${DIR}" == "${HOMEBREW_REPOSITORY}" && -n "${HOMEBREW_UPDATE_TO_TAG}" ]]
   then
     UPSTREAM_TAG="$(
-      git tag --list |
-        sort --field-separator=. --key=1,1nr -k 2,2nr -k 3,3nr |
-        grep --max-count=1 '^[0-9]*\.[0-9]*\.[0-9]*$'
+      git tag --list --sort=-version:refname |
+        grep -m 1 '^[0-9]*\.[0-9]*\.[0-9]*$'
     )"
   else
     UPSTREAM_TAG=""
@@ -342,6 +392,93 @@ EOS
   fi
 
   trap - SIGINT
+}
+
+fetch_api_file() {
+  local filename="$1"
+  local update_failed_file="$2"
+
+  local api_cache="${HOMEBREW_CACHE}/api"
+
+  local cache_path="${api_cache}/${filename}"
+  mkdir -p "$(dirname "${cache_path}")"
+
+  if [[ "${filename}" == "formula.jws.json" ]] || [[ "${filename}" == "internal/formula.$(bottle_tag).jws.json" ]]
+  then
+    local is_formula_file=1
+  fi
+
+  if [[ "${filename}" == "cask.jws.json" ]] || [[ "${filename}" == "internal/cask.$(bottle_tag).jws.json" ]]
+  then
+    local is_cask_file=1
+  fi
+
+  if [[ -f "${cache_path}" ]]
+  then
+    INITIAL_JSON_BYTESIZE="$(wc -c "${cache_path}")"
+  fi
+
+  if [[ -n "${HOMEBREW_VERBOSE}" ]]
+  then
+    echo "Checking if we need to fetch ${filename}..."
+  fi
+
+  JSON_URLS=()
+  if [[ -n "${HOMEBREW_API_DOMAIN}" && "${HOMEBREW_API_DOMAIN}" != "${HOMEBREW_API_DEFAULT_DOMAIN}" ]]
+  then
+    JSON_URLS=("${HOMEBREW_API_DOMAIN}/${filename}")
+  fi
+
+  JSON_URLS+=("${HOMEBREW_API_DEFAULT_DOMAIN}/${filename}")
+  for json_url in "${JSON_URLS[@]}"
+  do
+    time_cond=()
+    if [[ -s "${cache_path}" ]]
+    then
+      time_cond=("--time-cond" "${cache_path}")
+    fi
+    curl \
+      "${CURL_DISABLE_CURLRC_ARGS[@]}" \
+      --fail --compressed --silent \
+      --speed-limit "${HOMEBREW_CURL_SPEED_LIMIT}" --speed-time "${HOMEBREW_CURL_SPEED_TIME}" \
+      --location --remote-time --output "${cache_path}" \
+      "${time_cond[@]}" \
+      --user-agent "${HOMEBREW_USER_AGENT_CURL}" \
+      "${json_url}"
+    curl_exit_code=$?
+    [[ ${curl_exit_code} -eq 0 ]] && break
+  done
+
+  if [[ -n ${is_formula_file} ]] && [[ -f "${api_cache}/formula_names.txt" ]]
+  then
+    mv -f "${api_cache}/formula_names.txt" "${api_cache}/formula_names.before.txt"
+  elif [[ -n ${is_cask_file} ]] && [[ -f "${api_cache}/cask_names.txt" ]]
+  then
+    mv -f "${api_cache}/cask_names.txt" "${api_cache}/cask_names.before.txt"
+  fi
+
+  if [[ ${curl_exit_code} -eq 0 ]]
+  then
+    touch "${cache_path}"
+
+    CURRENT_JSON_BYTESIZE="$(wc -c "${cache_path}")"
+    if [[ "${INITIAL_JSON_BYTESIZE}" != "${CURRENT_JSON_BYTESIZE}" ]]
+    then
+
+      if [[ -n ${is_formula_file} ]]
+      then
+        rm -f "${api_cache}/formula_aliases.txt"
+      fi
+      HOMEBREW_UPDATED="1"
+
+      if [[ -n "${HOMEBREW_VERBOSE}" ]]
+      then
+        echo "Updated ${filename}."
+      fi
+    fi
+  else
+    echo "Failed to download ${json_url}!" >>"${update_failed_file}"
+  fi
 }
 
 homebrew-update() {
@@ -566,9 +703,15 @@ EOS
   safe_cd "${HOMEBREW_REPOSITORY}"
 
   # This means a migration is needed but hasn't completed (yet).
-  if [[ "$(git config homebrew.linuxbrewmigrated 2>/dev/null)" == "false" ]]
+  if [[ "$(git config get --type=bool homebrew.linuxbrewmigrated 2>/dev/null)" == "false" ]]
   then
     export HOMEBREW_MIGRATE_LINUXBREW_FORMULAE=1
+  fi
+
+  # This means the user has run `brew which-formula` before and we should fetch executables.txt
+  if [[ "$(git config get --type=bool homebrew.commandnotfound 2>/dev/null)" == "true" ]]
+  then
+    export HOMEBREW_FETCH_EXECUTABLES_TXT=1
   fi
 
   # if an older system had a newer curl installed, change each repo's remote URL from git to https
@@ -650,9 +793,9 @@ EOS
         if [[ -z "${HOMEBREW_NO_ENV_HINTS}" && -z "${HOMEBREW_AUTO_UPDATE_SECS}" ]]
         then
           # shellcheck disable=SC2016
-          echo 'Adjust how often this is run with HOMEBREW_AUTO_UPDATE_SECS or disable with' >&2
+          echo 'Adjust how often this is run with `$HOMEBREW_AUTO_UPDATE_SECS` or disable with' >&2
           # shellcheck disable=SC2016
-          echo 'HOMEBREW_NO_AUTO_UPDATE. Hide these hints with HOMEBREW_NO_ENV_HINTS (see `man brew`).' >&2
+          echo '`$HOMEBREW_NO_AUTO_UPDATE=1`. Hide these hints with `$HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).' >&2
         fi
       else
         ohai 'Updating Homebrew...' >&2
@@ -869,81 +1012,29 @@ EOS
 
   if [[ -z "${HOMEBREW_NO_INSTALL_FROM_API}" ]]
   then
-    local api_cache="${HOMEBREW_CACHE}/api"
-    mkdir -p "${api_cache}"
+    if [[ -n "${HOMEBREW_USE_INTERNAL_API}" ]]
+    then
+      api_files=("internal/formula.$(bottle_tag)" "internal/cask.$(bottle_tag)")
+    else
+      api_files=(formula cask formula_tap_migrations cask_tap_migrations)
+    fi
 
-    for json in formula cask formula_tap_migrations cask_tap_migrations
+    for json in "${api_files[@]}"
     do
       local filename="${json}.jws.json"
-      local cache_path="${api_cache}/${filename}"
-      if [[ -f "${cache_path}" ]]
-      then
-        INITIAL_JSON_BYTESIZE="$(wc -c "${cache_path}")"
-      fi
-
-      if [[ -n "${HOMEBREW_VERBOSE}" ]]
-      then
-        echo "Checking if we need to fetch ${filename}..."
-      fi
-
-      JSON_URLS=()
-      if [[ -n "${HOMEBREW_API_DOMAIN}" && "${HOMEBREW_API_DOMAIN}" != "${HOMEBREW_API_DEFAULT_DOMAIN}" ]]
-      then
-        JSON_URLS=("${HOMEBREW_API_DOMAIN}/${filename}")
-      fi
-
-      JSON_URLS+=("${HOMEBREW_API_DEFAULT_DOMAIN}/${filename}")
-      for json_url in "${JSON_URLS[@]}"
-      do
-        time_cond=()
-        if [[ -s "${cache_path}" ]]
-        then
-          time_cond=("--time-cond" "${cache_path}")
-        fi
-        curl \
-          "${CURL_DISABLE_CURLRC_ARGS[@]}" \
-          --fail --compressed --silent \
-          --speed-limit "${HOMEBREW_CURL_SPEED_LIMIT}" --speed-time "${HOMEBREW_CURL_SPEED_TIME}" \
-          --location --remote-time --output "${cache_path}" \
-          "${time_cond[@]}" \
-          --user-agent "${HOMEBREW_USER_AGENT_CURL}" \
-          "${json_url}"
-        curl_exit_code=$?
-        [[ ${curl_exit_code} -eq 0 ]] && break
-      done
-
-      if [[ "${json}" == "formula" ]] && [[ -f "${api_cache}/formula_names.txt" ]]
-      then
-        mv -f "${api_cache}/formula_names.txt" "${api_cache}/formula_names.before.txt"
-      elif [[ "${json}" == "cask" ]] && [[ -f "${api_cache}/cask_names.txt" ]]
-      then
-        mv -f "${api_cache}/cask_names.txt" "${api_cache}/cask_names.before.txt"
-      fi
-
-      if [[ ${curl_exit_code} -eq 0 ]]
-      then
-        touch "${cache_path}"
-
-        CURRENT_JSON_BYTESIZE="$(wc -c "${cache_path}")"
-        if [[ "${INITIAL_JSON_BYTESIZE}" != "${CURRENT_JSON_BYTESIZE}" ]]
-        then
-
-          if [[ "${json}" == "formula" ]]
-          then
-            rm -f "${api_cache}/formula_aliases.txt"
-          fi
-          HOMEBREW_UPDATED="1"
-
-          if [[ -n "${HOMEBREW_VERBOSE}" ]]
-          then
-            echo "Updated ${filename}."
-          fi
-        fi
-      else
-        echo "Failed to download ${json_url}!" >>"${update_failed_file}"
-      fi
-
+      fetch_api_file "${filename}" "${update_failed_file}"
     done
+
+    if [[ -n "${HOMEBREW_USE_INTERNAL_API}" ]]
+    then
+      # Remove files only downloaded by the regular API
+      rm -f "${HOMEBREW_CACHE}/api/formula.jws.json" "${HOMEBREW_CACHE}/api/cask.jws.json"
+      rm -f "${HOMEBREW_CACHE}/api/formula_tap_migrations.jws.json" "${HOMEBREW_CACHE}/api/cask_tap_migrations.jws.json"
+    else
+      # Remove files only downloaded by the internal API
+      rm -f "${HOMEBREW_CACHE}/api/internal/formula.$(bottle_tag).jws.json"
+      rm -f "${HOMEBREW_CACHE}/api/internal/cask.$(bottle_tag).jws.json"
+    fi
 
     # Not a typo, these are the files we used to download that no longer need so should cleanup.
     rm -f "${HOMEBREW_CACHE}/api/formula.json" "${HOMEBREW_CACHE}/api/cask.json"
@@ -952,6 +1043,12 @@ EOS
     then
       echo "HOMEBREW_NO_INSTALL_FROM_API set: skipping API JSON downloads."
     fi
+  fi
+
+  # Update executables.txt if the user has ever run `brew which-formula` before.
+  if [[ -n "${HOMEBREW_FETCH_EXECUTABLES_TXT}" ]]
+  then
+    fetch_api_file "internal/executables.txt" "${update_failed_file}"
   fi
 
   if [[ -f "${update_failed_file}" ]]

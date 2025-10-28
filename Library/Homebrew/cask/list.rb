@@ -2,9 +2,12 @@
 # frozen_string_literal: true
 
 require "cask/artifact/relocated"
+require "utils/output"
 
 module Cask
   class List
+    extend ::Utils::Output::Mixin
+
     sig { params(casks: Cask, one: T::Boolean, full_name: T::Boolean, versions: T::Boolean).void }
     def self.list_casks(*casks, one: false, full_name: false, versions: false)
       output = if casks.any?

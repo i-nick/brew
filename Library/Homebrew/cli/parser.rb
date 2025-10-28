@@ -10,11 +10,14 @@ require "commands"
 require "optparse"
 require "utils/tty"
 require "utils/formatter"
+require "utils/output"
 
 module Homebrew
   module CLI
     class Parser
-      ArgType = T.type_alias { T.any(NilClass, Symbol, T::Array[String], T::Array[Symbol]) }
+      include Utils::Output::Mixin
+
+      ArgType = T.type_alias { T.nilable(T.any(Symbol, T::Array[String], T::Array[Symbol])) }
       HIDDEN_DESC_PLACEHOLDER = "@@HIDDEN@@"
       SYMBOL_TO_USAGE_MAPPING = T.let({
         text_or_regex: "<text>|`/`<regex>`/`",
@@ -40,7 +43,7 @@ module Homebrew
         cmd_name = cmd_args_method_name.to_s.delete_suffix("_args").tr("_", "-")
 
         begin
-          if require?(cmd_path)
+          if Homebrew.require?(cmd_path)
             cmd = Homebrew::AbstractCommand.command(cmd_name)
             if cmd
               cmd.parser
@@ -231,7 +234,8 @@ module Homebrew
         end
 
         env_value = value_for_env(env)
-        set_switch(*names, value: env_value, from: :env) unless env_value.nil?
+        value = env_value&.present?
+        set_switch(*names, value:, from: :env) unless value.nil?
       end
       alias switch_option switch
 
@@ -261,7 +265,7 @@ module Homebrew
       end
 
       sig {
-        params(names: String, description: T.nilable(String), replacement: T.any(Symbol, String, NilClass),
+        params(names: String, description: T.nilable(String), replacement: T.nilable(T.any(Symbol, String)),
                depends_on: T.nilable(String), hidden: T::Boolean).void
       }
       def flag(*names, description: nil, replacement: nil, depends_on: nil, hidden: false)
@@ -445,7 +449,7 @@ module Homebrew
                  .gsub(/`(.*?)`/m, "#{Tty.bold}\\1#{Tty.reset}")
                  .gsub(%r{<([^\s]+?://[^\s]+?)>}) { |url| Formatter.url(url) }
                  .gsub(/\*(.*?)\*|<(.*?)>/m) do |underlined|
-                   underlined[1...-1].gsub(/^(\s*)(.*?)$/, "\\1#{Tty.underline}\\2#{Tty.reset}")
+                   T.must(underlined[1...-1]).gsub(/^(\s*)(.*?)$/, "\\1#{Tty.underline}\\2#{Tty.reset}")
                  end
       end
 
@@ -729,7 +733,7 @@ module Homebrew
           next if arg.match?(HOMEBREW_CASK_TAP_CASK_REGEX)
 
           begin
-            Formulary.factory(arg, spec, flags: argv.select { |a| a.start_with?("--") })
+            Formulary.factory(arg, spec, flags: argv.select { |a| a.start_with?("--") }, prefer_stub: true)
           rescue FormulaUnavailableError, FormulaSpecificationError
             nil
           end
@@ -741,7 +745,7 @@ module Homebrew
         argv.include?("--casks") || argv.include?("--cask")
       end
 
-      sig { params(env: T.any(NilClass, String, Symbol)).returns(T.untyped) }
+      sig { params(env: T.nilable(T.any(String, Symbol))).returns(T.untyped) }
       def value_for_env(env)
         return if env.blank?
 
@@ -755,5 +759,3 @@ module Homebrew
     end
   end
 end
-
-require "extend/os/parser"

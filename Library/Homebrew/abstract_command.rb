@@ -3,6 +3,7 @@
 
 require "cli/parser"
 require "shell_command"
+require "utils/output"
 
 module Homebrew
   # Subclass this to implement a `brew` command. This is preferred to declaring a named function in the `Homebrew`
@@ -19,6 +20,7 @@ module Homebrew
   # @api public
   class AbstractCommand
     extend T::Helpers
+    include Utils::Output::Mixin
 
     abstract!
 

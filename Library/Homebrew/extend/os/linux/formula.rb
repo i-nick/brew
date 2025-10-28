@@ -1,4 +1,4 @@
-# typed: true # rubocop:disable Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 module OS
@@ -30,6 +30,7 @@ module OS
       def add_global_deps_to_spec(spec)
         return unless ::DevelopmentTools.needs_build_formulae?
 
+        @global_deps ||= T.let(nil, T.nilable(T::Array[Dependency]))
         @global_deps ||= begin
           dependency_collector = spec.dependency_collector
           related_formula_names = Set.new([

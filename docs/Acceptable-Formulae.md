@@ -103,6 +103,19 @@ For more info see [Debian's](https://www.debian.org/doc/debian-policy/ch-source.
 
 Increasingly, though: this can be (too) hard. Homebrew's primary mission is to be useful rather than ideologically pure. If we cannot package something without using vendored upstream versions: so be it; better to have packaged software in Homebrew than not.
 
+### Adult Content
+
+Homebrew is a tool where the vast majority of users are adults.
+We have users all over the world with different views on sex, violence, etc.
+As a result, we do not see it as our role to enforce any particular culture's views on adult content onto our users.
+That said, we want to ensure our maintainers don't have to interact with adult content unless they choose to.
+
+We will accept formulae with adult content but require the `homepage` and root of the `url` domain to be "safe for work" e.g. not display any images of violence or adult content.
+It is acceptable for these pages to have textual descriptions of adult content.
+
+Homebrew reserves the right to add or remove formulae based on how it affects the wider Homebrew ecosystem.
+For a hypothetical example, if a critical infrastructure host said we needed to remove the formula to maintain our infrastructure: we may begrudgingly remove it to maintain continuity for our users.
+
 ## Sometimes there are exceptions
 
 Even if all criteria are met we may not accept the formula. Even if some criteria are not met we may accept the formula. New formulae are held to a higher standard than existing formulae. Documentation will lag behind current decision-making. Although some rejections may seem arbitrary or strange they are based on years of experience making Homebrew work acceptably for our users.

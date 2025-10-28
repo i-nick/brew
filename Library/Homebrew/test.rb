@@ -15,11 +15,15 @@ require "utils/socket"
 require "cli/parser"
 require "dev-cmd/test"
 require "json/add/exception"
+require "extend/pathname/write_mkpath_extension"
 
 DEFAULT_TEST_TIMEOUT_SECONDS = 5 * 60
 
 begin
-  ENV.delete("HOMEBREW_FORBID_PACKAGES_FROM_PATHS")
+  # Undocumented opt-out for internal use.
+  # We need to allow formulae from paths here due to how we pass them through.
+  ENV["HOMEBREW_INTERNAL_ALLOW_PACKAGES_FROM_PATHS"] = "1"
+
   args = Homebrew::DevCmd::Test.new.args
   Context.current = args.context
 
@@ -33,7 +37,7 @@ begin
     raise "Cannot kill child processes without `pkill`, please install!" unless which("pkill")
   end
 
-  formula = T.must(args.named.to_resolved_formulae.first)
+  formula = args.named.to_resolved_formulae.fetch(0)
   formula.extend(Homebrew::Assertions)
   formula.extend(Homebrew::FreePort)
   if args.debug? && !Homebrew::EnvConfig.disable_debrew?
@@ -43,6 +47,7 @@ begin
 
   ENV.extend(Stdenv)
   ENV.setup_build_environment(formula:, testing_formula: true)
+  Pathname.prepend WriteMkpathExtension
 
   # tests can also return false to indicate failure
   run_test = proc { |_ = nil| raise "test returned false" if formula.run_test(keep_tmp: args.keep_tmp?) == false }
@@ -55,8 +60,8 @@ begin
   end
 # Any exceptions during the test run are reported.
 rescue Exception => e # rubocop:disable Lint/RescueException
-  error_pipe.puts e.to_json
-  error_pipe.close
+  error_pipe&.puts e.to_json
+  error_pipe&.close
 ensure
   pid = Process.pid.to_s
   if which("pgrep") && which("pkill") && system("pgrep", "-P", pid, out: File::NULL)

@@ -27,6 +27,9 @@ module DeprecateDisable
     no_longer_available:      "is no longer available upstream",
     no_longer_meets_criteria: "no longer meets the criteria for acceptable casks",
     unmaintained:             "is not maintained upstream",
+    fails_gatekeeper_check:   "does not pass the macOS Gatekeeper check",
+    unreachable:              "is no longer reliably reachable upstream",
+    # odeprecate: remove the unsigned reason in a future release
     unsigned:                 "is unsigned or does not meet signature requirements",
   }.freeze, T::Hash[Symbol, String])
 
@@ -66,6 +69,9 @@ module DeprecateDisable
     elsif formula_or_cask.disabled?
       formula_or_cask.disable_reason
     end
+
+    # odeprecate: remove this remapping in a future release
+    reason = :fails_gatekeeper_check if reason == :unsigned
 
     reason = if formula_or_cask.is_a?(Formula) && FORMULA_DEPRECATE_DISABLE_REASONS.key?(reason)
       FORMULA_DEPRECATE_DISABLE_REASONS[reason]

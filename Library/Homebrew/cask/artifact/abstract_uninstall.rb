@@ -119,11 +119,11 @@ module Cask
               result = command.run(
                 "/bin/launchctl",
                 args:         ["remove", service],
-                must_succeed: sudo,
+                must_succeed: false,
                 sudo:,
                 sudo_as_root: sudo,
               )
-              next if !sudo && !result.success?
+              next unless result.success?
 
               sleep 1
             end
@@ -134,20 +134,22 @@ module Cask
             paths.each { |elt| elt.prepend(Dir.home).freeze } unless sudo
             paths = paths.map { |elt| Pathname(elt) }.select(&:exist?)
             paths.each do |path|
-              command.run!("/bin/rm", args: ["-f", "--", path], sudo:, sudo_as_root: sudo)
+              command.run("/bin/rm", args: ["-f", "--", path], must_succeed: false, sudo:, sudo_as_root: sudo)
             end
             # undocumented and untested: pass a path to uninstall :launchctl
             next unless Pathname(service).exist?
 
-            command.run!(
+            command.run(
               "/bin/launchctl",
               args:         ["unload", "-w", "--", service],
+              must_succeed: false,
               sudo:,
               sudo_as_root: sudo,
             )
-            command.run!(
+            command.run(
               "/bin/rm",
               args:         ["-f", "--", service],
+              must_succeed: false,
               sudo:,
               sudo_as_root: sudo,
             )
@@ -172,7 +174,7 @@ module Cask
           .stdout.lines.drop(1) # skip stdout column headers
           .filter_map do |line|
             pid, _state, id = line.chomp.split(/\s+/)
-            id if pid.to_i.nonzero? && id.match?(regex)
+            id if pid.to_i.nonzero? && T.must(id).match?(regex)
           end
       end
 
@@ -376,7 +378,7 @@ module Cask
         executable_path = staged_path_join_executable(executable)
 
         if (executable_path.absolute? && !executable_path.exist?) ||
-           (!executable_path.absolute? && (which executable_path).nil?)
+           (!executable_path.absolute? && which(executable_path.to_s).nil?)
           message = "uninstall script #{executable} does not exist"
           raise CaskError, "#{message}." unless force
 
@@ -389,7 +391,7 @@ module Cask
       end
 
       def uninstall_pkgutil(*pkgs, command: nil, **_)
-        ohai "Uninstalling packages with sudo; the password may be necessary:"
+        ohai "Uninstalling packages with `sudo` (which may request your password)..."
         pkgs.each do |regex|
           ::Cask::Pkg.all_matching(regex, command).each do |pkg|
             puts pkg.package_id
@@ -460,9 +462,9 @@ module Cask
       def trash_paths(*paths, command: nil, **_)
         return if paths.empty?
 
-        stdout, = system_command HOMEBREW_LIBRARY_PATH/"cask/utils/trash.swift",
-                                 args:         paths,
-                                 print_stderr: Homebrew::EnvConfig.developer?
+        stdout = system_command(HOMEBREW_LIBRARY_PATH/"cask/utils/trash.swift",
+                                args:         paths,
+                                print_stderr: Homebrew::EnvConfig.developer?).stdout
 
         trashed, _, untrashable = stdout.partition("\n")
         trashed = trashed.split(":")

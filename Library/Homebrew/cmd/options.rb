@@ -23,7 +23,7 @@ module Homebrew
         flag   "--command=",
                description: "Show options for the specified <command>."
 
-        conflicts "--installed", "--all", "--command"
+        conflicts "--command", "--installed", "--eval-all"
 
         named_args :formula
       end
@@ -47,7 +47,7 @@ module Homebrew
             puts
           end
         elsif args.no_named?
-          raise FormulaUnspecifiedError
+          raise UsageError, "`brew options` needs a formula or `--eval-all` passed or `HOMEBREW_EVAL_ALL=1` set!"
         else
           puts_options args.named.to_formulae
         end

@@ -5,6 +5,7 @@ require "test/support/fixtures/testball"
 
 RSpec.describe GitHubRunnerMatrix, :no_api do
   before do
+    allow(ENV).to receive(:fetch).and_call_original
     allow(ENV).to receive(:fetch).with("HOMEBREW_LINUX_RUNNER").and_return("ubuntu-latest")
     allow(ENV).to receive(:fetch).with("HOMEBREW_MACOS_LONG_TIMEOUT", "false").and_return("false")
     allow(ENV).to receive(:fetch).with("HOMEBREW_MACOS_BUILD_ON_GITHUB_RUNNER", "false").and_return("false")
@@ -31,6 +32,13 @@ RSpec.describe GitHubRunnerMatrix, :no_api do
   let(:testball_depender_newest) do
     symbol, = newest_supported_macos
     setup_test_runner_formula("testball-depender-newest", ["testball", { macos: symbol }])
+  end
+
+  describe "OLDEST_HOMEBREW_CORE_MACOS_RUNNER" do
+    it "is not newer than HOMEBREW_MACOS_OLDEST_SUPPORTED" do
+      oldest_macos_runner = MacOSVersion.from_symbol(described_class::OLDEST_HOMEBREW_CORE_MACOS_RUNNER)
+      expect(oldest_macos_runner).to be <= HOMEBREW_MACOS_OLDEST_SUPPORTED
+    end
   end
 
   describe "#active_runner_specs_hash" do

@@ -54,7 +54,7 @@ PLC members' roles of responsibility for planning and execution:
 
 ## Logistics Timeline
 
-Past practice and future intent is for AGM to coincide with [FOSDEM](https://fosdem.org "Free and Open Source Developers European Meeting"), which is held in Brussels, Belgium annually typically on the Saturday and Sunday of the fifth ISO-8601 week of the calendar year, calculable with:
+Past practice and future intent is for AGM to coincide with [FOSDEM](https://fosdem.org "Free and Open Source Developers European Meeting"), which is held in Brussels, Belgium annually typically on the Saturday and Sunday of the fifth ISO 8601 week of the calendar year, calculable with:
 
     ruby -rdate -e "s=ARGV[0].to_i;s.upto(s+4).map{|y|Date.commercial(y,5,6)}.each{|y|puts [y,y+1].join(' - ')}" 2024
 
@@ -156,7 +156,7 @@ It is important that all attendees expecting reimbursement stay in-policy.
 
 ### Meeting enhancements
 
-* Captioning or transcription, or both - [White Coat Captioning](https://whitecoatcaptioning.com) could handle the live captioning and provide us that for a transcript.
+* Captioning or transcription, or both - [White Coat Captioning](https://whitecoatcaptioning.com/) could handle the live captioning and provide us that for a transcript.
 * Separate meeting runner
   * Keep PL ideally focused on content and not agenda or tracking who's asked to speak
   * Should be a PLC member who is not the AC, LC, or TC

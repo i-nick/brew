@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "utils/bottles"
+require "utils/output"
 
 require "formula"
 require "cask/cask_loader"
@@ -9,6 +10,9 @@ require "cask/cask_loader"
 module Homebrew
   # Helper class for cleaning up the Homebrew cache.
   class Cleanup
+    extend Utils::Output::Mixin
+    include Utils::Output::Mixin
+
     CLEANUP_DEFAULT_DAYS = Homebrew::EnvConfig.cleanup_periodic_full_days.to_i.freeze
     GH_ACTIONS_ARTIFACT_CLEANUP_DAYS = 3
     private_constant :CLEANUP_DEFAULT_DAYS, :GH_ACTIONS_ARTIFACT_CLEANUP_DAYS
@@ -171,7 +175,7 @@ module Homebrew
 
         stable = formula.stable
         if resource_name == "patch"
-          patch_hashes = stable&.patches&.filter_map { _1.resource.version if _1.external? }
+          patch_hashes = stable&.patches&.filter_map { T.cast(_1, ExternalPatch).resource.version if _1.external? }
           return true unless patch_hashes&.include?(Checksum.new(version.to_s))
         elsif resource_name && stable && (resource_version = stable.resources[resource_name]&.version)
           return true if resource_version != version
@@ -258,8 +262,8 @@ module Homebrew
       return if Homebrew::EnvConfig.no_env_hints?
       return if Homebrew::EnvConfig.no_install_cleanup?
 
-      puts "Disable this behaviour by setting HOMEBREW_NO_INSTALL_CLEANUP."
-      puts "Hide these hints with HOMEBREW_NO_ENV_HINTS (see `man brew`)."
+      puts "Disable this behaviour by setting `HOMEBREW_NO_INSTALL_CLEANUP=1`."
+      puts "Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`)."
     end
 
     def self.puts_no_install_cleanup_disable_message_if_not_already!
@@ -315,8 +319,8 @@ module Homebrew
         end
 
         if ENV["HOMEBREW_AUTOREMOVE"].present?
-          opoo "HOMEBREW_AUTOREMOVE is now a no-op as it is the default behaviour. " \
-               "Set HOMEBREW_NO_AUTOREMOVE=1 to disable it."
+          opoo "`$HOMEBREW_AUTOREMOVE` is now a no-op as it is the default behaviour. " \
+               "Set `HOMEBREW_NO_AUTOREMOVE=1` to disable it."
         end
         Cleanup.autoremove(dry_run: dry_run?) unless Homebrew::EnvConfig.no_autoremove?
 
@@ -373,7 +377,7 @@ module Homebrew
 
     def cleanup_formula(formula, quiet: false, ds_store: true, cache_db: true)
       formula.eligible_kegs_for_cleanup(quiet:)
-             .each { cleanup_keg(_1) }
+             .each { |keg| cleanup_keg(keg) }
       cleanup_cache(Pathname.glob(cache/"#{formula.name}{_bottle_manifest,}--*").map { |path| { path:, type: nil } })
       rm_ds_store([formula.rack]) if ds_store
       cleanup_cache_db(formula.rack) if cache_db
@@ -718,7 +722,7 @@ module Homebrew
       # Remove formulae listed in HOMEBREW_NO_CLEANUP_FORMULAE and their dependencies.
       if Homebrew::EnvConfig.no_cleanup_formulae.present?
         formulae -= formulae.select { skip_clean_formula?(_1) }
-                            .flat_map { |f| [f, *f.runtime_formula_dependencies] }
+                            .flat_map { |f| [f, *f.installed_runtime_formula_dependencies] }
       end
       casks = Cask::Caskroom.casks
 
@@ -729,7 +733,7 @@ module Homebrew
       formulae_names = removable_formulae.map(&:full_name).sort
 
       verb = dry_run ? "Would autoremove" : "Autoremoving"
-      oh1 "#{verb} #{formulae_names.count} unneeded #{Utils.pluralize("formula", formulae_names.count, plural: "e")}:"
+      oh1 "#{verb} #{formulae_names.count} unneeded #{Utils.pluralize("formula", formulae_names.count)}:"
       puts formulae_names.join("\n")
       return if dry_run
 

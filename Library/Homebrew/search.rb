@@ -2,10 +2,13 @@
 # frozen_string_literal: true
 
 require "description_cache_store"
+require "utils/output"
 
 module Homebrew
   # Helper module for searching formulae or casks.
   module Search
+    extend Utils::Output::Mixin
+
     def self.query_regexp(query)
       if (m = query.match(%r{^/(.*)/$}))
         Regexp.new(m[1])
@@ -31,7 +34,7 @@ module Homebrew
           unofficial = Tap.all.sum { |tap| tap.official? ? 0 : tap.formula_files.size }
           if unofficial.positive?
             opoo "Use `--eval-all` to search #{unofficial} additional " \
-                 "#{Utils.pluralize("formula", unofficial, plural: "e")} in third party taps."
+                 "#{Utils.pluralize("formula", unofficial)} in third party taps."
           end
           descriptions = Homebrew::API::Formula.all_formulae.transform_values { |data| data["desc"] }
           Descriptions.search(string_or_regex, search_type, descriptions, eval_all, cache_store_hash: true).print

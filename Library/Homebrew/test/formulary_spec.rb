@@ -126,7 +126,7 @@ RSpec.describe Formulary do
           described_class.factory(temp_formula_path)
         ensure
           temp_formula_path.unlink
-        end.to raise_error(FormulaUnavailableError)
+        end.to raise_error(RuntimeError, /requires formulae to be in a tap, rejecting/)
       end
 
       it "returns a Formula when given a URL", :needs_utils_curl do
@@ -139,6 +139,28 @@ RSpec.describe Formulary do
         expect do
           described_class.factory("file://#{formula_path}")
         end.to raise_error(FormulaUnavailableError)
+      end
+
+      context "when given a cache path" do
+        let(:cache_dir) { HOMEBREW_CACHE/"test_formula_cache" }
+        let(:cache_formula_path) { cache_dir/formula_path.basename }
+
+        before do
+          cache_dir.mkpath
+          FileUtils.cp formula_path, cache_formula_path
+        end
+
+        after do
+          cache_formula_path.unlink if cache_formula_path.exist?
+          cache_dir.rmdir if cache_dir.exist?
+        end
+
+        it "disallows cache paths when paths are explicitly disabled" do
+          ENV["HOMEBREW_FORBID_PACKAGES_FROM_PATHS"] = "1"
+          expect do
+            described_class.factory(cache_formula_path)
+          end.to raise_error(/requires formulae to be in a tap/)
+        end
       end
 
       context "when given a bottle" do
@@ -292,8 +314,12 @@ RSpec.describe Formulary do
       def formula_json_contents(extra_items = {})
         {
           formula_name => {
+            "name"                     => formula_name,
             "desc"                     => "testball",
             "homepage"                 => "https://example.com",
+            "installed"                => [],
+            "outdated"                 => false,
+            "pinned"                   => false,
             "license"                  => "MIT",
             "revision"                 => 0,
             "version_scheme"           => 0,
@@ -340,6 +366,7 @@ RSpec.describe Formulary do
             "conflicts_with"           => ["conflicting_formula"],
             "conflicts_with_reasons"   => ["it does"],
             "link_overwrite"           => ["bin/abc"],
+            "linked_keg"               => nil,
             "caveats"                  => "example caveat string\n/$HOME\n$HOMEBREW_PREFIX",
             "service"                  => {
               "name"        => { macos: "custom.launchd.name", linux: "custom.systemd.name" },
@@ -445,6 +472,17 @@ RSpec.describe Formulary do
         expect do
           formula.install
         end.to raise_error("Cannot build from source from abstract formula.")
+      end
+
+      it "returns a Formula that can regenerate its JSON API" do
+        allow(Homebrew::API::Formula).to receive(:all_formulae).and_return formula_json_contents
+
+        formula = described_class.factory(formula_name)
+        expect(formula).to be_a(Formula)
+        expect(formula.loaded_from_api?).to be true
+
+        expected_hash = formula_json_contents[formula_name]
+        expect(formula.to_hash_with_variations).to eq(expected_hash)
       end
 
       it "returns a deprecated Formula when given a name" do
@@ -565,10 +603,10 @@ RSpec.describe Formulary do
         end.to raise_error(UnsupportedInstallationMethod)
       end
 
-      it "does not raise an error when given a file URL" do
+      it "does not raise an error when given a file URL", :needs_utils_curl do
         expect do
           described_class.factory("file://#{TEST_FIXTURE_DIR}/testball.rb")
-        end.not_to raise_error(UnsupportedInstallationMethod)
+        end.not_to raise_error
       end
     end
 

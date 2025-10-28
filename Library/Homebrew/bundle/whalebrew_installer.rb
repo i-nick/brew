@@ -1,9 +1,13 @@
 # typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
+require "utils/output"
+
 module Homebrew
   module Bundle
     module WhalebrewInstaller
+      extend Utils::Output::Mixin
+
       def self.reset!
         @installed_images = nil
       end
@@ -24,7 +28,7 @@ module Homebrew
       end
 
       def self.install!(name, preinstall: true, verbose: false, force: false, **_options)
-        odeprecated "`brew bundle` `whalebrew` support", "using `whalebrew` directly"
+        odisabled "`brew bundle` `whalebrew` support", "using `whalebrew` directly"
         return true unless preinstall
 
         puts "Installing #{name} image. It is not currently installed." if verbose

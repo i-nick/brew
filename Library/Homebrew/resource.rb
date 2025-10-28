@@ -5,6 +5,7 @@ require "downloadable"
 require "mktemp"
 require "livecheck"
 require "on_system"
+require "utils/output"
 
 # Resource is the fundamental representation of an external resource. The
 # primary formula download, along with other declared resources, are instances
@@ -13,6 +14,7 @@ class Resource
   include Downloadable
   include FileUtils
   include OnSystem::MacOSAndLinux
+  include Utils::Output::Mixin
 
   attr_reader :source_modified_time, :patches, :owner
   attr_writer :checksum
@@ -37,7 +39,7 @@ class Resource
     instance_eval(&block) if block
   end
 
-  sig { params(other: Object).void }
+  sig { override.params(other: T.any(Resource, Downloadable)).void }
   def initialize_dup(other)
     super
     @name = @name.dup
@@ -57,19 +59,8 @@ class Resource
     patches.each { |p| p.owner = owner }
   end
 
-  # Removes /s from resource names; this allows Go package names
-  # to be used as resource names without confusing software that
-  # interacts with {download_name}, e.g. `github.com/foo/bar`.
-  def escaped_name
-    name.tr("/", "-")
-  end
-
-  def download_name
-    return owner.name if name.nil?
-    return escaped_name if owner.nil?
-
-    "#{owner.name}--#{escaped_name}"
-  end
+  sig { override.returns(String) }
+  def download_queue_type = "Resource"
 
   # Verifies download and unpacks it.
   # The block may call `|resource, staging| staging.retain!` to retain the staging
@@ -137,12 +128,13 @@ class Resource
         verify_download_integrity: T::Boolean,
         timeout:                   T.nilable(T.any(Integer, Float)),
         quiet:                     T::Boolean,
+        skip_patches:              T::Boolean,
       ).returns(Pathname)
   }
-  def fetch(verify_download_integrity: true, timeout: nil, quiet: false)
-    fetch_patches
+  def fetch(verify_download_integrity: true, timeout: nil, quiet: false, skip_patches: false)
+    fetch_patches unless skip_patches
 
-    super
+    super(verify_download_integrity:, timeout:, quiet:)
   end
 
   # {Livecheck} can be used to check for newer versions of the software.
@@ -182,7 +174,7 @@ class Resource
   # and `false` otherwise.
   sig { returns(T::Boolean) }
   def livecheckable?
-    odeprecated "`livecheckable?`", "`livecheck_defined?`"
+    odisabled "`livecheckable?`", "`livecheck_defined?`"
     @livecheck_defined == true
   end
 
@@ -243,6 +235,19 @@ class Resource
 
   private
 
+  sig { override.returns(String) }
+  def download_name
+    return owner.name if name.nil?
+
+    # Removes /s from resource names; this allows Go package names
+    # to be used as resource names without confusing software that
+    # interacts with {download_name}, e.g. `github.com/foo/bar`.
+    escaped_name = name.tr("/", "-")
+    return escaped_name if owner.nil?
+
+    "#{owner.name}--#{escaped_name}"
+  end
+
   def determine_url_mirrors
     extra_urls = []
     url = T.must(self.url)
@@ -284,14 +289,10 @@ class Resource
   # A resource for a formula.
   class Formula < Resource
     sig { override.returns(String) }
-    def name
-      T.must(owner).name
-    end
+    def download_queue_type = "Formula"
 
     sig { override.returns(String) }
-    def download_name
-      name
-    end
+    def download_queue_name = "#{T.must(owner).name} (#{version})"
   end
 
   # A resource containing a Go package.
@@ -338,6 +339,12 @@ class Resource
     def installed_size
       manifest_annotations["sh.brew.bottle.installed_size"]&.to_i
     end
+
+    sig { override.returns(String) }
+    def download_queue_type = "Bottle Manifest"
+
+    sig { override.returns(String) }
+    def download_queue_name = "#{bottle.name} (#{bottle.resource.version})"
 
     private
 
@@ -390,6 +397,18 @@ class Resource
       return @directory if val.nil?
 
       @directory = val
+    end
+
+    sig { override.returns(String) }
+    def download_queue_type = "Patch"
+
+    sig { override.returns(String) }
+    def download_queue_name
+      if (last_url_component = url.to_s.split("/").last)
+        return last_url_component
+      end
+
+      super
     end
   end
 end

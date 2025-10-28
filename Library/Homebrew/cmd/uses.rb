@@ -55,7 +55,7 @@ module Homebrew
                description: "Include only casks."
 
         conflicts "--formula", "--cask"
-        conflicts "--installed", "--all"
+        conflicts "--installed", "--eval-all"
         conflicts "--missing", "--installed"
 
         named_args :formula, min: 1
@@ -123,7 +123,7 @@ module Homebrew
           eval_all = args.eval_all?
 
           if !args.installed? && !eval_all
-            raise UsageError, "`brew uses` needs `--installed` or `--eval-all` passed or `$HOMEBREW_EVAL_ALL` set!"
+            raise UsageError, "`brew uses` needs `--installed` or `--eval-all` passed or `HOMEBREW_EVAL_ALL=1` set!"
           end
 
           if show_formulae_and_casks || args.formula?

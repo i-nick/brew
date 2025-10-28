@@ -3,6 +3,7 @@
 
 require "resource"
 require "erb"
+require "utils/output"
 
 # Helper module for creating patches.
 module Patch
@@ -24,7 +25,7 @@ module Patch
     when nil
       raise ArgumentError, "nil value for strip"
     else
-      raise ArgumentError, "Unexpected value #{strip.inspect} for strip"
+      raise ArgumentError, "Unexpected value for strip: #{strip.inspect}"
     end
   end
 end
@@ -46,7 +47,11 @@ class EmbeddedPatch
   def contents; end
 
   def apply
-    data = contents.gsub("HOMEBREW_PREFIX", HOMEBREW_PREFIX)
+    data = contents.gsub("@@HOMEBREW_PREFIX@@", HOMEBREW_PREFIX)
+    if data.gsub!("HOMEBREW_PREFIX", HOMEBREW_PREFIX)
+      # Utils::Output.odeprecated "patch with HOMEBREW_PREFIX placeholder",
+      #                           "patch with @@HOMEBREW_PREFIX@@ placeholder"
+    end
     args = %W[-g 0 -f -#{strip}]
     Utils.safe_popen_write("patch", *args) { |p| p.write(data) }
   end
@@ -96,6 +101,8 @@ end
 
 # A file containing a patch.
 class ExternalPatch
+  include Utils::Output::Mixin
+
   extend Forwardable
 
   attr_reader :resource, :strip

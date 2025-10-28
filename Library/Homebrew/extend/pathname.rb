@@ -1,15 +1,17 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "system_command"
 require "extend/pathname/disk_usage_extension"
 require "extend/pathname/observer_pathname_extension"
+require "utils/output"
 
 # Homebrew extends Ruby's `Pathname` to make our code more readable.
 # @see https://ruby-doc.org/stdlib-2.6.3/libdoc/pathname/rdoc/Pathname.html Ruby's Pathname API
 class Pathname
   include SystemCommand::Mixin
   include DiskUsageExtension
+  include Utils::Output::Mixin
 
   # Moves a file from the original location to the {Pathname}'s.
   #
@@ -45,30 +47,6 @@ class Pathname
     end
   end
 
-  sig { params(src: T.any(String, Pathname), new_basename: String).void }
-  def install_p(src, new_basename)
-    src = Pathname(src)
-    raise Errno::ENOENT, src.to_s if !src.symlink? && !src.exist?
-
-    dst = join(new_basename)
-    dst = yield(src, dst) if block_given?
-    return unless dst
-
-    mkpath
-
-    # Use `FileUtils.mv` over `File.rename` to handle filesystem boundaries. If `src`
-    # is a symlink and its target is moved first, `FileUtils.mv` will fail
-    # (https://bugs.ruby-lang.org/issues/7707).
-    #
-    # In that case, use the system `mv` command.
-    if src.symlink?
-      raise unless Kernel.system "mv", src.to_s, dst
-    else
-      FileUtils.mv src, dst
-    end
-  end
-  private :install_p
-
   # Creates symlinks to sources in this folder.
   #
   # @api public
@@ -89,15 +67,6 @@ class Pathname
       end
     end
   end
-
-  def install_symlink_p(src, new_basename)
-    mkpath
-    dstdir = realpath
-    src = Pathname(src).expand_path(dstdir)
-    src = src.dirname.realpath/src.basename if src.dirname.exist?
-    FileUtils.ln_sf(src.relative_path_from(dstdir), dstdir/new_basename)
-  end
-  private :install_symlink_p
 
   # Only appends to a file that is already created.
   #
@@ -146,9 +115,15 @@ class Pathname
     end
   end
 
-  def cp_path_sub(pattern, replacement)
+  sig {
+    params(pattern: T.any(Pathname, String, Regexp), replacement: T.any(Pathname, String),
+           _block: T.nilable(T.proc.params(src: Pathname, dst: Pathname).returns(Pathname))).void
+  }
+  def cp_path_sub(pattern, replacement, &_block)
     raise "#{self} does not exist" unless exist?
 
+    pattern = pattern.to_s if pattern.is_a?(Pathname)
+    replacement = replacement.to_s if replacement.is_a?(Pathname)
     dst = sub(pattern, replacement)
 
     raise "#{self} is the same file as #{dst}" if self == dst
@@ -269,12 +244,14 @@ class Pathname
     dirname.join(link).exist?
   end
 
+  sig { params(src: Pathname).void }
   def make_relative_symlink(src)
     dirname.mkpath
     File.symlink(src.relative_path_from(dirname), self)
   end
 
-  def ensure_writable
+  sig { params(_block: T.proc.void).void }
+  def ensure_writable(&_block)
     saved_perms = nil
     unless writable?
       saved_perms = stat.mode
@@ -285,24 +262,18 @@ class Pathname
     chmod saved_perms if saved_perms
   end
 
-  def which_install_info
-    @which_install_info ||=
-      if File.executable?("/usr/bin/install-info")
-        "/usr/bin/install-info"
-      elsif Formula["texinfo"].any_version_installed?
-        Formula["texinfo"].opt_bin/"install-info"
-      end
-  end
-
+  sig { void }
   def install_info
     quiet_system(which_install_info, "--quiet", to_s, "#{dirname}/dir")
   end
 
+  sig { void }
   def uninstall_info
     quiet_system(which_install_info, "--delete", "--quiet", to_s, "#{dirname}/dir")
   end
 
   # Writes an exec script in this folder for each target pathname.
+  sig { params(targets: T.any(T::Array[T.any(String, Pathname)], String, Pathname)).void }
   def write_exec_script(*targets)
     targets.flatten!
     if targets.empty?
@@ -320,14 +291,27 @@ class Pathname
   end
 
   # Writes an exec script that sets environment variables.
-  def write_env_script(target, args, env = nil)
-    unless env
-      env = args
-      args = nil
+  sig {
+    params(target:      T.any(Pathname, String),
+           args_or_env: T.any(String, T::Array[String], T::Hash[String, String], T::Hash[Symbol, String]),
+           env:         T.any(T::Hash[String, String], T::Hash[Symbol, String])).void
+  }
+  def write_env_script(target, args_or_env, env = T.unsafe(nil))
+    args = if env.nil?
+      env = args_or_env if args_or_env.is_a?(Hash)
+
+      nil
+    elsif args_or_env.is_a?(Array)
+      args_or_env.join(" ")
+    else
+      T.cast(args_or_env, T.nilable(String))
     end
+
     env_export = +""
     env.each { |key, value| env_export << "#{key}=\"#{value}\" " }
+
     dirname.mkpath
+
     write <<~SH
       #!/bin/bash
       #{env_export}exec "#{target}" #{args} "$@"
@@ -335,13 +319,14 @@ class Pathname
   end
 
   # Writes a wrapper env script and moves all files to the dst.
+  sig { params(dst: Pathname, env: T::Hash[String, String]).void }
   def env_script_all_files(dst, env)
     dst.mkpath
     Pathname.glob("#{self}/*") do |file|
       next if file.directory?
 
       new_file = dst.join(file.basename)
-      raise Errno::EEXIST, new_file if new_file.exist?
+      raise Errno::EEXIST, new_file.to_s if new_file.exist?
 
       dst.install(file)
       file.write_env_script(new_file, env)
@@ -366,6 +351,7 @@ class Pathname
     EOS
   end
 
+  sig { params(from: T.any(String, Pathname)).void }
   def install_metafiles(from = Pathname.pwd)
     require "metafiles"
 
@@ -417,6 +403,7 @@ class Pathname
 
   sig { returns(String) }
   def magic_number
+    @magic_number ||= T.let(nil, T.nilable(String))
     @magic_number ||= if directory?
       ""
     else
@@ -428,31 +415,68 @@ class Pathname
 
   sig { returns(String) }
   def file_type
+    @file_type ||= T.let(nil, T.nilable(String))
     @file_type ||= system_command("file", args: ["-b", self], print_stderr: false)
                    .stdout.chomp
   end
 
   sig { returns(T::Array[String]) }
   def zipinfo
-    @zipinfo ||= system_command("zipinfo", args: ["-1", self], print_stderr: false)
-                 .stdout
-                 .encode(Encoding::UTF_8, invalid: :replace)
-                 .split("\n")
+    @zipinfo ||= T.let(
+      system_command("zipinfo", args: ["-1", self], print_stderr: false)
+      .stdout
+      .encode(Encoding::UTF_8, invalid: :replace)
+      .split("\n"),
+      T.nilable(T::Array[String]),
+    )
   end
 
-  # Like regular `rmtree`, except it never ignores errors.
-  #
-  # This was the default behaviour in Ruby 3.1 and earlier.
-  #
-  # @api public
-  def rmtree(noop: nil, verbose: nil, secure: nil)
-    # Ideally we'd odeprecate this but probably can't given gems so let's
-    # create a RuboCop autocorrect instead soon.
-    # This is why monkeypatching is non-ideal (but right solution to get
-    # Ruby 3.3 over the line).
-    odisabled "rmtree", "FileUtils#rm_r"
-    FileUtils.rm_r(T.must(@path), noop:, verbose:, secure:)
-    nil
+  private
+
+  sig {
+    params(src: T.any(String, Pathname), new_basename: T.any(String, Pathname),
+           _block: T.nilable(T.proc.params(src: Pathname, dst: Pathname).returns(T.nilable(Pathname)))).void
+  }
+  def install_p(src, new_basename, &_block)
+    src = Pathname(src)
+    raise Errno::ENOENT, src.to_s if !src.symlink? && !src.exist?
+
+    dst = join(new_basename)
+    dst = yield(src, dst) if block_given?
+    return unless dst
+
+    mkpath
+
+    # Use `FileUtils.mv` over `File.rename` to handle filesystem boundaries. If `src`
+    # is a symlink and its target is moved first, `FileUtils.mv` will fail
+    # (https://bugs.ruby-lang.org/issues/7707).
+    #
+    # In that case, use the system `mv` command.
+    if src.symlink?
+      raise unless Kernel.system "mv", src.to_s, dst.to_s
+    else
+      FileUtils.mv src, dst
+    end
+  end
+
+  sig { params(src: T.any(String, Pathname), new_basename: T.any(String, Pathname)).void }
+  def install_symlink_p(src, new_basename)
+    mkpath
+    dstdir = realpath
+    src = Pathname(src).expand_path(dstdir)
+    src = src.dirname.realpath/src.basename if src.dirname.exist?
+    FileUtils.ln_sf(src.relative_path_from(dstdir), dstdir/new_basename)
+  end
+
+  sig { returns(T.nilable(String)) }
+  def which_install_info
+    @which_install_info ||= T.let(nil, T.nilable(String))
+    @which_install_info ||=
+      if File.executable?("/usr/bin/install-info")
+        "/usr/bin/install-info"
+      elsif Formula["texinfo"].any_version_installed?
+        (Formula["texinfo"].opt_bin/"install-info").to_s
+      end
   end
 end
 require "extend/os/pathname"

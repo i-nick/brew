@@ -4,9 +4,12 @@ require "cmd/update-report"
 require "formula_versions"
 require "yaml"
 require "cmd/shared_examples/args_parse"
+require "cmd/shared_examples/reinstall_pkgconf_if_needed"
 
 RSpec.describe Homebrew::Cmd::UpdateReport do
   it_behaves_like "parseable arguments"
+
+  it_behaves_like "reinstall_pkgconf_if_needed"
 
   describe Reporter do
     let(:tap) { CoreTap.instance }
@@ -83,7 +86,7 @@ RSpec.describe Homebrew::Cmd::UpdateReport do
 
       expect(hub.select_formula_or_cask(:A)).to be_empty
       expect(hub.select_formula_or_cask(:D)).to be_empty
-      expect(hub.select_formula_or_cask(:R)).to eq([["cv", "progress"]])
+      expect(hub.instance_variable_get(:@hash)[:R]).to eq([["cv", "progress"]])
     end
 
     context "when updating a Tap other than the core Tap" do
@@ -102,7 +105,7 @@ RSpec.describe Homebrew::Cmd::UpdateReport do
 
         expect(hub.select_formula_or_cask(:A)).to be_empty
         expect(hub.select_formula_or_cask(:D)).to be_empty
-        expect(hub.select_formula_or_cask(:R)).to be_empty
+        expect(hub.instance_variable_get(:@hash)[:R]).to be_nil
       end
 
       specify "with renamed Formula and restructured Tap" do
@@ -111,7 +114,7 @@ RSpec.describe Homebrew::Cmd::UpdateReport do
 
         expect(hub.select_formula_or_cask(:A)).to be_empty
         expect(hub.select_formula_or_cask(:D)).to be_empty
-        expect(hub.select_formula_or_cask(:R)).to eq([%w[foo/bar/xchat foo/bar/xchat2]])
+        expect(hub.instance_variable_get(:@hash)[:R]).to eq([%w[foo/bar/xchat foo/bar/xchat2]])
       end
 
       specify "with simulated 'homebrew/php' restructuring" do
@@ -119,7 +122,7 @@ RSpec.describe Homebrew::Cmd::UpdateReport do
 
         expect(hub.select_formula_or_cask(:A)).to be_empty
         expect(hub.select_formula_or_cask(:D)).to be_empty
-        expect(hub.select_formula_or_cask(:R)).to be_empty
+        expect(hub.instance_variable_get(:@hash)[:R]).to be_nil
       end
 
       specify "with Formula changes" do
@@ -127,7 +130,26 @@ RSpec.describe Homebrew::Cmd::UpdateReport do
 
         expect(hub.select_formula_or_cask(:A)).to eq(%w[foo/bar/lua])
         expect(hub.select_formula_or_cask(:M)).to eq(%w[foo/bar/git])
-        expect(hub.select_formula_or_cask(:D)).to be_empty
+        expect(hub.instance_variable_get(:@hash)[:R]).to be_nil
+      end
+
+      specify "with formula migrated to cask in same tap" do
+        # Setup a tap with both formulae and casks
+        (tap.path/"Formula").mkpath
+        (tap.path/"Casks").mkpath
+        (tap.path/"tap_migrations.json").write <<~JSON
+          { "old-formula": "foo/bar/new-cask" }
+        JSON
+
+        # Mock that the tap has a cask with the migration target name
+        allow(tap).to receive(:cask_tokens).and_return(["new-cask"])
+
+        reporter_instance = reporter_class.new(tap)
+        allow(reporter_instance).to receive(:report).and_return({ D: ["foo/bar/old-formula"] })
+
+        # Verify the migration would be detected as formula-to-cask migration
+        expect(tap.tap_migrations).to eq({ "old-formula" => "foo/bar/new-cask" })
+        expect(tap.cask_tokens).to include("new-cask")
       end
     end
   end
@@ -155,7 +177,7 @@ RSpec.describe Homebrew::Cmd::UpdateReport do
     end
 
     it "dumps new casks report" do
-      allow(hub).to receive(:select_formula_or_cask).with(:AC).and_return(["foo/cask1", "foo/cask2", "foo/cask3"])
+      allow(hub).to receive(:select_formula_or_cask).with(:AC).and_return(["cask1", "cask2", "foo/tap/cask3"])
       allow(hub).to receive_messages(cask_installed?: false, all_cask_json: [
         { "token" => "cask1", "desc" => "desc1" },
         { "token" => "cask3", "desc" => "desc3" },
@@ -165,7 +187,7 @@ RSpec.describe Homebrew::Cmd::UpdateReport do
         ==> New Casks
         cask1: desc1
         cask2
-        cask3: desc3
+        cask3
       EOS
     end
 

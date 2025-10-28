@@ -12,14 +12,13 @@ module Homebrew
         description <<~EOS
           Install and commit Homebrew's vendored gems.
         EOS
-
         comma_array "--update",
                     description: "Update the specified list of vendored gems to the latest version."
-        switch      "--no-commit",
-                    description: "Do not generate a new commit upon completion."
-        switch     "--non-bundler-gems",
-                   description: "Update vendored gems that aren't using Bundler.",
-                   hidden:      true
+        switch "--no-commit",
+               description: "Do not generate a new commit upon completion."
+        switch "--non-bundler-gems",
+               description: "Update vendored gems that aren't using Bundler.",
+               hidden:      true
 
         named_args :none
       end

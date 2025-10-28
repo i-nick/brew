@@ -90,6 +90,16 @@ module SharedAudits
     end
   end
 
+  sig { params(user: String, repo: String).returns(T.nilable(T::Hash[String, T.untyped])) }
+  def self.forgejo_repo_data(user, repo)
+    @forgejo_repo_data ||= T.let({}, T.nilable(T::Hash[String, T.untyped]))
+    @forgejo_repo_data["#{user}/#{repo}"] ||= begin
+      result = Utils::Curl.curl_output("https://codeberg.org/api/v1/repos/#{user}/#{repo}")
+
+      JSON.parse(result.stdout) if result.status.success?
+    end
+  end
+
   sig { params(user: String, repo: String, tag: String).returns(T.nilable(T::Hash[String, T.untyped])) }
   private_class_method def self.gitlab_release_data(user, repo, tag)
     id = "#{user}/#{repo}/#{tag}"
@@ -123,6 +133,40 @@ module SharedAudits
     return if [version, "all"].include?(exception)
 
     "#{tag} is a GitLab pre-release."
+  end
+
+  sig { params(user: String, repo: String, tag: String).returns(T.nilable(T::Hash[String, T.untyped])) }
+  private_class_method def self.forgejo_release_data(user, repo, tag)
+    id = "#{user}/#{repo}/#{tag}"
+    @forgejo_release_data ||= T.let({}, T.nilable(T::Hash[String, T.untyped]))
+    @forgejo_release_data[id] ||= begin
+      result = Utils::Curl.curl_output(
+        "https://codeberg.org/api/v1/repos/#{user}/#{repo}/releases/tags/#{tag}", "--fail"
+      )
+      JSON.parse(result.stdout) if result.status.success?
+    end
+  end
+
+  sig {
+    params(
+      user: String, repo: String, tag: String, formula: T.nilable(Formula), cask: T.nilable(Cask::Cask),
+    ).returns(
+      T.nilable(String),
+    )
+  }
+  def self.forgejo_release(user, repo, tag, formula: nil, cask: nil)
+    release = forgejo_release_data(user, repo, tag)
+    return unless release
+    return unless release["prerelease"]
+
+    exception, version = if formula
+      [formula.tap&.audit_exception(:forgejo_prerelease_allowlist, formula.name), formula.version]
+    elsif cask
+      [cask.tap&.audit_exception(:forgejo_prerelease_allowlist, cask.token), cask.version]
+    end
+    return if [version, "all"].include?(exception)
+
+    "#{tag} is a Forgejo pre-release."
   end
 
   sig { params(user: String, repo: String).returns(T.nilable(String)) }
@@ -191,6 +235,23 @@ module SharedAudits
     "Bitbucket repository not notable enough (<30 forks and <75 watchers)"
   end
 
+  sig { params(user: String, repo: String).returns(T.nilable(String)) }
+  def self.forgejo(user, repo)
+    metadata = forgejo_repo_data(user, repo)
+    return if metadata.nil?
+
+    return "Forgejo fork (not canonical repository)" if metadata["fork"]
+
+    if (metadata["forks_count"] < 30) && (metadata["watchers_count"] < 30) &&
+       (metadata["stars_count"] < 75)
+      return "Forgejo repository not notable enough (<30 forks, <30 watchers and <75 stars)"
+    end
+
+    return if Date.parse(metadata["created_at"]) <= (Date.today - 30)
+
+    "Forgejo repository too new (<30 days old)"
+  end
+
   sig { params(url: String).returns(T.nilable(String)) }
   def self.github_tag_from_url(url)
     tag = url[%r{^https://github\.com/[\w-]+/[\w.-]+/archive/refs/tags/(.+)\.(tar\.gz|zip)$}, 1]
@@ -200,6 +261,11 @@ module SharedAudits
   sig { params(url: String).returns(T.nilable(String)) }
   def self.gitlab_tag_from_url(url)
     url[%r{^https://gitlab\.com/(?:\w[\w.-]*/){2,}-/archive/([^/]+)/}, 1]
+  end
+
+  sig { params(url: String).returns(T.nilable(String)) }
+  def self.forgejo_tag_from_url(url)
+    url[%r{^https://codeberg\.org/[\w-]+/[\w.-]+/archive/(.+)\.(tar\.gz|zip)$}, 1]
   end
 
   sig { params(formula_or_cask: T.any(Formula, Cask::Cask)).returns(T.nilable(String)) }

@@ -55,7 +55,7 @@ module Homebrew
               gem and pip will ignore our configuration and insist on using the
               environment they were built under (mostly). Sadly, scons will also
               ignore our configuration.
-              Hide these hints with HOMEBREW_NO_ENV_HINTS (see `man brew`).
+              Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
               When done, type `exit`.
             EOS
           end

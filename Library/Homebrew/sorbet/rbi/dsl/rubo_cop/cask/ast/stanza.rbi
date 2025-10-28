@@ -157,6 +157,9 @@ class RuboCop::Cask::AST::Stanza
   def qlplugin?; end
 
   sig { returns(T::Boolean) }
+  def rename?; end
+
+  sig { returns(T::Boolean) }
   def screen_saver?; end
 
   sig { returns(T::Boolean) }

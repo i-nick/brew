@@ -80,10 +80,10 @@ class DependencyCollector
     parse_spec(spec, Array(tags))
   end
 
-  sig { params(related_formula_names: T::Array[String]).returns(T.nilable(Dependency)) }
+  sig { params(related_formula_names: T::Set[String]).returns(T.nilable(Dependency)) }
   def gcc_dep_if_needed(related_formula_names); end
 
-  sig { params(related_formula_names: T::Array[String]).returns(T.nilable(Dependency)) }
+  sig { params(related_formula_names: T::Set[String]).returns(T.nilable(Dependency)) }
   def glibc_dep_if_needed(related_formula_names); end
 
   def git_dep_if_needed(tags)
@@ -135,7 +135,7 @@ class DependencyCollector
 
   sig {
     params(spec: T.any(String, Resource, Symbol, Requirement, Dependency, Class),
-           tags: T::Array[Symbol]).returns(T.any(Dependency, Requirement, Array, NilClass))
+           tags: T::Array[T.any(String, Symbol)]).returns(T.nilable(T.any(Dependency, Requirement, Array)))
   }
   def parse_spec(spec, tags)
     raise ArgumentError, "Implicit dependencies cannot be manually specified" if tags.include?(:implicit)
@@ -169,7 +169,7 @@ class DependencyCollector
     when :maximum_macos then MacOSRequirement.new(tags, comparator: "<=")
     when :xcode         then XcodeRequirement.new(tags)
     else
-      raise ArgumentError, "Unsupported special dependency #{spec.inspect}"
+      raise ArgumentError, "Unsupported special dependency: #{spec.inspect}"
     end
   end
 

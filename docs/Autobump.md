@@ -1,33 +1,35 @@
 ---
-last_review_date: "2025-06-16"
+last_review_date: "2025-08-06"
 ---
 
 # Autobump
 
-[BrewTestBot](BrewTestBot.md) automatically checks for available updates of packages that are in Homebrew's "autobump list" for official repositories. These packages should not have to be bumped (i.e versions increased) manually by a contributor. Instead, every 3 hours a GitHub Action opens a new pull request to upgrade to the latest version of a formula/cask, if needed.
+In official repositories, [BrewTestBot](BrewTestBot.md) automatically checks for available updates to packages that are in Homebrew's "autobump list". These packages do not need to be bumped (i.e. have their version number increased) manually by a contributor. Instead, every 3 hours, a GitHub Action opens a new pull request to upgrade them to the latest version, if needed.
 
 ## Excluding packages from autobumping
 
-By default, all new formulae and casks from [Homebrew/core](https://github.com/Homebrew/homebrew-core) and [Homebrew/cask](https://github.com/Homebrew/homebrew-cask) repositories are autobumped. To exclude a package from being autobumped, it must:
+By default, all new formulae and casks from the [Homebrew/core](https://github.com/Homebrew/homebrew-core) and [Homebrew/cask](https://github.com/Homebrew/homebrew-cask) repositories are autobumped. To exclude a package from the autobump list, it must have one of the following:
 
-1. have a `deprecate!` or `disable!` call
-2. have a `livecheck do` block containing a `skip` call
-3. has no `no_autobump!` call
+* an active `deprecate!` or `disable!` call
+* a `livecheck do` block containing a `skip` call
+* a `no_autobump!` call
 
-There are other formula or cask-specific reasons listed in the Formula Cookbook and Cask Cookbook respectively.
+Other formula and cask specific reasons for why a package is not autobumped are listed in the [Formula Cookbook](Formula-Cookbook.md) and [Cask Cookbook](Cask-Cookbook.md) respectively.
 
-To use `no_autobump!`, a reason for exclusion must be provided. We prefer use of one of the supported symbols. These can be found in the [`NO_AUTOBUMP_REASONS_LIST`](https://rubydoc.brew.sh/top-level-namespace.html#NO_AUTOBUMP_REASONS_LIST-constant).
+## Autobump exclusion reasons
 
-The reasons can be specified by their symbols:
+When using `no_autobump!`, a reason for exclusion must be provided.
+
+There are two ways to indicate the reason. The preferred way is to use a pre-existing symbol, which can be found in [`NO_AUTOBUMP_REASONS_LIST`](/rubydoc/top-level-namespace.html#NO_AUTOBUMP_REASONS_LIST-constant), for example:
 
 ```ruby
 no_autobump! because: :bumped_by_upstream
 ```
 
-If none of the existing reasons fit, a custom reason can be provided as a string:
+If these pre-existing reasons do not fit, a custom reason can be specified:
 
 ```ruby
 no_autobump! because: "some unique reason"
 ```
 
-If there are multiple packages with a similar custom reason, it be added to `NO_AUTOBUMP_REASONS_LIST`.
+If there are multiple packages with a similar custom reason, it can be added as a new symbol to `NO_AUTOBUMP_REASONS_LIST`.

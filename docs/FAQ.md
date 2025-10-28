@@ -73,7 +73,7 @@ Which is usually: `~/Library/Caches/Homebrew`
 
 ## My Mac `.app`s don’t find Homebrew utilities!
 
-GUI apps on macOS don’t have Homebrew's prefix in their `PATH` by default. If you're on Mountain Lion or later, you can fix this by running `sudo launchctl config user path "$(brew --prefix)/bin:${PATH}"` and then rebooting, as documented in `man launchctl`. Note that this sets the `launchctl` `PATH` for *all users*. For earlier versions of macOS, see [this page](https://developer.apple.com/legacy/library/qa/qa1067/_index.html).
+GUI apps on macOS don’t have Homebrew's prefix in their `PATH` by default. If you're on Mountain Lion or later, you can fix this by running `sudo launchctl config user path "$(brew --prefix)/bin:${PATH}"` and then rebooting, as documented in `man launchctl`. Note that this sets the `launchctl` `PATH` for *all users*. For earlier versions of macOS, see [this page](https://developer.apple.com/library/archive/qa/qa1067/_index.html).
 
 ## How do I contribute to Homebrew?
 
@@ -123,6 +123,18 @@ We use the macOS sandbox to stop this but this doesn't work when run as the `roo
 Did you `chown root /Applications/TextMate.app`? Probably not. So is it that important to `chown root wget`?
 
 If you need to run Homebrew in a multi-user environment, consider creating a separate user account specifically for use of Homebrew.
+
+## What is the default ownership and permissions used by Homebrew?
+
+First, see previous question regarding sudo.
+
+Ownership on macOS, all subdirectories and files use a forced default of `admin` user group (instead of lower default user group `staff`) and the current user that executed the installation.
+
+Ownership on Linux, all subdirectories and files default to the current user and the user group that executed the installation.
+
+Permissions for all subdirectories and files use `0755 (u=rwx,g=rx,o=rx)` on both macOS and Linux, permitting only the current user to replace binaries (avoidance of malicious changes) while allowing all users to execute binaries. Note: Although, Homebrew is single-user design and it is not advised to execute using a separate user account specifically for use of Homebrew.
+
+When any binary is executed by any macOS user, it will inherit the permissions of the `admin` user group and be able to read all files on the device; Homebrew on macOS is not restricted to only files created by the user under $HOME directory path (e.g. $HOME/Applications or $HOME/Downloads). This permits binaries installed by Homebrew to access and amend macOS itself (e.g. /Applications, /Library, /System).
 
 ## Why isn’t a particular command documented?
 
@@ -200,8 +212,6 @@ If you're sure you want to trust the app, you can disable protection for it by r
 In the resulting dialog, click the *Open* button to have macOS permanently allow the app to run on this Mac. **Don’t do this unless you’re sure you trust the app.**
 
 <img src="assets/img/docs/gatekeeper-unidentified-open.png" width="532" alt="Gatekeeper unidentified developer open prompt">
-
-Alternatively, you may provide the [`--no-quarantine` switch](https://github.com/Homebrew/homebrew-cask/blob/HEAD/USAGE.md#options) at install time to not add this feature to a specific app.
 
 ## Why aren’t some apps included during `brew upgrade`?
 

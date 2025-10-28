@@ -25,6 +25,7 @@ casks
 cat
 cleanup
 command
+command-not-found-init
 commands
 completions
 config
@@ -104,6 +105,7 @@ tap-info
 tap-new
 tc
 test
+test-bot
 tests
 typecheck
 unalias
@@ -128,3 +130,5 @@ uses
 vendor-gems
 vendor-install
 verify
+which-formula
+which-update

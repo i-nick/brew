@@ -1,11 +1,15 @@
 # typed: strict
 # frozen_string_literal: true
 
+require "utils/output"
+
 module Language
   # Helper functions for Node formulae.
   #
   # @api public
   module Node
+    extend ::Utils::Output::Mixin
+
     sig { returns(String) }
     def self.npm_cache_config
       "cache=#{HOMEBREW_CACHE}/npm_cache"

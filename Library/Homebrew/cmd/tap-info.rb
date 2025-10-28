@@ -57,7 +57,7 @@ module Homebrew
           end
           info = Utils.pluralize("tap", tap_count, include_count: true)
           info += ", #{private_count} private"
-          info += ", #{Utils.pluralize("formula", formula_count, plural: "e", include_count: true)}"
+          info += ", #{Utils.pluralize("formula", formula_count, include_count: true)}"
           info += ", #{Utils.pluralize("command", command_count, include_count: true)}"
           info += ", #{HOMEBREW_TAP_DIRECTORY.dup.abv}" if HOMEBREW_TAP_DIRECTORY.directory?
           puts info

@@ -2,10 +2,13 @@
 # frozen_string_literal: true
 
 require "formulary"
+require "utils/output"
 
 module Homebrew
   # Helper module for checking if there is a reason a formula is missing.
   module MissingFormula
+    extend Utils::Output::Mixin
+
     class << self
       sig { params(name: String, silent: T::Boolean, show_info: T::Boolean).returns(T.nilable(String)) }
       def reason(name, silent: false, show_info: false)
@@ -168,10 +171,10 @@ module Homebrew
           log_command = "git log --since='1 month ago' --diff-filter=D " \
                         "--name-only --max-count=1 " \
                         "--format=%H\\\\n%h\\\\n%B -- #{relative_path}"
-          hash, short_hash, *commit_message, relative_path =
+          hash, short_hash, *commit_message, relative_path_string =
             Utils.popen_read(log_command).gsub("\\n", "\n").lines.map(&:chomp)
 
-          if hash.blank? || short_hash.blank? || relative_path.blank?
+          if hash.blank? || short_hash.blank? || relative_path_string.blank?
             ofail "No previously deleted formula found." unless silent
             return
           end
@@ -186,7 +189,7 @@ module Homebrew
               #{commit_message}
 
             To show the formula before removal, run:
-              git -C "$(brew --repo #{tap})" show #{short_hash}^:#{relative_path}
+              git -C "$(brew --repo #{tap})" show #{short_hash}^:#{relative_path_string}
 
             If you still use this formula, consider creating your own tap:
               #{Formatter.url("https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap")}

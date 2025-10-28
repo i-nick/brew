@@ -10,7 +10,7 @@ module Homebrew
         usage_banner <<~EOS
           `bundle` [<subcommand>]
 
-          Bundler for non-Ruby dependencies from Homebrew, Homebrew Cask, Mac App Store, Whalebrew and Visual Studio Code (and forks/variants).
+          Bundler for non-Ruby dependencies from Homebrew, Homebrew Cask, Mac App Store, Whalebrew, Visual Studio Code (and forks/variants) and Go packages.
 
           `brew bundle` [`install`]:
           Install and upgrade (by default) all dependencies from the `Brewfile`.
@@ -51,20 +51,20 @@ module Homebrew
           `brew bundle remove` <name> [...]:
           Remove entries that match `name` from your `Brewfile`. Use `--formula`, `--cask`, `--tap`, `--mas`, `--whalebrew` or `--vscode` to remove only entries of the corresponding type. Passing `--formula` also removes matches against formula aliases and old formula names.
 
-          `brew bundle exec` [--check] <command>:
+          `brew bundle exec` [`--check`] <command>:
           Run an external command in an isolated build environment based on the `Brewfile` dependencies.
 
           This sanitized build environment ignores unrequested dependencies, which makes sure that things you didn't specify in your `Brewfile` won't get picked up by commands like `bundle install`, `npm install`, etc. It will also add compiler flags which will help with finding keg-only dependencies like `openssl`, `icu4c`, etc.
 
-          `brew bundle sh` [--check]:
+          `brew bundle sh` [`--check`]:
           Run your shell in a `brew bundle exec` environment.
 
-          `brew bundle env` [--check]:
+          `brew bundle env` [`--check`]:
           Print the environment variables that would be set in a `brew bundle exec` environment.
         EOS
-        flag "--file=",
-             description: "Read from or write to the `Brewfile` from this location. " \
-                          "Use `--file=-` to pipe to stdin/stdout."
+        flag   "--file=",
+               description: "Read from or write to the `Brewfile` from this location. " \
+                            "Use `--file=-` to pipe to stdin/stdout."
         switch "--global",
                description: "Read from or write to the `Brewfile` from `$HOMEBREW_BUNDLE_FILE_GLOBAL` (if set), " \
                             "`${XDG_CONFIG_HOME}/homebrew/Brewfile` (if `$XDG_CONFIG_HOME` is set), " \
@@ -80,11 +80,11 @@ module Homebrew
         switch "--upgrade",
                description: "`install` runs `brew upgrade` on outdated dependencies, " \
                             "even if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set."
-        flag "--upgrade-formulae=", "--upgrade-formula=",
-             description: "`install` runs `brew upgrade` on any of these comma-separated formulae, " \
-                          "even if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set."
+        flag   "--upgrade-formulae=", "--upgrade-formula=",
+               description: "`install` runs `brew upgrade` on any of these comma-separated formulae, " \
+                            "even if `$HOMEBREW_BUNDLE_NO_UPGRADE` is set."
         switch "--install",
-               description: "Run `install` before continuing to other operations e.g. `exec`."
+               description: "Run `install` before continuing to other operations, e.g. `exec`."
         switch "--services",
                description: "Temporarily start services while running the `exec` or `sh` command.",
                env:         :bundle_services
@@ -109,6 +109,8 @@ module Homebrew
                description: "`list` or `dump` Whalebrew dependencies."
         switch "--vscode",
                description: "`list`, `dump` or `cleanup` VSCode (and forks/variants) extensions."
+        switch "--go",
+               description: "`list` or `dump` Go packages."
         switch "--no-vscode",
                description: "`dump` without VSCode (and forks/variants) extensions.",
                env:         :bundle_dump_no_vscode
@@ -127,7 +129,7 @@ module Homebrew
         conflicts "--all", "--no-vscode"
         conflicts "--vscode", "--no-vscode"
         conflicts "--install", "--upgrade"
-        conflicts "--file=", "--global"
+        conflicts "--file", "--global"
 
         named_args %w[install dump cleanup check exec list sh env edit]
       end
@@ -163,7 +165,8 @@ module Homebrew
         zap = args.zap?
         Homebrew::Bundle.upgrade_formulae = args.upgrade_formulae
 
-        no_type_args = [args.formulae?, args.casks?, args.taps?, args.mas?, args.whalebrew?, args.vscode?].none?
+        no_type_args = [args.formulae?, args.casks?, args.taps?, args.mas?, args.whalebrew?, args.vscode?,
+                        args.go?].none?
 
         if args.install?
           if [nil, "install", "upgrade"].include?(subcommand)
@@ -189,6 +192,8 @@ module Homebrew
 
           if cleanup
             require "bundle/commands/cleanup"
+            # Don't need to reset cleanup specifically but this resets all the dumper modules.
+            Homebrew::Bundle::Commands::Cleanup.reset!
             Homebrew::Bundle::Commands::Cleanup.run(
               global:, file:, zap:,
               force:  true,
@@ -213,8 +218,9 @@ module Homebrew
             formulae:   args.formulae? || no_type_args,
             casks:      args.casks? || no_type_args,
             mas:        args.mas? || no_type_args,
-            whalebrew:  args.whalebrew? || no_type_args,
-            vscode:
+            whalebrew:  args.whalebrew?,
+            vscode:,
+            go:         args.go? || no_type_args
           )
         when "edit"
           require "bundle/brewfile"
@@ -242,6 +248,7 @@ module Homebrew
             mas:       args.mas? || args.all?,
             whalebrew: args.whalebrew? || args.all?,
             vscode:    args.vscode? || args.all?,
+            go:        args.go? || args.all?,
           )
         when "add", "remove"
           # We intentionally omit the s from `brews`, `casks`, and `taps` for ease of handling later.
@@ -252,6 +259,7 @@ module Homebrew
             mas:       args.mas?,
             whalebrew: args.whalebrew?,
             vscode:    args.vscode?,
+            go:        args.go?,
             none:      no_type_args,
           }
           selected_types = type_hash.select { |_, v| v }.keys

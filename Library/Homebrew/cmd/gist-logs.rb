@@ -12,6 +12,7 @@ module Homebrew
   module Cmd
     class GistLogs < AbstractCommand
       include Install
+
       cmd_args do
         description <<~EOS
           Upload logs for a failed build of <formula> to a new Gist. Presents an
@@ -63,7 +64,9 @@ module Homebrew
           files["00.tap.out"] = { content: tap }
         end
 
-        odie "`brew gist-logs` requires HOMEBREW_GITHUB_API_TOKEN to be set!" if GitHub::API.credentials_type == :none
+        if GitHub::API.credentials_type == :none
+          odie "`brew gist-logs` requires `$HOMEBREW_GITHUB_API_TOKEN` to be set!"
+        end
 
         # Description formatted to work well as page title when viewing gist
         descr = if formula.core_formula?

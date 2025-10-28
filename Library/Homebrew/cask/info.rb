@@ -3,9 +3,12 @@
 
 require "json"
 require "cmd/info"
+require "utils/output"
 
 module Cask
   class Info
+    extend ::Utils::Output::Mixin
+
     sig { params(cask: Cask).returns(String) }
     def self.get_info(cask)
       require "cask/installer"
@@ -35,6 +38,8 @@ module Cask
     sig { params(cask: Cask, args: Homebrew::Cmd::Info::Args).void }
     def self.info(cask, args:)
       puts get_info(cask)
+
+      return unless cask.tap.core_cask_tap?
 
       require "utils/analytics"
       ::Utils::Analytics.cask_output(cask, args:)

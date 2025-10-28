@@ -1,4 +1,4 @@
-# typed: true # rubocop:disable Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 module OS
@@ -36,43 +36,49 @@ module OS
         true
       end
 
+      sig { returns(T::Array[Pathname]) }
       def homebrew_extra_isystem_paths
         paths = []
         paths << "#{self["HOMEBREW_SDKROOT"]}/usr/include/libxml2" if libxml2_include_needed?
         paths << "#{self["HOMEBREW_SDKROOT"]}/usr/include/apache2" if MacOS::Xcode.without_clt?
         paths << "#{self["HOMEBREW_SDKROOT"]}/System/Library/Frameworks/OpenGL.framework/Versions/Current/Headers"
-        paths
+        paths.map { |p| Pathname(p) }
       end
 
+      sig { returns(T::Array[Pathname]) }
       def homebrew_extra_library_paths
         paths = []
         if compiler == :llvm_clang
           paths << "#{self["HOMEBREW_SDKROOT"]}/usr/lib"
-          paths << ::Formula["llvm"].opt_lib.to_s
+          paths << ::Formula["llvm"].opt_lib
         end
         paths << "#{self["HOMEBREW_SDKROOT"]}/System/Library/Frameworks/OpenGL.framework/Versions/Current/Libraries"
-        paths
+        paths.map { |p| Pathname(p) }
       end
 
+      sig { returns(T::Array[Pathname]) }
       def homebrew_extra_cmake_include_paths
         paths = []
         paths << "#{self["HOMEBREW_SDKROOT"]}/usr/include/libxml2" if libxml2_include_needed?
         paths << "#{self["HOMEBREW_SDKROOT"]}/usr/include/apache2" if MacOS::Xcode.without_clt?
         paths << "#{self["HOMEBREW_SDKROOT"]}/System/Library/Frameworks/OpenGL.framework/Versions/Current/Headers"
-        paths
+        paths.map { |p| Pathname(p) }
       end
 
+      sig { returns(T::Array[Pathname]) }
       def homebrew_extra_cmake_library_paths
         brew_sdkroot = self["HOMEBREW_SDKROOT"]
         [Pathname("#{brew_sdkroot}/System/Library/Frameworks/OpenGL.framework/Versions/Current/Libraries")]
       end
 
+      sig { returns(T::Array[Pathname]) }
       def homebrew_extra_cmake_frameworks_paths
         paths = []
         paths << "#{self["HOMEBREW_SDKROOT"]}/System/Library/Frameworks" if MacOS::Xcode.without_clt?
-        paths
+        paths.map { |p| Pathname(p) }
       end
 
+      sig { returns(String) }
       def determine_cccfg
         s = +""
         # Fix issue with >= Mountain Lion apr-1-config having broken paths
@@ -81,6 +87,16 @@ module OS
       end
 
       # @private
+      sig {
+        params(
+          formula:         T.nilable(Formula),
+          cc:              T.nilable(String),
+          build_bottle:    T.nilable(T::Boolean),
+          bottle_arch:     T.nilable(String),
+          testing_formula: T::Boolean,
+          debug_symbols:   T.nilable(T::Boolean),
+        ).void
+      }
       def setup_build_environment(formula: nil, cc: nil, build_bottle: false, bottle_arch: nil,
                                   testing_formula: false, debug_symbols: false)
         sdk = formula ? MacOS.sdk_for_formula(formula) : MacOS.sdk
@@ -88,7 +104,7 @@ module OS
 
         if is_xcode_sdk || MacOS.sdk_root_needed?
           Homebrew::Diagnostic.checks(:fatal_setup_build_environment_checks)
-          self["HOMEBREW_SDKROOT"] = sdk.path if sdk
+          self["HOMEBREW_SDKROOT"] = sdk.path.to_s if sdk
         end
 
         self["HOMEBREW_DEVELOPER_DIR"] = if is_xcode_sdk
@@ -158,10 +174,12 @@ module OS
         append_to_cccfg "c"
       end
 
+      sig { void }
       def no_weak_imports
         append_to_cccfg "w" if no_weak_imports_support?
       end
 
+      sig { void }
       def no_fixup_chains
         append_to_cccfg "f" if no_fixup_chains_support?
       end

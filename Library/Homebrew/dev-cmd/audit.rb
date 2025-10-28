@@ -58,7 +58,6 @@ module Homebrew
                hidden:      true
         switch "--[no-]signing",
                description: "Audit for app signatures, which are required by macOS on ARM."
-        # should be odeprecated in future
         switch "--token-conflicts",
                description: "Audit for token conflicts.",
                hidden:      true
@@ -94,17 +93,19 @@ module Homebrew
         switch "--cask", "--casks",
                description: "Treat all named arguments as casks."
 
+        conflicts "--installed", "--eval-all"
         conflicts "--only", "--except"
         conflicts "--only-cops", "--except-cops", "--strict"
         conflicts "--only-cops", "--except-cops", "--only"
         conflicts "--formula", "--cask"
-        conflicts "--installed", "--all"
 
         named_args [:formula, :cask], without_api: true
       end
 
       sig { override.void }
       def run
+        odeprecated "`brew audit --token-conflicts`" if args.token_conflicts?
+
         Formulary.enable_factory_cache!
 
         os_arch_combinations = args.os_arch_combinations
@@ -141,8 +142,8 @@ module Homebrew
 
             unless eval_all
               # This odisabled should probably stick around indefinitely.
-              odisabled "brew audit",
-                        "brew audit --eval-all or HOMEBREW_EVAL_ALL"
+              odisabled "`brew audit`",
+                        "`brew audit --eval-all` or set `HOMEBREW_EVAL_ALL=1`"
             end
             no_named_args = true
             [
@@ -153,8 +154,8 @@ module Homebrew
             if args.named.any? { |named_arg| named_arg.end_with?(".rb") }
               # This odisabled should probably stick around indefinitely,
               # until at least we have a way to exclude error on these in the CLI parser.
-              odisabled "brew audit [path ...]",
-                        "brew audit [name ...]"
+              odisabled "`brew audit [path ...]`",
+                        "`brew audit [name ...]`"
             end
 
             args.named.to_formulae_and_casks_with_taps
@@ -293,9 +294,7 @@ module Homebrew
           errors_summary = Utils.pluralize("problem", total_problems_count, include_count: true)
 
           error_sources = []
-          if formula_count.positive?
-            error_sources << Utils.pluralize("formula", formula_count, plural: "e", include_count: true)
-          end
+          error_sources << Utils.pluralize("formula", formula_count, include_count: true) if formula_count.positive?
           error_sources << Utils.pluralize("cask", cask_count, include_count: true) if cask_count.positive?
           error_sources << Utils.pluralize("tap", tap_count, include_count: true) if tap_count.positive?
 

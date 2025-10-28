@@ -1,9 +1,13 @@
 # typed: strict
 # frozen_string_literal: true
 
+require "utils/output"
+
 module Homebrew
   module Bundle
     module WhalebrewDumper
+      extend Utils::Output::Mixin
+
       sig { void }
       def self.reset!
         @images = T.let(nil, T.nilable(T::Array[String]))
@@ -13,7 +17,7 @@ module Homebrew
       def self.images
         return [] unless Bundle.whalebrew_installed?
 
-        odeprecated "`brew bundle` `whalebrew` support", "using `whalebrew` directly"
+        odisabled "`brew bundle` `whalebrew` support", "using `whalebrew` directly"
         @images ||= T.let(
           `whalebrew list 2>/dev/null`.split("\n")
                                       .reject { |line| line.start_with?("COMMAND ") }

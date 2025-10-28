@@ -44,7 +44,9 @@ module Homebrew
                             "Print download, install and net install sizes of bottles and dependencies.",
                env:         :ask
         [
-          [:switch, "--formula", "--formulae", { description: "Treat all named arguments as formulae." }],
+          [:switch, "--formula", "--formulae", {
+            description: "Treat all named arguments as formulae.",
+          }],
           [:switch, "-s", "--build-from-source", {
             description: "Compile <formula> from source even if a bottle is available.",
           }],
@@ -74,18 +76,22 @@ module Homebrew
         end
         formula_options
         [
-          [:switch, "--cask", "--casks", { description: "Treat all named arguments as casks." }],
+          [:switch, "--cask", "--casks", {
+            description: "Treat all named arguments as casks.",
+          }],
           [:switch, "--[no-]binaries", {
             description: "Disable/enable linking of helper executables (default: enabled).",
             env:         :cask_opts_binaries,
           }],
-          [:switch, "--require-sha",  {
+          [:switch, "--require-sha", {
             description: "Require all casks to have a checksum.",
             env:         :cask_opts_require_sha,
           }],
+          # odeprecated deprecate for 4.7.0
           [:switch, "--[no-]quarantine", {
             description: "Disable/enable quarantining of downloads (default: enabled).",
             env:         :cask_opts_quarantine,
+            hidden:      true,
           }],
           [:switch, "--adopt", {
             description: "Adopt existing artifacts in the destination that are identical to those being installed. " \
@@ -130,14 +136,14 @@ module Homebrew
         unless formulae.empty?
           Install.perform_preinstall_checks_once
 
-          install_context = formulae.map do |formula|
+          reinstall_contexts = formulae.filter_map do |formula|
             if formula.pinned?
               onoe "#{formula.full_name} is pinned. You must unpin it to reinstall."
               next
             end
             Migrator.migrate_if_needed(formula, force: args.force?)
             Homebrew::Reinstall.build_install_context(
-              formula,
+              formula.latest_formula,
               flags:                      args.flags_only,
               force_bottle:               args.force_bottle?,
               build_from_source_formulae: args.build_from_source_formulae,
@@ -167,27 +173,18 @@ module Homebrew
             verbose:                    args.verbose?,
           )
 
-          formulae_installer = install_context.map(&:formula_installer)
+          formulae_installers = reinstall_contexts.map(&:formula_installer)
 
           # Main block: if asking the user is enabled, show dependency and size information.
-          Install.ask_formulae(formulae_installer, dependants, args: args) if args.ask?
+          Install.ask_formulae(formulae_installers, dependants, args: args) if args.ask?
 
-          install_context.each do |f|
-            Homebrew::Reinstall.reinstall_formula(
-              f,
-              flags:                      args.flags_only,
-              force_bottle:               args.force_bottle?,
-              build_from_source_formulae: args.build_from_source_formulae,
-              interactive:                args.interactive?,
-              keep_tmp:                   args.keep_tmp?,
-              debug_symbols:              args.debug_symbols?,
-              force:                      args.force?,
-              debug:                      args.debug?,
-              quiet:                      args.quiet?,
-              verbose:                    args.verbose?,
-              git:                        args.git?,
-            )
-            Cleanup.install_formula_clean!(f.formula)
+          valid_formula_installers = Install.fetch_formulae(formulae_installers)
+
+          reinstall_contexts.each do |reinstall_context|
+            next unless valid_formula_installers.include?(reinstall_context.formula_installer)
+
+            Homebrew::Reinstall.reinstall_formula(reinstall_context)
+            Cleanup.install_formula_clean!(reinstall_context.formula)
           end
 
           Upgrade.upgrade_dependents(

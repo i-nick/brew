@@ -6,11 +6,14 @@ require "exceptions"
 require "extend/ENV"
 require "utils"
 require "PATH"
+require "utils/output"
 
 module Homebrew
   module Bundle
     module Commands
       module Exec
+        extend Utils::Output::Mixin
+
         PATH_LIKE_ENV_REGEX = /.+#{File::PATH_SEPARATOR}/
 
         sig {
@@ -180,7 +183,7 @@ module Homebrew
               <<~EOS
                 Your shell has been configured to use a build environment from your `Brewfile`.
                 This should help you build stuff.
-                Hide these hints with HOMEBREW_NO_ENV_HINTS (see `man brew`).
+                Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
                 When done, type `exit`.
               EOS
             end

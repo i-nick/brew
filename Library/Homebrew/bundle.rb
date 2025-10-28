@@ -62,6 +62,16 @@ module Homebrew
         @whalebrew_installed ||= which_formula?("whalebrew")
       end
 
+      sig { returns(T.nilable(Pathname)) }
+      def which_go
+        @which_go ||= which("go", ORIGINAL_PATHS)
+      end
+
+      sig { returns(T::Boolean) }
+      def go_installed?
+        @go_installed ||= which_go.present?
+      end
+
       sig { returns(T::Boolean) }
       def cask_installed?
         @cask_installed ||= File.directory?("#{HOMEBREW_PREFIX}/Caskroom") &&
@@ -137,8 +147,10 @@ module Homebrew
       def reset!
         @mas_installed = T.let(nil, T.nilable(T::Boolean))
         @vscode_installed = T.let(nil, T.nilable(T::Boolean))
-        @which_vscode = T.let(nil, T.nilable(String))
+        @which_vscode = T.let(nil, T.nilable(Pathname))
+        @which_go = T.let(nil, T.nilable(Pathname))
         @whalebrew_installed = T.let(nil, T.nilable(T::Boolean))
+        @go_installed = T.let(nil, T.nilable(T::Boolean))
         @cask_installed = T.let(nil, T.nilable(T::Boolean))
         @formula_versions_from_env = T.let(nil, T.nilable(T::Hash[String, String]))
         @upgrade_formulae = T.let(nil, T.nilable(T::Array[String]))

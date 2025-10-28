@@ -3,11 +3,14 @@
 
 require "json"
 require "tsort"
+require "utils/output"
 
 module Homebrew
   module Bundle
     # TODO: refactor into multiple modules
     module FormulaDumper
+      extend Utils::Output::Mixin
+
       def self.reset!
         require "bundle/brew_services"
 
@@ -37,7 +40,7 @@ module Homebrew
         @formulae_by_full_name ||= {}
 
         if name.nil?
-          formulae = Formula.installed.map(&method(:add_formula))
+          formulae = Formula.installed.map { add_formula(_1) }
           sort!(formulae)
           return @formulae_by_full_name
         end

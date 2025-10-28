@@ -31,6 +31,7 @@ AllCops:
     - "Homebrew/bin/*"
     - "Homebrew/vendor/**/*"
     - "Taps/*/*/vendor/**/*"
+    - "**/.github/copilot-instructions.md" # This should be treated the same as the `docs/` files.
   SuggestExtensions:
     rubocop-minitest: false
 
@@ -95,6 +96,11 @@ Layout/ArgumentAlignment:
 # this is a bit less "floaty"
 Layout/CaseIndentation:
   EnforcedStyle: end
+
+# currently bugged and as relevant/urgent in taps:
+# https://github.com/rubocop/rubocop/issues/14443
+Layout/EmptyLinesAfterModuleInclusion:
+  Enabled: false
 
 # significantly less indentation involved; more consistent
 Layout/FirstArrayElementIndentation:
@@ -291,13 +297,6 @@ Sorbet/ForbidRBIOutsideOfAllowedPaths:
 # T::Sig is monkey-patched into Module
 Sorbet/RedundantExtendTSig:
   Enabled: true
-
-# We make limited and intentional use of refinements.
-# It's posssible this may change in the future, though we probably still do not want to ban it in taps
-# and Sorbet typecheck will tell us what is and isn't a problem anyway.
-# Right now, our use of refinements isn't problematic (or at least not yet).
-Sorbet/Refinement:
-  Enabled: false
 
 Sorbet/StrictSigil:
   Enabled: true

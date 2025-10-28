@@ -25,7 +25,7 @@ module Homebrew
         switch "--installed",
                description: "Check formulae and casks that are currently installed."
         switch "--newer-only",
-               description: "Show the latest version only if it's newer than the formula/cask."
+               description: "Show the latest version only if it's newer than the current formula or cask version."
         switch "--json",
                description: "Output information in JSON format."
         switch "-r", "--resources",
@@ -41,9 +41,9 @@ module Homebrew
         switch "--autobump",
                description: "Include packages that are autobumped by BrewTestBot. By default these are skipped."
 
-        conflicts "--debug", "--json"
-        conflicts "--tap=", "--eval-all", "--installed"
-        conflicts "--cask", "--formula"
+        conflicts "--tap", "--installed", "--eval-all"
+        conflicts "--json", "--debug"
+        conflicts "--formula", "--cask"
         conflicts "--formula", "--extract-plist"
 
         named_args [:formula, :cask], without_api: true
@@ -78,9 +78,15 @@ module Homebrew
             formulae + casks
           elsif File.exist?(watchlist_path)
             begin
+              # This removes blank lines, comment lines, and trailing comments
               names = Pathname.new(watchlist_path).read.lines
-                              .reject { |line| line.start_with?("#") || line.blank? }
-                              .map(&:strip)
+                              .filter_map do |line|
+                                comment_index = line.index("#")
+                                next if comment_index&.zero?
+
+                                line = line[0...comment_index] if comment_index
+                                line&.strip.presence
+                              end
 
               named_args = CLI::NamedArgs.new(*names, parent: args)
               named_args.to_formulae_and_casks(ignore_unavailable: true)

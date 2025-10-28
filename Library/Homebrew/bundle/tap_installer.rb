@@ -18,7 +18,8 @@ module Homebrew
 
         puts "Installing #{name} tap. It is not currently installed." if verbose
         args = []
-        args << "--force" if force
+        official_tap = name.downcase.start_with? "homebrew/"
+        args << "--force" if force || (official_tap && Homebrew::EnvConfig.developer?)
 
         success = if options[:clone_target]
           Bundle.brew("tap", name, options[:clone_target], *args, verbose:)

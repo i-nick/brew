@@ -15,6 +15,7 @@ class Version
   # A part of a {Version}.
   class Token
     extend T::Helpers
+
     abstract!
 
     include Comparable
@@ -722,7 +723,7 @@ class Version
   # @api public
   sig { returns(String) }
   def to_str
-    raise NoMethodError, "undefined method `to_str' for #{self.class}:NULL" if null?
+    raise NoMethodError, "undefined method `to_str` for #{self.class}:NULL" if null?
 
     T.must(version).to_str
   end

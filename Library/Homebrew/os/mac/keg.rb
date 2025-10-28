@@ -1,7 +1,14 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 class Keg
+  sig { params(path: Pathname).void }
+  def initialize(path)
+    super
+
+    @require_relocation = T.let(false, T::Boolean)
+  end
+
   sig { params(id: String, file: Pathname).returns(T::Boolean) }
   def change_dylib_id(id, file)
     return false if file.dylib_id == id
@@ -36,6 +43,7 @@ class Keg
     raise
   end
 
+  sig { params(old: String, new: String, file: Pathname).returns(T::Boolean) }
   def change_rpath(old, new, file)
     return false if old == new
 

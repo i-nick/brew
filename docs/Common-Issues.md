@@ -167,7 +167,7 @@ for replacements for deprecated, disabled, or removed formulae.
 
 Once you are satisfied with the state of your new `/opt/homebrew` Homebrew installation,
 you can uninstall the old `/usr/local` installation.
-Download and run [the uninstaller](https://github.com/Homebrew/install/#uninstall-homebrew) script:
+Download and run the [uninstaller script](https://github.com/Homebrew/install/#uninstall-homebrew):
 
 ```sh
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/uninstall.sh)" -- --path=/usr/local

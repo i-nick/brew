@@ -49,8 +49,8 @@ module Homebrew
                description: "Use the specified GitHub organization for forking."
 
         conflicts "--dry-run", "--write"
-        conflicts "--version=", "--version-arm="
-        conflicts "--version=", "--version-intel="
+        conflicts "--version", "--version-arm"
+        conflicts "--version", "--version-intel"
 
         named_args :cask, number: 1, without_api: true
       end
@@ -71,7 +71,16 @@ module Homebrew
         # Use the user's browser, too.
         ENV["BROWSER"] = EnvConfig.browser
 
-        cask = args.named.to_casks.fetch(0)
+        @cask_retried = T.let(false, T.nilable(T::Boolean))
+        cask = begin
+          args.named.to_casks.fetch(0)
+        rescue Cask::CaskUnavailableError
+          raise if @cask_retried
+
+          CoreCaskTap.instance.install(force: true)
+          @cask_retried = true
+          retry
+        end
 
         odie "This cask is not in a tap!" if cask.tap.blank?
         odie "This cask's tap is not a Git repository!" unless cask.tap.git?
@@ -172,7 +181,7 @@ module Homebrew
           pr_title:    commit_message,
         }
 
-        GitHub.create_bump_pr(pr_info, args:) unless args.write_only?
+        GitHub.create_bump_pr(pr_info, args:)
       end
 
       private
@@ -223,7 +232,7 @@ module Homebrew
       sig {
         params(
           cask:              Cask::Cask,
-          new_hash:          T.any(NilClass, String, Symbol),
+          new_hash:          T.nilable(T.any(String, Symbol)),
           new_version:       BumpVersionParser,
           replacement_pairs: T::Array[[T.any(Regexp, String), T.any(Pathname, String)]],
         ).returns(T::Array[[T.any(Regexp, String), T.any(Pathname, String)]])
@@ -273,6 +282,8 @@ module Homebrew
               end
               languages.each do |language|
                 new_cask        = Cask::CaskLoader.load(tmp_contents)
+                next unless new_cask.url
+
                 new_cask.config = if language.blank?
                   tmp_cask.config
                 else

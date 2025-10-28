@@ -10,6 +10,7 @@ module Utils
   module Git
     extend SystemCommand::Mixin
 
+    sig { returns(T::Boolean) }
     def self.available?
       version.present?
     end
@@ -17,10 +18,11 @@ module Utils
     def self.version
       return @version if defined?(@version)
 
-      stdout, _, status = system_command(git, args: ["--version"], verbose: false, print_stderr: false)
+      stdout, _, status = system_command(git, args: ["--version"], verbose: false, print_stderr: false).to_a
       @version = status.success? ? stdout.chomp[/git version (\d+(?:\.\d+)*)/, 1] : nil
     end
 
+    sig { returns(T.nilable(String)) }
     def self.path
       return unless available?
       return @path if defined?(@path)
@@ -28,24 +30,31 @@ module Utils
       @path = Utils.popen_read(git, "--homebrew=print-path").chomp.presence
     end
 
+    sig { returns(Pathname) }
     def self.git
       return @git if defined?(@git)
 
       @git = HOMEBREW_SHIMS_PATH/"shared/git"
     end
 
+    sig { params(url: String).returns(T::Boolean) }
     def self.remote_exists?(url)
       return true unless available?
 
       quiet_system "git", "ls-remote", url
     end
 
+    sig { void }
     def self.clear_available_cache
       remove_instance_variable(:@version) if defined?(@version)
       remove_instance_variable(:@path) if defined?(@path)
       remove_instance_variable(:@git) if defined?(@git)
     end
 
+    sig {
+      params(repo: T.any(Pathname, String), file: T.any(Pathname, String),
+             before_commit: T.nilable(String)).returns(String)
+    }
     def self.last_revision_commit_of_file(repo, file, before_commit: nil)
       args = if before_commit.nil?
         ["--skip=1"]
@@ -87,12 +96,14 @@ module Utils
       file_at_commit(repo, file, commit_hash)
     end
 
+    sig { params(repo: T.any(Pathname, String), file: T.any(Pathname, String), commit: String).returns(String) }
     def self.file_at_commit(repo, file, commit)
       relative_file = Pathname(file)
       relative_file = relative_file.relative_path_from(repo) if relative_file.absolute?
       Utils.popen_read(git, "-C", repo, "show", "#{commit}:#{relative_file}")
     end
 
+    sig { void }
     def self.ensure_installed!
       return if available?
 
@@ -103,7 +114,8 @@ module Utils
           # and will also likely fail due to `OS::Linux` and `OS::Mac` being undefined.
           raise "Refusing to install Git on a generic OS." if ENV["HOMEBREW_TEST_GENERIC_OS"]
 
-          ensure_formula_installed!("git")
+          require "formula"
+          Formula["git"].ensure_installed!
           clear_available_cache
         rescue
           raise "Git is unavailable"
@@ -134,6 +146,7 @@ module Utils
       ENV["GIT_COMMITTER_EMAIL"] = Homebrew::EnvConfig.git_committer_email
     end
 
+    sig { void }
     def self.setup_gpg!
       gnupg_bin = HOMEBREW_PREFIX/"opt/gnupg/bin"
       return unless gnupg_bin.directory?
@@ -144,21 +157,37 @@ module Utils
     # Special case of `git cherry-pick` that permits non-verbose output and
     # optional resolution on merge conflict.
     def self.cherry_pick!(repo, *args, resolve: false, verbose: false)
-      cmd = [git, "-C", repo, "cherry-pick"] + args
+      cmd = [git.to_s, "-C", repo, "cherry-pick"] + args
       output = Utils.popen_read(*cmd, err: :out)
       if $CHILD_STATUS.success?
         puts output if verbose
         output
       else
-        system git, "-C", repo, "cherry-pick", "--abort" unless resolve
+        system git.to_s, "-C", repo, "cherry-pick", "--abort" unless resolve
         raise ErrorDuringExecution.new(cmd, status: $CHILD_STATUS, output: [[:stdout, output]])
       end
     end
 
+    sig { returns(T::Boolean) }
     def self.supports_partial_clone_sparse_checkout?
       # There is some support for partial clones prior to 2.20, but we avoid using it
       # due to performance issues
       Version.new(version) >= Version.new("2.20.0")
+    end
+
+    sig {
+      params(repository_path: T.nilable(Pathname), person: String, from: T.nilable(String),
+             to: T.nilable(String)).returns(Integer)
+    }
+    def self.count_coauthors(repository_path, person, from:, to:)
+      return 0 if repository_path.blank?
+
+      cmd = [git.to_s, "-C", repository_path.to_s, "log", "--oneline"]
+      cmd << "--format='%(trailers:key=Co-authored-by:)''"
+      cmd << "--before=#{to}" if to
+      cmd << "--after=#{from}" if from
+
+      Utils.safe_popen_read(*cmd).lines.count { |l| l.include?(person) }
     end
   end
 end

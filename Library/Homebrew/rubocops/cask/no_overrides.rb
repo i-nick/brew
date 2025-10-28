@@ -41,6 +41,23 @@ module RuboCop
                     "Add it once to specify the oldest macOS supported by any version in the cask."
           names = T.let(Set.new, T::Set[Symbol])
           method_nodes = on_system.map(&:method_node)
+
+          # Check if multiple `on_{system}` blocks have different `depends_on macos:` versions.
+          # If so, this indicates architecture-specific requirements and is allowed.
+          macos_versions = T.let([], T::Array[String])
+          method_nodes.select(&:block_type?).each do |node|
+            node.child_nodes.each do |child|
+              child.each_node(:send) do |send_node|
+                next if send_node.method_name != :depends_on
+
+                macos_pair = send_node.arguments.first.pairs.find { |a| a.key.value == :macos }
+                macos_versions << macos_pair.value.source if macos_pair
+              end
+            end
+          end
+          # Allow if there are multiple different macOS versions specified
+          allow_macos_depends_in_blocks = macos_versions.size > 1 && macos_versions.uniq.size > 1
+
           method_nodes.select(&:block_type?).each do |node|
             node.child_nodes.each do |child|
               child.each_node(:send) do |send_node|
@@ -57,7 +74,8 @@ module RuboCop
                    send_node.arguments.first.pairs.any? { |a| a.key.value == :macos } &&
                    OnSystemConditionalsHelper::ON_SYSTEM_OPTIONS.map do |m|
                      :"on_#{m}"
-                   end.include?(T.cast(node, RuboCop::AST::BlockNode).method_name)
+                   end.include?(T.cast(node, RuboCop::AST::BlockNode).method_name) && !allow_macos_depends_in_blocks
+                  # Allow `depends_on macos:` in multiple `on_{system}` blocks for architecture-specific requirements
                   add_offense(send_node.source_range, message:)
                 end
 

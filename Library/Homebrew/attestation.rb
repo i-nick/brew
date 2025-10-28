@@ -7,10 +7,12 @@ require "utils/popen"
 require "utils/github/api"
 require "exceptions"
 require "system_command"
+require "utils/output"
 
 module Homebrew
   module Attestation
     extend SystemCommand::Mixin
+    extend Utils::Output::Mixin
 
     # @api private
     HOMEBREW_CORE_REPO = "Homebrew/homebrew-core"
@@ -222,7 +224,7 @@ module Homebrew
         attestation = check_attestation bottle, HOMEBREW_CORE_REPO
         return attestation
       rescue MissingAttestationError
-        odebug "falling back on backfilled attestation for #{bottle}"
+        odebug "falling back on backfilled attestation for #{bottle.filename}"
 
         # Our backfilled attestation is a little unique: the subject is not just the bottle
         # filename, but also has the bottle's hosted URL hash prepended to it.

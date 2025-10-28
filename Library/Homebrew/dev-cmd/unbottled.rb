@@ -9,6 +9,15 @@ require "os/mac/xcode"
 module Homebrew
   module DevCmd
     class Unbottled < AbstractCommand
+      PORTABLE_FORMULAE = T.let(%w[
+        portable-libffi
+        portable-libxcrypt
+        portable-libyaml
+        portable-openssl
+        portable-ruby
+        portable-zlib
+      ].freeze, T::Array[String])
+
       cmd_args do
         description <<~EOS
           Show the unbottled dependents of formulae.
@@ -68,7 +77,7 @@ module Homebrew
           eval_all = args.eval_all?
 
           if args.total? && !eval_all
-            raise UsageError, "`brew unbottled --total` needs `--eval-all` passed or `$HOMEBREW_EVAL_ALL` set!"
+            raise UsageError, "`brew unbottled --total` needs `--eval-all` passed or `HOMEBREW_EVAL_ALL=1` set!"
           end
 
           if args.named.blank?
@@ -116,7 +125,7 @@ module Homebrew
           formulae = all_formulae = args.named.to_formulae
         elsif args.dependents?
           unless eval_all
-            raise UsageError, "`brew unbottled --dependents` needs `--eval-all` passed or `$HOMEBREW_EVAL_ALL` set!"
+            raise UsageError, "`brew unbottled --dependents` needs `--eval-all` passed or `HOMEBREW_EVAL_ALL=1` set!"
           end
 
           formulae = all_formulae = Formula.all(eval_all:)
@@ -156,6 +165,10 @@ module Homebrew
         # Remove deprecated and disabled formulae as we do not care if they are unbottled
         formulae = Array(formulae).reject { |f| f.deprecated? || f.disabled? } if formulae.present?
         all_formulae = Array(all_formulae).reject { |f| f.deprecated? || f.disabled? } if all_formulae.present?
+
+        # Remove portable formulae as they are are handled differently
+        formulae = formulae.reject { |f| PORTABLE_FORMULAE.include?(f.name) } if formulae.present?
+        all_formulae = all_formulae.reject { |f| PORTABLE_FORMULAE.include?(f.name) } if all_formulae.present?
 
         [T.let(formulae, T::Array[Formula]), T.let(all_formulae, T::Array[Formula]),
          T.let(formula_installs, T.nilable(T::Hash[Symbol, Integer]))]

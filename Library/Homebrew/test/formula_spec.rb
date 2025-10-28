@@ -259,6 +259,11 @@ RSpec.describe Formula do
     expect(f.prefix).to eq(HOMEBREW_CELLAR/f.name/"0.1_1")
   end
 
+  example "compatibility_version" do
+    f = Class.new(Testball) { compatibility_version(1) }.new
+    expect(f.class.compatibility_version).to eq(1)
+  end
+
   specify "#any_version_installed?" do
     f = formula do
       url "foo"
@@ -875,6 +880,8 @@ RSpec.describe Formula do
 
       expect(f3.runtime_dependencies.map(&:name)).to eq(["baz/qux/f2"])
 
+      described_class.clear_cache
+
       f1_path = Tap.fetch("foo", "bar").path/"Formula/f1.rb"
       stub_formula_loader(formula("f1", path: f1_path) { url("f1-1.0") }, "foo/bar/f1")
 
@@ -960,6 +967,7 @@ RSpec.describe Formula do
         sha256 cellar: :any, Utils::Bottles.tag.to_sym => TEST_SHA256
       end
     end
+    stub_formula_loader(f1)
 
     h = f1.to_hash
 
@@ -1271,6 +1279,8 @@ RSpec.describe Formula do
     let(:alias_path) { CoreTap.instance.alias_dir/alias_name }
 
     before do
+      stub_formula_loader(f)
+      stub_formula_loader(new_formula)
       allow(described_class).to receive(:installed).and_return([f])
 
       f.build = tab
@@ -1363,8 +1373,18 @@ RSpec.describe Formula do
     let(:alias_name) { "bar" }
     let(:alias_path) { f.tap.alias_dir/alias_name }
 
+    before do
+      stub_formula_loader(f)
+      stub_formula_loader(old_formula)
+      stub_formula_loader(new_formula)
+    end
+
     def setup_tab_for_prefix(prefix, options = {})
       prefix.mkpath
+
+      keg = Keg.new(prefix)
+      keg.optlink
+
       tab = Tab.empty
       tab.tabfile = prefix/AbstractTab::FILENAME
       tab.source["path"] = options[:path].to_s if options[:path]
@@ -1394,6 +1414,12 @@ RSpec.describe Formula do
     example "outdated same tap installed" do
       f.instance_variable_set(:@tap, CoreTap.instance)
       setup_tab_for_prefix(outdated_prefix, tap: "homebrew/core")
+      expect(f.outdated_kegs).not_to be_empty
+    end
+
+    example "outdated unlinked tap installed" do
+      setup_tab_for_prefix(same_prefix)
+      Keg.new(same_prefix).remove_opt_record
       expect(f.outdated_kegs).not_to be_empty
     end
 
@@ -1994,6 +2020,34 @@ RSpec.describe Formula do
       it "returns the API path" do
         expect(f.specified_path).to eq(Homebrew::API::Formula.cached_json_file_path)
       end
+    end
+  end
+
+  describe "#preserve_rpath" do
+    it "defaults to false" do
+      f = formula do
+        url "foo-1.0"
+      end
+
+      expect(f.class.preserve_rpath?).to be(false)
+    end
+
+    it "can be enabled" do
+      f = formula do
+        url "foo-1.0"
+        preserve_rpath
+      end
+
+      expect(f.class.preserve_rpath?).to be(true)
+    end
+
+    it "can be explicitly disabled" do
+      f = formula do
+        url "foo-1.0"
+        preserve_rpath value: false
+      end
+
+      expect(f.class.preserve_rpath?).to be(false)
     end
   end
 end

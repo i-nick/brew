@@ -1,10 +1,14 @@
 # typed: strict
 # frozen_string_literal: true
 
+require "utils/output"
+
 # Performs {Formula#mktemp}'s functionality and tracks the results.
 # Each instance is only intended to be used once.
 # Can also be used to create a temporary directory with the brew instance's group.
 class Mktemp
+  include Utils::Output::Mixin
+
   # Path to the tmpdir used in this run
   sig { returns(T.nilable(Pathname)) }
   attr_reader :tmpdir

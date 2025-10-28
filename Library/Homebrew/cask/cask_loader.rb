@@ -5,6 +5,8 @@ require "cask/cache"
 require "cask/cask"
 require "uri"
 require "utils/curl"
+require "utils/output"
+require "utils/path"
 require "extend/hash/keys"
 require "api"
 
@@ -12,12 +14,15 @@ module Cask
   # Loads a cask from various sources.
   module CaskLoader
     extend Context
+    extend ::Utils::Output::Mixin
 
     ALLOWED_URL_SCHEMES = %w[file].freeze
     private_constant :ALLOWED_URL_SCHEMES
 
     module ILoader
       extend T::Helpers
+      include ::Utils::Output::Mixin
+
       interface!
 
       sig { abstract.params(config: T.nilable(Config)).returns(Cask) }
@@ -28,6 +33,7 @@ module Cask
     class AbstractContentLoader
       include ILoader
       extend T::Helpers
+
       abstract!
 
       sig { returns(String) }
@@ -107,9 +113,7 @@ module Cask
 
         return unless path.expand_path.exist?
         return if invalid_path?(path)
-
-        return if Homebrew::EnvConfig.forbid_packages_from_paths? &&
-                  !path.realpath.to_s.start_with?("#{Caskroom.path}/", "#{HOMEBREW_LIBRARY}/Taps/")
+        return unless ::Utils::Path.loadable_package_path?(path, :cask)
 
         new(path)
       end
@@ -181,7 +185,7 @@ module Cask
 
         # Cache compiled regex
         @uri_regex ||= begin
-          uri_regex = ::URI::DEFAULT_PARSER.make_regexp
+          uri_regex = ::URI::RFC2396_PARSER.make_regexp
           Regexp.new("\\A#{uri_regex.source}\\Z", uri_regex.options)
         end
 
@@ -306,8 +310,8 @@ module Cask
         return if Homebrew::EnvConfig.no_install_from_api?
         return unless ref.is_a?(String)
         return unless (token = ref[HOMEBREW_DEFAULT_TAP_CASK_REGEX, :token])
-        if !Homebrew::API::Cask.all_casks.key?(token) &&
-           !Homebrew::API::Cask.all_renames.key?(token)
+        if Homebrew::API.cask_tokens.exclude?(token) &&
+           !Homebrew::API.cask_renames.key?(token)
           return
         end
 
@@ -326,16 +330,22 @@ module Cask
       }
       def initialize(token, from_json: T.unsafe(nil), path: nil)
         @token = token.sub(%r{^homebrew/(?:homebrew-)?cask/}i, "")
-        @sourcefile_path = path || Homebrew::API::Cask.cached_json_file_path
+        @sourcefile_path = path || Homebrew::API.cached_cask_json_file_path
         @path = path || CaskLoader.default_path(@token)
         @from_json = from_json
       end
 
       def load(config:)
-        json_cask = from_json || Homebrew::API::Cask.all_casks.fetch(token)
+        json_cask = from_json
+        json_cask ||= if Homebrew::EnvConfig.use_internal_api?
+          Homebrew::API::Internal.cask_hashes.fetch(token)
+        else
+          Homebrew::API::Cask.all_casks.fetch(token)
+        end
 
         cask_options = {
           loaded_from_api: true,
+          api_source:      json_cask,
           sourcefile_path: @sourcefile_path,
           source:          JSON.pretty_generate(json_cask),
           config:,
@@ -368,18 +378,25 @@ module Cask
           desc json_cask[:desc]
           homepage json_cask[:homepage]
 
-          if (deprecation_date = json_cask[:deprecation_date].presence)
-            reason = DeprecateDisable.to_reason_string_or_symbol json_cask[:deprecation_reason], type: :cask
-            deprecate! date: deprecation_date, because: reason
+          if (date = json_cask[:deprecation_date].presence)
+            because = DeprecateDisable.to_reason_string_or_symbol json_cask[:deprecation_reason], type: :cask
+            deprecate! date:, because:
           end
 
-          if (disable_date = json_cask[:disable_date].presence)
-            reason = DeprecateDisable.to_reason_string_or_symbol json_cask[:disable_reason], type: :cask
-            disable! date: disable_date, because: reason
+          if (date = json_cask[:disable_date].presence)
+            disable_reason = json_cask[:disable_reason].presence || json_cask[:deprecation_reason]
+            because = DeprecateDisable.to_reason_string_or_symbol disable_reason, type: :cask
+            disable! date:, because:
           end
 
           auto_updates json_cask[:auto_updates] unless json_cask[:auto_updates].nil?
           conflicts_with(**json_cask[:conflicts_with]) if json_cask[:conflicts_with].present?
+
+          if json_cask[:rename].present?
+            json_cask[:rename].each do |rename_operation|
+              rename rename_operation.fetch(:from), rename_operation.fetch(:to)
+            end
+          end
 
           if json_cask[:depends_on].present?
             dep_hash = json_cask[:depends_on].to_h do |dep_key, dep_value|
@@ -588,13 +605,20 @@ module Cask
         new_token = tap.core_cask_tap? ? token : "#{tap}/#{token}"
         type = :rename
       elsif (new_tap_name = tap.tap_migrations[token].presence)
-        new_tap, new_token = Tap.with_cask_token(new_tap_name) || [Tap.fetch(new_tap_name), token]
+        new_tap, new_token = Tap.with_cask_token(new_tap_name)
+        unless new_tap
+          if new_tap_name.include?("/")
+            new_tap = Tap.fetch(new_tap_name)
+            new_token = token
+          else
+            new_tap = tap
+            new_token = new_tap_name
+          end
+        end
         new_tap.ensure_installed!
         new_tapped_token = "#{new_tap}/#{new_token}"
 
-        if tapped_token == new_tapped_token
-          opoo "Tap migration for #{tapped_token} points to itself, stopping recursion."
-        else
+        if tapped_token != new_tapped_token
           old_token = tap.core_cask_tap? ? token : tapped_token
           return unless (token_tap_type = tap_cask_token_type(new_tapped_token, warn: false))
 
@@ -622,7 +646,7 @@ module Cask
         NullLoader,
       ].each do |loader_class|
         if (loader = loader_class.try_new(ref, warn:))
-          $stderr.puts "#{$PROGRAM_NAME} (#{loader.class}): loading #{ref}" if debug?
+          $stderr.puts "#{$PROGRAM_NAME} (#{loader.class}): loading #{ref}" if verbose? && debug?
           return loader
         end
       end

@@ -1,4 +1,4 @@
-# typed: true # rubocop:disable Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 module OS
@@ -9,6 +9,7 @@ module OS
       requires_ancestor { ::Keg }
 
       module ClassMethods
+        sig { params(file: Pathname, string: String).returns(T::Array[String]) }
         def file_linked_libraries(file, string)
           # Check dynamic library linkage. Importantly, do not perform for static
           # libraries, which will falsely report "linkage" to themselves.
@@ -20,7 +21,8 @@ module OS
         end
       end
 
-      def relocate_dynamic_linkage(relocation)
+      sig { params(relocation: ::Keg::Relocation, skip_protodesc_cold: T::Boolean).void }
+      def relocate_dynamic_linkage(relocation, skip_protodesc_cold: false)
         mach_o_files.each do |file|
           file.ensure_writable do
             modified = T.let(false, T::Boolean)
@@ -50,6 +52,7 @@ module OS
         end
       end
 
+      sig { void }
       def fix_dynamic_linkage
         mach_o_files.each do |file|
           file.ensure_writable do
@@ -98,6 +101,7 @@ module OS
         super
       end
 
+      sig { params(file: Pathname, target: String).returns(String) }
       def loader_name_for(file, target)
         # Use @loader_path-relative install names for other Homebrew-installed binaries.
         if ENV["HOMEBREW_RELOCATABLE_INSTALL_NAMES"] && target.start_with?(HOMEBREW_PREFIX)
@@ -113,6 +117,7 @@ module OS
       # If file is a dylib or bundle itself, look for the dylib named by
       # bad_name relative to the lib directory, so that we can skip the more
       # expensive recursive search if possible.
+      sig { params(file: Pathname, bad_name: String).returns(String) }
       def fixed_name(file, bad_name)
         if bad_name.start_with? ::Keg::PREFIX_PLACEHOLDER
           bad_name.sub(::Keg::PREFIX_PLACEHOLDER, HOMEBREW_PREFIX)
@@ -132,23 +137,35 @@ module OS
         end
       end
 
-      VARIABLE_REFERENCE_RX = /^@(loader_|executable_|r)path/
+      VARIABLE_REFERENCE_RX = T.let(/^@(loader_|executable_|r)path/, Regexp)
 
+      sig { params(file: Pathname, linkage_type: Symbol, resolve_variable_references: T::Boolean, block: T.proc.params(arg0: String).void).void }
       def each_linkage_for(file, linkage_type, resolve_variable_references: false, &block)
         file.public_send(linkage_type, resolve_variable_references:)
             .grep_v(VARIABLE_REFERENCE_RX)
             .each(&block)
       end
 
+      sig { params(file: Pathname).returns(String) }
       def dylib_id_for(file)
         # Swift dylib IDs should be /usr/lib/swift
         return file.dylib_id if file.dylib_id.start_with?("/usr/lib/swift/libswift")
+
+        # Preserve @rpath install names if the formula has specified preserve_rpath
+        return file.dylib_id if file.dylib_id.start_with?("@rpath") && formula_preserve_rpath?
 
         # The new dylib ID should have the same basename as the old dylib ID, not
         # the basename of the file itself.
         basename = File.basename(file.dylib_id)
         relative_dirname = file.dirname.relative_path_from(path)
         (opt_record/relative_dirname/basename).to_s
+      end
+
+      sig { returns(T::Boolean) }
+      def formula_preserve_rpath?
+        ::Formula[name].preserve_rpath?
+      rescue FormulaUnavailableError
+        false
       end
 
       sig { params(old_name: String, relocation: ::Keg::Relocation).returns(T.nilable(String)) }
@@ -167,14 +184,16 @@ module OS
       # `XXX.framework/XXX`, both with or without a slash-delimited prefix.
       FRAMEWORK_RX = %r{(?:^|/)(([^/]+)\.framework/(?:Versions/[^/]+/)?\2)$}
 
+      sig { params(bad_name: String).returns(String) }
       def find_dylib_suffix_from(bad_name)
         if (framework = bad_name.match(FRAMEWORK_RX))
-          framework[1]
+          T.must(framework[1])
         else
           File.basename(bad_name)
         end
       end
 
+      sig { params(bad_name: String).returns(T.nilable(Pathname)) }
       def find_dylib(bad_name)
         return unless lib.directory?
 
@@ -182,6 +201,7 @@ module OS
         lib.find { |pn| break pn if pn.to_s.end_with?(suffix) }
       end
 
+      sig { returns(T::Array[Pathname]) }
       def mach_o_files
         hardlinks = Set.new
         mach_o_files = []
@@ -198,6 +218,7 @@ module OS
         mach_o_files
       end
 
+      sig { returns(::Keg::Relocation) }
       def prepare_relocation_to_locations
         relocation = super
 
@@ -225,12 +246,14 @@ module OS
         relocation
       end
 
+      sig { returns(String) }
       def recursive_fgrep_args
         # Don't recurse into symlinks; the man page says this is the default, but
         # it's wrong. -O is a BSD-grep-only option.
         "-lrO"
       end
 
+      sig { returns([String, String]) }
       def egrep_args
         grep_bin = "egrep"
         grep_args = "--files-with-matches"
@@ -239,11 +262,12 @@ module OS
 
       private
 
-      CELLAR_RX = %r{\A#{HOMEBREW_CELLAR}/(?<formula_name>[^/]+)/[^/]+}
+      CELLAR_RX = T.let(%r{\A#{HOMEBREW_CELLAR}/(?<formula_name>[^/]+)/[^/]+}, Regexp)
       private_constant :CELLAR_RX
 
       # Replace HOMEBREW_CELLAR references with HOMEBREW_PREFIX/opt references
       # if the Cellar reference is to a different keg.
+      sig { params(filename: String).returns(String) }
       def opt_name_for(filename)
         return filename unless filename.start_with?(HOMEBREW_PREFIX.to_s)
         return filename if filename.start_with?(path.to_s)
@@ -252,12 +276,13 @@ module OS
         filename.sub(CELLAR_RX, "#{HOMEBREW_PREFIX}/opt/#{matches[:formula_name]}")
       end
 
+      sig { params(filename: String).returns(T::Boolean) }
       def rooted_in_build_directory?(filename)
         # CMake normalises `/private/tmp` to `/tmp`.
         # https://gitlab.kitware.com/cmake/cmake/-/issues/23251
         return true if HOMEBREW_TEMP.to_s == "/private/tmp" && filename.start_with?("/tmp/")
 
-        filename.start_with?(HOMEBREW_TEMP.to_s) || filename.start_with?(HOMEBREW_TEMP.realpath.to_s)
+        filename.start_with?(HOMEBREW_TEMP.to_s, HOMEBREW_TEMP.realpath.to_s)
       end
     end
   end

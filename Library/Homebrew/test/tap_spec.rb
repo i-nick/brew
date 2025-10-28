@@ -22,6 +22,9 @@ RSpec.describe Tap do
     path.mkpath
     (path/"audit_exceptions").mkpath
     (path/"style_exceptions").mkpath
+
+    # requiring utils/output in tap.rb should be enough but it's not for no apparent reason.
+    $stderr.extend(Utils::Output::Mixin)
   end
 
   def setup_tap_files

@@ -13,7 +13,7 @@ RSpec.describe Cask::Upgrade, :cask do
   let(:auto_updates_path) { auto_updates.config.appdir.join("MyFancyApp.app") }
   let(:auto_updates) { Cask::CaskLoader.load("auto-updates") }
   let(:local_transmission_path) { local_transmission.config.appdir.join("Transmission.app") }
-  let(:local_transmission) { Cask::CaskLoader.load("local-transmission") }
+  let(:local_transmission) { Cask::CaskLoader.load("local-transmission-zip") }
   let(:local_caffeine_path) { local_caffeine.config.appdir.join("Caffeine.app") }
   let(:local_caffeine) { Cask::CaskLoader.load("local-caffeine") }
   let(:renamed_app) { Cask::CaskLoader.load("renamed-app") }
@@ -35,7 +35,7 @@ RSpec.describe Cask::Upgrade, :cask do
     let(:installed) do
       [
         "outdated/local-caffeine",
-        "outdated/local-transmission",
+        "outdated/local-transmission-zip",
         "outdated/auto-updates",
         "outdated/version-latest",
         "outdated/renamed-app",
@@ -266,7 +266,7 @@ RSpec.describe Cask::Upgrade, :cask do
     let(:installed) do
       [
         "outdated/bad-checksum",
-        "outdated/local-transmission",
+        "outdated/local-transmission-zip",
         "outdated/bad-checksum2",
       ]
     end

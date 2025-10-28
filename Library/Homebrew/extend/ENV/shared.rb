@@ -13,6 +13,7 @@ require "development_tools"
 module SharedEnvExtension
   extend T::Helpers
   include CompilerConstants
+  include Utils::Output::Mixin
 
   requires_ancestor { Sorbet::Private::Static::ENVClass }
 
@@ -52,6 +53,7 @@ module SharedEnvExtension
     @build_bottle = build_bottle
     @bottle_arch = bottle_arch
     @debug_symbols = debug_symbols
+    @testing_formula = testing_formula
     reset
   end
 
@@ -111,6 +113,11 @@ module SharedEnvExtension
   sig { params(key: String, path: T.any(String, Pathname)).void }
   def append_path(key, path)
     self[key] = PATH.new(self[key]).append(path)
+  end
+
+  sig { params(rustflags: String).void }
+  def append_to_rustflags(rustflags)
+    append("HOMEBREW_RUSTFLAGS", rustflags)
   end
 
   # Prepends a directory to `PATH`.
@@ -215,12 +222,12 @@ module SharedEnvExtension
 
       if @formula
         compilers = [compiler] + CompilerSelector.compilers
-        compiler = CompilerSelector.select_for(@formula, compilers)
+        compiler = CompilerSelector.select_for(@formula, compilers, testing_formula: @testing_formula)
       end
 
       compiler
     elsif @formula
-      CompilerSelector.select_for(@formula)
+      CompilerSelector.select_for(@formula, testing_formula: @testing_formula)
     else
       DevelopmentTools.default_compiler
     end
@@ -253,7 +260,7 @@ module SharedEnvExtension
     flags = []
 
     if fc
-      ohai "Building with an alternative Fortran compiler", "This is unsupported."
+      opoo "Building with an unsupported Fortran compiler"
       self["F77"] ||= fc
     else
       if (gfortran = which("gfortran", (HOMEBREW_PREFIX/"bin").to_s))
@@ -262,7 +269,7 @@ module SharedEnvExtension
         ohai "Using a Fortran compiler found at #{gfortran}"
       end
       if gfortran
-        puts "This may be changed by setting the FC environment variable."
+        puts "This may be changed by setting the `$FC` environment variable."
         self["FC"] = self["F77"] = gfortran
         flags = FC_FLAG_VARS
       end

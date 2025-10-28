@@ -10,6 +10,7 @@ module Homebrew
   module Cmd
     class Deps < AbstractCommand
       include DependenciesHelpers
+
       cmd_args do
         description <<~EOS
           Show dependencies for <formula>. When given multiple formula arguments,
@@ -45,6 +46,9 @@ module Homebrew
         switch "--tree",
                description: "Show dependencies as a tree. When given multiple formula arguments, " \
                             "show individual trees for each formula."
+        switch "--prune",
+               depends_on:  "--tree",
+               description: "Prune parts of tree already seen."
         switch "--graph",
                description: "Show dependencies as a directed graph."
         switch "--dot",
@@ -87,10 +91,10 @@ module Homebrew
 
       sig { override.void }
       def run
-        raise UsageError, "`brew deps --os=all` is not supported" if args.os == "all"
-        raise UsageError, "`brew deps --arch=all` is not supported" if args.arch == "all"
+        raise UsageError, "`brew deps --os=all` is not supported." if args.os == "all"
+        raise UsageError, "`brew deps --arch=all` is not supported." if args.arch == "all"
 
-        os, arch = T.must(args.os_arch_combinations.first)
+        os, arch = args.os_arch_combinations.fetch(0)
         eval_all = args.eval_all?
 
         Formulary.enable_factory_cache!
@@ -130,7 +134,7 @@ module Homebrew
             opoo <<~EOS
               `brew deps` is not the actual runtime dependencies because #{not_using_runtime_dependencies_reason}!
               This means dependencies may differ from a formula's declared dependencies.
-              Hide these hints with HOMEBREW_NO_ENV_HINTS (see `man brew`).
+              Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`).
             EOS
           end
 
@@ -318,7 +322,7 @@ module Homebrew
         check_head_spec(dependents) if args.HEAD?
         dependents.each do |d|
           puts d.full_name
-          recursive_deps_tree(d, dep_stack: [], prefix: "", recursive:)
+          recursive_deps_tree(d, deps_seen: {}, prefix: "", recursive:)
           puts
         end
       end
@@ -332,10 +336,10 @@ module Homebrew
         reqs + deps
       end
 
-      def recursive_deps_tree(formula, dep_stack:, prefix:, recursive:)
+      def recursive_deps_tree(formula, deps_seen:, prefix:, recursive:)
         dependables = dependables(formula)
         max = dependables.length - 1
-        dep_stack.push formula.name
+        deps_seen[formula.name] = true
         dependables.each_with_index do |dep, i|
           tree_lines = if i == max
             "└──"
@@ -346,15 +350,18 @@ module Homebrew
           display_s = "#{tree_lines} #{dep_display_name(dep)}"
 
           # Detect circular dependencies and consider them a failure if present.
-          is_circular = dep_stack.include?(dep.name)
+          is_circular = deps_seen.fetch(dep.name, false)
+          pruned = args.prune? && deps_seen.include?(dep.name)
           if is_circular
             display_s = "#{display_s} (CIRCULAR DEPENDENCY)"
             Homebrew.failed = true
+          elsif pruned
+            display_s = "#{display_s} (PRUNED)"
           end
 
           puts "#{prefix}#{display_s}"
 
-          next if !recursive || is_circular
+          next if !recursive || is_circular || pruned
 
           prefix_addition = if i == max
             "    "
@@ -365,12 +372,12 @@ module Homebrew
           next unless dep.is_a? Dependency
 
           recursive_deps_tree(Formulary.factory(dep.name),
-                              dep_stack:,
+                              deps_seen:,
                               prefix:    prefix + prefix_addition,
                               recursive: true)
         end
 
-        dep_stack.pop
+        deps_seen[formula.name] = false
       end
     end
   end

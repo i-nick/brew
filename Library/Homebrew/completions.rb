@@ -8,6 +8,8 @@ require "erb"
 module Homebrew
   # Helper functions for generating shell completions.
   module Completions
+    extend Utils::Output::Mixin
+
     Variables = Struct.new(
       :aliases,
       :builtin_command_descriptions,

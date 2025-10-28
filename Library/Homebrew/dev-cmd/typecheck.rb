@@ -97,7 +97,7 @@ module Homebrew
           if args.lsp?
             srb_exec << "--lsp"
             if (watchman = which("watchman", ORIGINAL_PATHS))
-              srb_exec << "--watchman-path" << watchman
+              srb_exec << "--watchman-path" << watchman.to_s
             else
               srb_exec << "--disable-watchman"
             end

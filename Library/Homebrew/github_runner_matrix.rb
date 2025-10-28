@@ -9,8 +9,8 @@ class GitHubRunnerMatrix
   # on homebrew/core and tag the first commit with a bottle e.g.
   # `git tag 15-sequoia f42c4a659e4da887fc714f8f41cc26794a4bb320`
   # to allow people to jump to specific commits based on their macOS version.
-  NEWEST_HOMEBREW_CORE_MACOS_RUNNER = :sequoia
-  OLDEST_HOMEBREW_CORE_MACOS_RUNNER = :ventura
+  NEWEST_HOMEBREW_CORE_MACOS_RUNNER = :tahoe
+  OLDEST_HOMEBREW_CORE_MACOS_RUNNER = :sonoma
   NEWEST_HOMEBREW_CORE_INTEL_MACOS_RUNNER = :sonoma
 
   RunnerSpec = T.type_alias { T.any(LinuxRunnerSpec, MacOSRunnerSpec) }
@@ -91,7 +91,7 @@ class GitHubRunnerMatrix
   def linux_runner_spec(arch)
     linux_runner = case arch
     when :arm64 then "ubuntu-22.04-arm"
-    when :x86_64 then ENV.fetch("HOMEBREW_LINUX_RUNNER")
+    when :x86_64 then ENV.fetch("HOMEBREW_LINUX_RUNNER", "ubuntu-latest")
     else raise "Unknown Linux architecture: #{arch}"
     end
 
@@ -138,8 +138,8 @@ class GitHubRunnerMatrix
   end
 
   NEWEST_GITHUB_ACTIONS_INTEL_MACOS_RUNNER = :ventura
-  OLDEST_GITHUB_ACTIONS_INTEL_MACOS_RUNNER = :monterey
-  NEWEST_GITHUB_ACTIONS_ARM_MACOS_RUNNER = :sequoia
+  OLDEST_GITHUB_ACTIONS_INTEL_MACOS_RUNNER = :ventura
+  NEWEST_GITHUB_ACTIONS_ARM_MACOS_RUNNER = :tahoe
   OLDEST_GITHUB_ACTIONS_ARM_MACOS_RUNNER = :sonoma
   GITHUB_ACTIONS_RUNNER_TIMEOUT = 360
   private_constant :NEWEST_GITHUB_ACTIONS_INTEL_MACOS_RUNNER, :OLDEST_GITHUB_ACTIONS_INTEL_MACOS_RUNNER,
@@ -150,6 +150,38 @@ class GitHubRunnerMatrix
   def generate_runners!
     return if @runners.present?
 
+    # gracefully handle non-GitHub Actions environments
+    github_run_id = if ENV.key?("GITHUB_ACTIONS")
+      ENV.fetch("GITHUB_RUN_ID")
+    else
+      ENV.fetch("GITHUB_RUN_ID", "")
+    end
+
+    # Portable Ruby logic
+    if @testing_formulae.any? { |tf| tf.name.start_with?("portable-") }
+      @runners << create_runner(:linux, :x86_64)
+      @runners << create_runner(:linux, :arm64)
+
+      x86_64_spec = MacOSRunnerSpec.new(
+        name:    "macOS 10.15 x86_64",
+        runner:  "10.15-#{github_run_id}",
+        timeout: GITHUB_ACTIONS_LONG_TIMEOUT,
+        cleanup: true,
+      )
+      x86_64_macos_version = MacOSVersion.new("10.15")
+      @runners << create_runner(:macos, :x86_64, x86_64_spec, x86_64_macos_version)
+
+      arm64_spec = MacOSRunnerSpec.new(
+        name:    "macOS 11-arm64-cross",
+        runner:  "11-arm64-cross-#{github_run_id}",
+        timeout: GITHUB_ACTIONS_LONG_TIMEOUT,
+        cleanup: true,
+      )
+      arm64_macos_version = MacOSVersion.new("11")
+      @runners << create_runner(:macos, :arm64, arm64_spec, arm64_macos_version)
+      return
+    end
+
     if !@all_supported || ENV.key?("HOMEBREW_LINUX_RUNNER")
       @runners << create_runner(:linux, :x86_64)
 
@@ -159,7 +191,6 @@ class GitHubRunnerMatrix
       end
     end
 
-    github_run_id      = ENV.fetch("GITHUB_RUN_ID")
     long_timeout       = ENV.fetch("HOMEBREW_MACOS_LONG_TIMEOUT", "false") == "true"
     use_github_runner  = ENV.fetch("HOMEBREW_MACOS_BUILD_ON_GITHUB_RUNNER", "false") == "true"
 

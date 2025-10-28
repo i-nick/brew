@@ -104,7 +104,7 @@ RSpec.describe Version do
       it "raises an error" do
         expect do
           null_version.to_str
-        end.to raise_error NoMethodError, "undefined method `to_str' for Version:NULL"
+        end.to raise_error NoMethodError, "undefined method `to_str` for Version:NULL"
       end
     end
 

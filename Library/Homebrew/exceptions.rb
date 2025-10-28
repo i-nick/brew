@@ -1,6 +1,8 @@
 # typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
+require "utils/output"
+
 # Raised when a command is used wrong.
 #
 # @api internal
@@ -331,9 +333,9 @@ end
 class TapCoreRemoteMismatchError < TapRemoteMismatchError
   def message
     <<~EOS
-      Tap #{name} remote does not match HOMEBREW_CORE_GIT_REMOTE.
+      Tap #{name} remote does not match `$HOMEBREW_CORE_GIT_REMOTE`.
       #{expected_remote} != #{actual_remote}
-      Please set HOMEBREW_CORE_GIT_REMOTE="#{actual_remote}" and run `brew update` instead.
+      Please set `HOMEBREW_CORE_GIT_REMOTE="#{actual_remote}"` and run `brew update` instead.
     EOS
   end
 end
@@ -463,6 +465,8 @@ end
 
 # Raised when an error occurs during a formula build.
 class BuildError < RuntimeError
+  include Utils::Output::Mixin
+
   attr_reader :cmd, :args, :env
   attr_accessor :formula, :options
 
@@ -575,7 +579,7 @@ class UnbottledError < RuntimeError
     require "utils"
 
     msg = <<~EOS
-      The following #{Utils.pluralize("formula", formulae.count, plural: "e")} cannot be installed from #{Utils.pluralize("bottle", formulae.count)} and must be
+      The following #{Utils.pluralize("formula", formulae.count)} cannot be installed from #{Utils.pluralize("bottle", formulae.count)} and must be
       built from source.
         #{formulae.to_sentence}
     EOS
@@ -632,7 +636,7 @@ class DownloadError < RuntimeError
 
   def initialize(downloadable, cause)
     super <<~EOS
-      Failed to download resource #{downloadable.download_name.inspect}
+      Failed to download resource #{downloadable.download_queue_name.inspect}
       #{cause.message}
     EOS
     @cause = cause
@@ -735,7 +739,7 @@ class ChecksumMismatchError < RuntimeError
     @expected = expected
 
     super <<~EOS
-      SHA256 mismatch
+      SHA-256 mismatch
       Expected: #{Formatter.success(expected.to_s)}
         Actual: #{Formatter.error(actual.to_s)}
           File: #{path}

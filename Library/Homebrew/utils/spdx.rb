@@ -34,7 +34,7 @@ module SPDX
 
   sig { params(to: Pathname).void }
   def download_latest_license_data!(to: DATA_PATH)
-    data_url = "https://raw.githubusercontent.com/spdx/license-list-data/#{latest_tag}/json/"
+    data_url = "https://raw.githubusercontent.com/spdx/license-list-data/refs/tags/#{latest_tag}/json/"
     Utils::Curl.curl_download("#{data_url}licenses.json", to: to/"spdx_licenses.json")
     Utils::Curl.curl_download("#{data_url}exceptions.json", to: to/"spdx_exceptions.json")
   end
@@ -229,13 +229,13 @@ module SPDX
   end
 
   sig {
-    params(license_expression: T.any(String, Symbol, T::Hash[Symbol, T.untyped]),
-           forbidden_licenses: T::Hash[Symbol, T.untyped]).returns(T::Boolean)
+    params(license_expression: T.any(String, Symbol, T::Hash[T.any(Symbol, String), T.untyped]),
+           forbidden_licenses: T::Hash[T.any(Symbol, String), T.untyped]).returns(T::Boolean)
   }
   def licenses_forbid_installation?(license_expression, forbidden_licenses)
     case license_expression
     when String, Symbol
-      forbidden_licenses_include? license_expression.to_s, forbidden_licenses
+      forbidden_licenses_include? license_expression, forbidden_licenses
     when Hash
       key = license_expression.keys.first
       return false if key.nil?

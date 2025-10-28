@@ -2,9 +2,12 @@
 # frozen_string_literal: true
 
 require "aliases/alias"
+require "utils/output"
 
 module Homebrew
   module Aliases
+    extend Utils::Output::Mixin
+
     RESERVED = T.let((
         Commands.internal_commands +
         Commands.internal_developer_commands +
@@ -40,7 +43,7 @@ module Homebrew
         next if !only.empty? && only.exclude?(name)
 
         lines.reject! { |line| line.start_with?("#") || line =~ /^\s*$/ }
-        first_line = T.must(lines.first)
+        first_line = lines.fetch(0)
         command = first_line.chomp
         command.sub!(/ \$\*$/, "")
 

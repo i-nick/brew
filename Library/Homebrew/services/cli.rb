@@ -3,11 +3,13 @@
 
 require "services/formula_wrapper"
 require "fileutils"
+require "utils/output"
 
 module Homebrew
   module Services
     module Cli
       extend FileUtils
+      extend Utils::Output::Mixin
 
       sig { returns(T.nilable(String)) }
       def self.sudo_service_user
@@ -43,7 +45,7 @@ module Homebrew
 
       # Check if formula has been found.
       def self.check!(targets)
-        raise UsageError, "Formula(e) missing, please provide a formula name or use --all" if targets.empty?
+        raise UsageError, "Formula(e) missing, please provide a formula name or use `--all`." if targets.empty?
 
         true
       end
@@ -71,7 +73,7 @@ module Homebrew
         Dir["#{System.path}homebrew.*.{plist,service}"].each do |file|
           next if running.include?(File.basename(file).sub(/\.(plist|service)$/i, ""))
 
-          puts "Removing unused service file #{file}"
+          puts "Removing unused service file: #{file}"
           rm file
           cleaned << file
         end
@@ -90,7 +92,7 @@ module Homebrew
       def self.run(targets, service_file = nil, verbose: false)
         if service_file.present?
           file = Pathname.new service_file
-          raise UsageError, "Provided service file does not exist" unless file.exist?
+          raise UsageError, "Provided service file does not exist." unless file.exist?
         end
 
         targets.each do |service|
@@ -119,7 +121,7 @@ module Homebrew
 
         if service_file.present?
           file = Pathname.new service_file
-          raise UsageError, "Provided service file does not exist" unless file.exist?
+          raise UsageError, "Provided service file does not exist." unless file.exist?
         end
 
         targets.each do |service|
@@ -373,11 +375,11 @@ module Homebrew
       end
 
       def self.install_service_file(service, file)
-        raise UsageError, "Formula `#{service.name}` is not installed" unless service.installed?
+        raise UsageError, "Formula `#{service.name}` is not installed." unless service.installed?
 
         unless service.service_file.exist?
           raise UsageError,
-                "Formula `#{service.name}` has not implemented #plist, #service or installed a locatable service file"
+                "Formula `#{service.name}` has not implemented #plist, #service or provided a locatable service file."
         end
 
         temp = Tempfile.new(service.service_name)
@@ -386,7 +388,7 @@ module Homebrew
 
           if sudo_service_user && System.launchctl?
             # set the username in the new plist file
-            ohai "Setting username in #{service.service_name} to #{System.user}"
+            ohai "Setting username in #{service.service_name} to: #{System.user}"
             plist_data = Plist.parse_xml(contents, marshal: false)
             plist_data["UserName"] = sudo_service_user
             plist_data.to_plist

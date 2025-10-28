@@ -310,6 +310,7 @@ _brew__s() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --alpine
       --archlinux
       --cask
       --closed
@@ -370,6 +371,7 @@ _brew_abv() {
       --installed
       --json
       --quiet
+      --sizes
       --variations
       --verbose
       "
@@ -659,6 +661,7 @@ _brew_bundle() {
       --force
       --formula
       --global
+      --go
       --help
       --install
       --mas
@@ -757,6 +760,22 @@ _brew_command() {
   __brew_complete_commands
 }
 
+_brew_command_not_found_init() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --debug
+      --help
+      --quiet
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
 _brew_commands() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   case "${cur}" in
@@ -816,8 +835,10 @@ _brew_contributions() {
       --debug
       --from
       --help
+      --organisation
       --quiet
       --repositories
+      --team
       --to
       --user
       --verbose
@@ -908,6 +929,7 @@ _brew_deps() {
       --installed
       --missing
       --os
+      --prune
       --quiet
       --skip-recommended
       --topological
@@ -1143,9 +1165,7 @@ _brew_fetch() {
       --force-bottle
       --formula
       --help
-      --no-quarantine
       --os
-      --quarantine
       --quiet
       --retry
       --verbose
@@ -1389,6 +1409,7 @@ _brew_info() {
       --installed
       --json
       --quiet
+      --sizes
       --variations
       --verbose
       "
@@ -1440,12 +1461,10 @@ _brew_instal() {
       --language
       --mdimporterdir
       --no-binaries
-      --no-quarantine
       --only-dependencies
       --overwrite
       --prefpanedir
       --qlplugindir
-      --quarantine
       --quiet
       --require-sha
       --screen-saverdir
@@ -1506,12 +1525,10 @@ _brew_install() {
       --language
       --mdimporterdir
       --no-binaries
-      --no-quarantine
       --only-dependencies
       --overwrite
       --prefpanedir
       --qlplugindir
-      --quarantine
       --quiet
       --require-sha
       --screen-saverdir
@@ -2175,10 +2192,8 @@ _brew_reinstall() {
       --language
       --mdimporterdir
       --no-binaries
-      --no-quarantine
       --prefpanedir
       --qlplugindir
-      --quarantine
       --quiet
       --require-sha
       --screen-saverdir
@@ -2203,6 +2218,7 @@ _brew_release() {
     -*)
       __brewcomp "
       --debug
+      --force
       --help
       --major
       --minor
@@ -2319,6 +2335,7 @@ _brew_search() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --alpine
       --archlinux
       --cask
       --closed
@@ -2427,6 +2444,7 @@ _brew_style() {
     -*)
       __brewcomp "
       --cask
+      --changed
       --debug
       --except-cops
       --fix
@@ -2574,6 +2592,63 @@ _brew_test() {
     *) ;;
   esac
   __brew_complete_installed_formulae
+}
+
+_brew_test_bot() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --added-formulae
+      --build-dependents-from-source
+      --build-from-source
+      --cleanup
+      --concurrent-downloads
+      --debug
+      --deleted-formulae
+      --dry-run
+      --fail-fast
+      --git-email
+      --git-name
+      --help
+      --junit
+      --keep-old
+      --local
+      --only-bottles-fetch
+      --only-cleanup-after
+      --only-cleanup-before
+      --only-formulae
+      --only-formulae-dependents
+      --only-formulae-detect
+      --only-json-tab
+      --only-setup
+      --only-tap-syntax
+      --publish
+      --quiet
+      --root-url
+      --skip-checksum-only-audit
+      --skip-dependents
+      --skip-livecheck
+      --skip-new
+      --skip-new-strict
+      --skip-online-checks
+      --skip-recursive-dependents
+      --skip-relocation
+      --skip-revision-audit
+      --skip-setup
+      --skip-stable-version-audit
+      --skipped-or-failed-formulae
+      --stable
+      --tap
+      --test-default-formula
+      --tested-formulae
+      --testing-formulae
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
 }
 
 _brew_tests() {
@@ -2733,9 +2808,11 @@ _brew_unpack() {
   case "${cur}" in
     -*)
       __brewcomp "
+      --cask
       --debug
       --destdir
       --force
+      --formula
       --git
       --help
       --patch
@@ -2747,6 +2824,7 @@ _brew_unpack() {
     *) ;;
   esac
   __brew_complete_formulae
+  __brew_complete_casks
 }
 
 _brew_unpin() {
@@ -3020,11 +3098,9 @@ _brew_upgrade() {
       --language
       --mdimporterdir
       --no-binaries
-      --no-quarantine
       --overwrite
       --prefpanedir
       --qlplugindir
-      --quarantine
       --quiet
       --require-sha
       --screen-saverdir
@@ -3127,6 +3203,48 @@ _brew_verify() {
   __brew_complete_formulae
 }
 
+_brew_which_formula() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --debug
+      --explain
+      --help
+      --quiet
+      --skip-update
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+  __brew_complete_commands
+}
+
+_brew_which_update() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --commit
+      --debug
+      --eval-all
+      --help
+      --install-missing
+      --max-downloads
+      --quiet
+      --stats
+      --summary-file
+      --update-existing
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
 _brew() {
   local i=1 cmd
 
@@ -3184,6 +3302,7 @@ _brew() {
     cat) _brew_cat ;;
     cleanup) _brew_cleanup ;;
     command) _brew_command ;;
+    command-not-found-init) _brew_command_not_found_init ;;
     commands) _brew_commands ;;
     completions) _brew_completions ;;
     config) _brew_config ;;
@@ -3263,6 +3382,7 @@ _brew() {
     tap-new) _brew_tap_new ;;
     tc) _brew_tc ;;
     test) _brew_test ;;
+    test-bot) _brew_test_bot ;;
     tests) _brew_tests ;;
     typecheck) _brew_typecheck ;;
     unalias) _brew_unalias ;;
@@ -3289,6 +3409,8 @@ _brew() {
     vendor-gems) _brew_vendor_gems ;;
     vendor-install) _brew_vendor_install ;;
     verify) _brew_verify ;;
+    which-formula) _brew_which_formula ;;
+    which-update) _brew_which_update ;;
     *) ;;
   esac
 }

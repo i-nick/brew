@@ -11,6 +11,7 @@ require "cleanup"
 require "description_cache_store"
 require "settings"
 require "linuxbrew-core-migration"
+require "reinstall"
 
 module Homebrew
   module Cmd
@@ -56,7 +57,7 @@ module Homebrew
 
           if Homebrew::EnvConfig.core_git_remote != HOMEBREW_CORE_DEFAULT_GIT_REMOTE
             opoo <<~EOS
-              HOMEBREW_CORE_GIT_REMOTE was set: #{Homebrew::EnvConfig.core_git_remote}.
+              `$HOMEBREW_CORE_GIT_REMOTE` was set: #{Homebrew::EnvConfig.core_git_remote}.
               It has been unset for the migration.
               You may need to change this from a linuxbrew-core mirror to a homebrew-core one.
 
@@ -66,7 +67,7 @@ module Homebrew
 
           if Homebrew::EnvConfig.bottle_domain != HOMEBREW_BOTTLE_DEFAULT_DOMAIN
             opoo <<~EOS
-              HOMEBREW_BOTTLE_DOMAIN was set: #{Homebrew::EnvConfig.bottle_domain}.
+              `$HOMEBREW_BOTTLE_DOMAIN` was set: #{Homebrew::EnvConfig.bottle_domain}.
               It has been unset for the migration.
               You may need to change this from a Linuxbrew package mirror to a Homebrew one.
 
@@ -134,10 +135,7 @@ module Homebrew
         end
 
         # Check if we can parse the JSON and do any Ruby-side follow-up.
-        unless Homebrew::EnvConfig.no_install_from_api?
-          Homebrew::API::Formula.write_names_and_aliases
-          Homebrew::API::Cask.write_names
-        end
+        Homebrew::API.write_names_and_aliases unless Homebrew::EnvConfig.no_install_from_api?
 
         Homebrew.failed = true if ENV["HOMEBREW_UPDATE_FAILED"]
         return if Homebrew::EnvConfig.disable_load_formula?
@@ -257,6 +255,8 @@ module Homebrew
           puts "Already up-to-date." unless args.quiet?
         end
 
+        Homebrew::Reinstall.reinstall_pkgconf_if_needed!
+
         Commands.rebuild_commands_completion_list
         link_completions_manpages_and_docs
         Tap.installed.each(&:link_completions_and_manpages)
@@ -279,7 +279,7 @@ module Homebrew
         puts
 
         new_major_version, new_minor_version, new_patch_version = new_tag.split(".").map(&:to_i)
-        old_major_version, old_minor_version = old_tag.split(".")[0, 2].map(&:to_i) if old_tag.present?
+        old_major_version, old_minor_version = T.must(old_tag.split(".")[0, 2]).map(&:to_i) if old_tag.present?
         if old_tag.blank? || new_major_version > old_major_version || new_minor_version > old_minor_version
           puts <<~EOS
             The #{new_major_version}.#{new_minor_version}.0 release notes are available on the Homebrew Blog:
@@ -412,9 +412,9 @@ module Homebrew
                                   !Homebrew::EnvConfig.automatically_set_no_install_from_api?
         return unless no_install_from_api_set
 
-        ohai "You have HOMEBREW_NO_INSTALL_FROM_API set"
+        ohai "You have `$HOMEBREW_NO_INSTALL_FROM_API` set"
         puts "Homebrew >=4.1.0 is dramatically faster and less error-prone when installing"
-        puts "from the JSON API. Please consider unsetting HOMEBREW_NO_INSTALL_FROM_API."
+        puts "from the JSON API. Please consider unsetting `$HOMEBREW_NO_INSTALL_FROM_API`."
         puts "This message will only be printed once."
         puts "\n\n"
 
@@ -428,6 +428,21 @@ end
 require "extend/os/cmd/update-report"
 
 class Reporter
+  include Utils::Output::Mixin
+
+  Report = T.type_alias do
+    {
+      A:  T::Array[String],
+      AC: T::Array[String],
+      D:  T::Array[String],
+      DC: T::Array[String],
+      M:  T::Array[String],
+      MC: T::Array[String],
+      R:  T::Array[[String, String]],
+      RC: T::Array[[String, String]],
+    }
+  end
+
   class ReporterRevisionUnsetError < RuntimeError
     sig { params(var_name: String).void }
     def initialize(var_name)
@@ -457,14 +472,17 @@ class Reporter
       raise ReporterRevisionUnsetError, current_revision_var if @current_revision.empty?
     end
 
-    @report = T.let(nil, T.nilable(T::Hash[Symbol, T::Array[String]]))
+    @report = T.let(nil, T.nilable(Report))
   end
 
-  sig { params(auto_update: T::Boolean).returns(T::Hash[Symbol, T::Array[String]]) }
+  sig { params(auto_update: T::Boolean).returns(Report) }
   def report(auto_update: false)
     return @report if @report
 
-    @report = Hash.new { |h, k| h[k] = [] }
+    @report = {
+      A: [], AC: [], D: [], DC: [], M: [], MC: [], R: T.let([], T::Array[[String, String]]),
+      RC: T.let([], T::Array[[String, String]])
+    }
     return @report unless updated?
 
     diff.each_line do |line|
@@ -501,7 +519,7 @@ class Reporter
       case status
       when "A", "D"
         full_name = tap.formula_file_to_name(src)
-        name = T.must(full_name.split("/").last)
+        name = full_name.split("/").fetch(-1)
         new_tap = tap.tap_migrations[name]
         @report[T.must(status).to_sym] << full_name unless new_tap
       when "M"
@@ -615,7 +633,7 @@ class Reporter
   sig { void }
   def migrate_tap_migration
     (Array(report[:D]) + Array(report[:DC])).each do |full_name|
-      name = T.must(full_name.split("/").last)
+      name = full_name.split("/").fetch(-1)
       new_tap_name = tap.tap_migrations[name]
       next if new_tap_name.nil? # skip if not in tap_migrations list.
 
@@ -664,7 +682,8 @@ class Reporter
 
       new_tap = Tap.fetch(new_tap_name)
       # For formulae migrated to cask: Auto-install cask or provide install instructions.
-      if new_tap_name.start_with?("homebrew/cask")
+      # Check if the migration target is a cask (either in homebrew/cask or any other tap)
+      if new_tap_name.start_with?("homebrew/cask") || new_tap.cask_tokens.include?(new_name)
         if new_tap.installed? && (HOMEBREW_PREFIX/"Caskroom").directory?
           ohai "#{name} has been moved to Homebrew Cask."
           ohai "brew unlink #{name}"
@@ -785,24 +804,28 @@ class Reporter
 end
 
 class ReporterHub
+  include Utils::Output::Mixin
+
   sig { returns(T::Array[Reporter]) }
   attr_reader :reporters
 
   sig { void }
   def initialize
-    @hash = T.let({}, T::Hash[Symbol, T::Array[String]])
+    @hash = T.let({}, T::Hash[Symbol, T::Array[T.any(String, [String, String])]])
     @reporters = T.let([], T::Array[Reporter])
   end
 
   sig { params(key: Symbol).returns(T::Array[String]) }
   def select_formula_or_cask(key)
-    @hash.fetch(key, [])
+    raise "Unsupported key #{key}" unless [:A, :AC, :D, :DC, :M, :MC, :R, :RC].include?(key)
+
+    T.cast(@hash.fetch(key, []), T::Array[String])
   end
 
   sig { params(reporter: Reporter, auto_update: T::Boolean).void }
   def add(reporter, auto_update: false)
     @reporters << reporter
-    report = reporter.report(auto_update:).delete_if { |_k, v| v.empty? }
+    report = reporter.report(auto_update:).reject { |_k, v| v.empty? }
     @hash.update(report) { |_key, oldval, newval| oldval.concat(newval) }
   end
 
@@ -841,7 +864,7 @@ class ReporterHub
     msg = ""
 
     if outdated_formulae.positive?
-      noun = Utils.pluralize("formula", outdated_formulae, plural: "e")
+      noun = Utils.pluralize("formula", outdated_formulae)
       msg += "#{Tty.bold}#{outdated_formulae}#{Tty.reset} outdated #{noun}"
     end
 
@@ -872,8 +895,13 @@ class ReporterHub
     return if formulae.blank?
 
     ohai "New Formulae"
+    should_display_descriptions = if Homebrew::EnvConfig.no_install_from_api?
+      formulae.size <= 100
+    else
+      true
+    end
     formulae.each do |formula|
-      if (desc = description(formula))
+      if should_display_descriptions && (desc = description(formula))
         puts "#{formula}: #{desc}"
       else
         puts formula
@@ -885,17 +913,21 @@ class ReporterHub
   def dump_new_cask_report
     return unless Cask::Caskroom.any_casks_installed?
 
-    casks = select_formula_or_cask(:AC).sort.filter_map do |name|
-      name.split("/").last unless cask_installed?(name)
-    end
+    casks = select_formula_or_cask(:AC).sort.reject { |name| cask_installed?(name) }
     return if casks.blank?
 
     ohai "New Casks"
+    should_display_descriptions = if Homebrew::EnvConfig.no_install_from_api?
+      casks.size <= 100
+    else
+      true
+    end
     casks.each do |cask|
-      if (desc = cask_description(cask))
-        puts "#{cask}: #{desc}"
+      cask_token = cask.split("/").fetch(-1)
+      if should_display_descriptions && (desc = cask_description(cask))
+        puts "#{cask_token}: #{desc}"
       else
-        puts cask
+        puts cask_token
       end
     end
   end
@@ -914,7 +946,7 @@ class ReporterHub
     return if Homebrew::SimulateSystem.simulating_or_running_on_linux?
 
     casks = select_formula_or_cask(:DC).sort.filter_map do |name|
-      name = T.must(name.split("/").last)
+      name = name.split("/").fetch(-1)
       pretty_uninstalled(name) if cask_installed?(name)
     end
 
@@ -933,23 +965,9 @@ class ReporterHub
     (HOMEBREW_CELLAR/formula.split("/").last).directory?
   end
 
-  sig { params(formula: String).returns(T::Boolean) }
-  def outdated?(formula)
-    Formula[formula].outdated?
-  rescue FormulaUnavailableError
-    false
-  end
-
   sig { params(cask: String).returns(T::Boolean) }
   def cask_installed?(cask)
     (Cask::Caskroom.path/cask).directory?
-  end
-
-  sig { params(cask: String).returns(T::Boolean) }
-  def cask_outdated?(cask)
-    Cask::CaskLoader.load(cask).outdated?
-  rescue Cask::CaskError
-    false
   end
 
   sig { returns(T::Array[T.untyped]) }
@@ -974,19 +992,37 @@ class ReporterHub
 
   sig { params(formula: String).returns(T.nilable(String)) }
   def description(formula)
-    return if Homebrew::EnvConfig.no_install_from_api?
+    if Homebrew::EnvConfig.no_install_from_api?
+      # Skip non-homebrew/core formulae for security.
+      return if formula.include?("/")
 
-    all_formula_json.find { |f| f["name"] == formula }
-                    &.fetch("desc", nil)
-                    &.presence
+      begin
+        Formula[formula].desc&.presence
+      rescue FormulaUnavailableError
+        nil
+      end
+    else
+      all_formula_json.find { |f| f["name"] == formula }
+                      &.fetch("desc", nil)
+                      &.presence
+    end
   end
 
   sig { params(cask: String).returns(T.nilable(String)) }
   def cask_description(cask)
-    return if Homebrew::EnvConfig.no_install_from_api?
+    if Homebrew::EnvConfig.no_install_from_api?
+      # Skip non-homebrew/cask formulae for security.
+      return if cask.include?("/")
 
-    all_cask_json.find { |f| f["token"] == cask }
-                 &.fetch("desc", nil)
-                 &.presence
+      begin
+        Cask::CaskLoader.load(cask).desc&.presence
+      rescue Cask::CaskError
+        nil
+      end
+    else
+      all_cask_json.find { |f| f["token"] == cask }
+                   &.fetch("desc", nil)
+                   &.presence
+    end
   end
 end

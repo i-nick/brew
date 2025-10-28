@@ -71,13 +71,13 @@ module Utils
     sig {
       params(
         extra_args:      String,
-        connect_timeout: T.any(Integer, Float, NilClass),
-        max_time:        T.any(Integer, Float, NilClass),
+        connect_timeout: T.nilable(T.any(Integer, Float)),
+        max_time:        T.nilable(T.any(Integer, Float)),
         retries:         T.nilable(Integer),
-        retry_max_time:  T.any(Integer, Float, NilClass),
+        retry_max_time:  T.nilable(T.any(Integer, Float)),
         show_output:     T.nilable(T::Boolean),
         show_error:      T.nilable(T::Boolean),
-        user_agent:      T.any(String, Symbol, NilClass),
+        user_agent:      T.nilable(T.any(String, Symbol)),
         referer:         T.nilable(String),
       ).returns(T::Array[String])
     }
@@ -183,7 +183,7 @@ module Utils
 
       return result if result.success? || args.include?("--http1.1")
 
-      raise Timeout::Error, result.stderr.lines.last.chomp if timeout && result.status.exitstatus == 28
+      raise Timeout::Error, result.stderr.lines.fetch(-1).chomp if timeout && result.status.exitstatus == 28
 
       # Error in the HTTP2 framing layer
       if result.exit_status == 16

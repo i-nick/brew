@@ -54,7 +54,7 @@ module Homebrew
                description: "List formulae and/or casks in long format. " \
                             "Has no effect when a formula or cask name is passed as an argument."
         switch "-r",
-               description: "Reverse the order of the formulae and/or casks sort to list the oldest entries first. " \
+               description: "Reverse the order of formula and/or cask sorting to list the oldest entries first. " \
                             "Has no effect when a formula or cask name is passed as an argument."
         switch "-t",
                description: "Sort formulae and/or casks by time modified, listing most recently modified first. " \

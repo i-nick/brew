@@ -74,7 +74,7 @@ Don't merge any formula updates with failing `brew test`s. If a `test do` block 
 
 ## Duplicates
 
-We now accept stuff that comes with macOS as long as it uses `keg_only :provided_by_macos` to be keg-only by default.
+We now accept stuff that comes with macOS as long as it uses `keg_only :provided_by_macos` to be [keg-only](FAQ.md#what-does-keg-only-mean) by default.
 
 ## Removing formulae
 

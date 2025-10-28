@@ -83,6 +83,7 @@ module Homebrew
                     description: "Exclude these Python packages when finding resources."
         comma_array "--bump-synced=",
                     hidden: true
+
         conflicts "--dry-run", "--write-only"
         conflicts "--no-audit", "--strict"
         conflicts "--no-audit", "--online"
@@ -104,14 +105,28 @@ module Homebrew
         # Use the user's browser, too.
         ENV["BROWSER"] = Homebrew::EnvConfig.browser
 
-        formula = args.named.to_formulae.first
-        raise FormulaUnspecifiedError if formula.blank?
+        @tap_retried = T.let(false, T.nilable(T::Boolean))
+        begin
+          formula = args.named.to_formulae.first
+          raise FormulaUnspecifiedError if formula.blank?
 
-        odie "This formula is disabled!" if formula.disabled?
-        odie "This formula is deprecated and does not build!" if formula.deprecation_reason == :does_not_build
-        tap = formula.tap
-        odie "This formula is not in a tap!" if tap.blank?
-        odie "This formula's tap is not a Git repository!" unless tap.git?
+          raise ArgumentError, "This formula is disabled!" if formula.disabled?
+          if formula.deprecation_reason == :does_not_build
+            raise ArgumentError, "This formula is deprecated and does not build!"
+          end
+
+          tap = formula.tap
+          raise ArgumentError, "This formula is not in a tap!" if tap.blank?
+          raise ArgumentError, "This formula's tap is not a Git repository!" unless tap.git?
+
+          formula
+        rescue ArgumentError => e
+          odie e.message if @tap_retried
+
+          CoreTap.instance.install(force: true)
+          @tap_retried = true
+          retry
+        end
 
         odie <<~EOS unless tap.allow_bump?(formula.name)
           Whoops, the #{formula.name} formula has its version update
@@ -449,12 +464,14 @@ module Homebrew
           odie "`brew audit` failed for #{commit[:formula_name]}!"
         end
 
-        new_formula_version = T.must(commits.first)[:new_version]
+        new_formula_version = commits.fetch(0)[:new_version]
 
         pr_title = if args.bump_synced.nil?
           "#{formula.name} #{new_formula_version}"
         else
-          "#{Array(args.bump_synced).join(" ")} #{new_formula_version}"
+          maximum_characters_in_title = 72
+          max = maximum_characters_in_title - new_formula_version.to_s.length - 1
+          "#{Formatter.truncate(Array(args.bump_synced).join(" "), max:)} #{new_formula_version}"
         end
 
         pr_message = "Created with `brew bump-formula-pr`."
@@ -476,7 +493,7 @@ module Homebrew
           tap_remote_repo:,
           pr_message:,
         }
-        GitHub.create_bump_pr(pr_info, args:) unless args.write_only?
+        GitHub.create_bump_pr(pr_info, args:)
       end
 
       private
@@ -584,7 +601,7 @@ module Homebrew
             end\s
           /x
 
-          leading_spaces = T.must(formula.path.read.match(/^([ ]+)resource "#{resource.name}"/)).captures.first
+          leading_spaces = T.must(formula.path.read.match(/^( +)resource "#{resource.name}"/)).captures.first
           new_resource_block = <<~EOS
             #{leading_spaces}resource "#{resource.name}" do
             #{leading_spaces}  url "#{new_url}"#{new_mirrors.map { |m| "\n#{leading_spaces}  mirror \"#{m}\"" }.join}

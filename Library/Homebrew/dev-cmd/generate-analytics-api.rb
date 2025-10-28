@@ -22,8 +22,7 @@ module Homebrew
 
       cmd_args do
         description <<~EOS
-          Generates analytics API data files for formulae.brew.sh.
-
+          Generates analytics API data files for <#{HOMEBREW_API_WWW}>.
           The generated files are written to the current directory.
         EOS
 

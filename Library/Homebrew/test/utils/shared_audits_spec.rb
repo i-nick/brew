@@ -96,4 +96,21 @@ RSpec.describe SharedAudits do
       expect(described_class.gitlab_tag_from_url(url)).to eq("2.5")
     end
   end
+
+  describe "::forgejo_tag_from_url" do
+    it "finds tags in basic urls" do
+      url = "https://codeberg.org/Aviac/codeberg-cli/archive/v0.4.11.tar.gz"
+      expect(described_class.forgejo_tag_from_url(url)).to eq("v0.4.11")
+    end
+
+    it "finds tags in urls with subgroups" do
+      url = "https://codeberg.org/Aviac/codeberg-cli/archive/some/test/1.2.3.tar.gz"
+      expect(described_class.forgejo_tag_from_url(url)).to eq("some/test/1.2.3")
+    end
+
+    it "finds tags in orgs/repos with special characters" do
+      url = "https://codeberg.org/Aviaca-b_cv/codeberg-cli/archive/v0.4.11.tar.gz"
+      expect(described_class.forgejo_tag_from_url(url)).to eq("v0.4.11")
+    end
+  end
 end

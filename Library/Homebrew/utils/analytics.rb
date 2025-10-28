@@ -5,6 +5,7 @@ require "context"
 require "erb"
 require "settings"
 require "cachable"
+require "utils/output"
 
 module Utils
   # Helper module for fetching and reporting analytics data.
@@ -14,6 +15,7 @@ module Utils
     INFLUX_HOST = "https://eu-central-1-1.aws.cloud2.influxdata.com"
     INFLUX_ORG = "d81a3e6d582d485f"
 
+    extend Utils::Output::Mixin
     extend Cachable
 
     class << self
@@ -311,7 +313,7 @@ module Utils
           )
           next if last_thirty_days_match.blank?
 
-          last_thirty_days_downloads = T.must(last_thirty_days_match.captures.first).tr(",", "")
+          last_thirty_days_downloads = last_thirty_days_match.captures.fetch(0).tr(",", "")
           thirty_day_download_count += if (millions_match = last_thirty_days_downloads.match(/(\d+\.\d+)M/).presence)
             (millions_match.captures.first.to_f * 1_000_000).to_i
           else
@@ -329,7 +331,9 @@ module Utils
 
         require "api"
 
-        json = Homebrew::API::Formula.fetch formula.name
+        return unless Homebrew::API.formula_names.include? formula.name
+
+        json = Homebrew::API::Formula.formula_json formula.name
         return if json.blank? || json["analytics"].blank?
 
         output_analytics(json, args:)
@@ -345,7 +349,9 @@ module Utils
 
         require "api"
 
-        json = Homebrew::API::Cask.fetch cask.token
+        return unless Homebrew::API.cask_tokens.include? cask.token
+
+        json = Homebrew::API::Cask.cask_json cask.token
         return if json.blank? || json["analytics"].blank?
 
         output_analytics(json, args:)
@@ -354,7 +360,7 @@ module Utils
         nil
       end
 
-      sig { returns(T::Hash[Symbol, String]) }
+      sig { returns(T::Hash[Symbol, T.any(T::Boolean, String)]) }
       def default_package_tags
         cache[:default_package_tags] ||= begin
           # Only display default prefixes to reduce cardinality and improve privacy

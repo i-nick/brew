@@ -96,9 +96,6 @@ class Cask::Cask
   sig { params(args: T.untyped, block: T.untyped).returns(T::Boolean) }
   def disabled?(*args, &block); end
 
-  sig { params(args: T.untyped, block: T.untyped).returns(T::Boolean) }
-  def discontinued?(*args, &block); end
-
   sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
   def fish_completion(*args, &block); end
 
@@ -170,6 +167,9 @@ class Cask::Cask
 
   sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
   def qlplugin(*args, &block); end
+
+  sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
+  def rename(*args, &block); end
 
   sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
   def screen_saver(*args, &block); end

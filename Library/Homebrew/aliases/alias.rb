@@ -2,10 +2,13 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "utils/output"
 
 module Homebrew
   module Aliases
     class Alias
+      include ::Utils::Output::Mixin
+
       sig { returns(String) }
       attr_accessor :name
 

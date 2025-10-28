@@ -232,7 +232,7 @@ module OS
       "/var/spool/mail",
       "/var/tmp",
     ]
-                  .to_set { Pathname(_1) }
+                  .to_set { |path| Pathname(path) }
                   .freeze, T::Set[Pathname])
     private_constant :SYSTEM_DIRS
 

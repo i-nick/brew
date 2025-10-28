@@ -7,9 +7,9 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Urls do
 
   let(:offense_list) do
     [{
-      "url" => "https://ftpmirror.gnu.org/lightning/lightning-2.1.0.tar.gz",
-      "msg" => "https://ftpmirror.gnu.org/lightning/lightning-2.1.0.tar.gz should be: " \
-               "https://ftp.gnu.org/gnu/lightning/lightning-2.1.0.tar.gz",
+      "url" => "https://ftp.gnu.org/lightning/lightning-2.1.0.tar.gz",
+      "msg" => "https://ftp.gnu.org/lightning/lightning-2.1.0.tar.gz should be: " \
+               "https://ftpmirror.gnu.org/gnu/lightning/lightning-2.1.0.tar.gz",
       "col" => 2,
     }, {
       "url" => "https://fossies.org/linux/privat/monit-5.23.0.tar.gz",
@@ -209,6 +209,7 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Urls do
         offenses = inspect_source(source)
 
         expected_offenses.zip(offenses.reverse).each do |expected, actual|
+          expect(actual).not_to be_nil
           expect(actual.message).to eq(expected[:message])
           expect(actual.severity).to eq(expected[:severity])
           expect(actual.line).to eq(expected[:line])

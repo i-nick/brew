@@ -255,6 +255,17 @@ RSpec.describe Cask::Cask, :cask do
     end
   end
 
+  describe "#rename_list" do
+    subject(:cask) { Cask::CaskLoader.load("many-renames") }
+
+    it "returns the correct rename list" do
+      expect(cask.rename_list).to eq([
+        { from: "Foobar.app", to: "Foo.app" },
+        { from: "Foo.app", to: "Bar.app" },
+      ])
+    end
+  end
+
   describe "#uninstall_flight_blocks?" do
     matcher :have_uninstall_flight_blocks do
       match do |actual|
@@ -353,26 +364,6 @@ RSpec.describe Cask::Cask, :cask do
             "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/darwin/1.0.0/intel.zip",
             "version": "1.0.0",
             "sha256": "1866dfa833b123bb8fe7fa7185ebf24d28d300d0643d75798bc23730af734216"
-          },
-          "mojave": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/darwin/1.0.0/intel.zip",
-            "version": "1.0.0",
-            "sha256": "1866dfa833b123bb8fe7fa7185ebf24d28d300d0643d75798bc23730af734216"
-          },
-          "high_sierra": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/darwin/1.0.0/intel.zip",
-            "version": "1.0.0",
-            "sha256": "1866dfa833b123bb8fe7fa7185ebf24d28d300d0643d75798bc23730af734216"
-          },
-          "sierra": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/darwin/1.0.0/intel.zip",
-            "version": "1.0.0",
-            "sha256": "1866dfa833b123bb8fe7fa7185ebf24d28d300d0643d75798bc23730af734216"
-          },
-          "el_capitan": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine/darwin/1.0.0/intel.zip",
-            "version": "1.0.0",
-            "sha256": "1866dfa833b123bb8fe7fa7185ebf24d28d300d0643d75798bc23730af734216"
           }
         }
       JSON
@@ -407,22 +398,6 @@ RSpec.describe Cask::Cask, :cask do
           "catalina": {
             "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel.zip",
             "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-          },
-          "mojave": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel.zip",
-            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-          },
-          "high_sierra": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel.zip",
-            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-          },
-          "sierra": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel.zip",
-            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-          },
-          "el_capitan": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel.zip",
-            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
           }
         }
       JSON
@@ -455,22 +430,6 @@ RSpec.describe Cask::Cask, :cask do
             "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
           },
           "catalina": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel-darwin.zip",
-            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-          },
-          "mojave": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel-darwin.zip",
-            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-          },
-          "high_sierra": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel-darwin.zip",
-            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-          },
-          "sierra": {
-            "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel-darwin.zip",
-            "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
-          },
-          "el_capitan": {
             "url": "file://#{TEST_FIXTURE_DIR}/cask/caffeine-intel-darwin.zip",
             "sha256": "8c62a2b791cf5f0da6066a0a4b6e85f62949cd60975da062df44adf887f4370b"
           },
@@ -532,6 +491,22 @@ RSpec.describe Cask::Cask, :cask do
       expect(h).to be_a(Hash)
       expect(h["artifacts"].first[:binary].first).to eq "$APPDIR/some/path"
       expect(h["caveats"]).to eq "$HOMEBREW_PREFIX and /$HOME\n"
+    end
+
+    context "when loaded from json file" do
+      let(:expected_json) { (TEST_FIXTURE_DIR/"cask/everything-with-variations.json").read.strip }
+
+      it "returns expected hash with variations" do
+        expect(Homebrew::API::Cask).not_to receive(:source_download)
+        cask = Cask::CaskLoader::FromAPILoader.new("everything-with-variations", from_json: JSON.parse(expected_json))
+                                              .load(config: nil)
+
+        hash = cask.to_hash_with_variations
+
+        expect(cask.loaded_from_api?).to be true
+        expect(hash).to be_a(Hash)
+        expect(JSON.pretty_generate(hash)).to eq(expected_json)
+      end
     end
   end
 end

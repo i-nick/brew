@@ -2,12 +2,15 @@
 # frozen_string_literal: true
 
 require "utils/inreplace"
+require "utils/output"
 
 # Helper functions for updating CPAN resources.
 module CPAN
   METACPAN_URL_PREFIX = "https://cpan.metacpan.org/authors/id/"
   CPAN_ARCHIVE_REGEX = /^(.+)-([0-9.v]+)\.(?:tar\.gz|tgz)$/
   private_constant :METACPAN_URL_PREFIX, :CPAN_ARCHIVE_REGEX
+
+  extend Utils::Output::Mixin
 
   # Represents a Perl package from an existing resource.
   class Package
@@ -177,7 +180,7 @@ module CPAN
 
     ohai "Updating resource blocks" unless silent
     Utils::Inreplace.inreplace formula.path do |s|
-      if T.must(s.inreplace_string.split(/^  test do\b/, 2).first).scan(inreplace_regex).length > 1
+      if s.inreplace_string.split(/^  test do\b/, 2).fetch(0).scan(inreplace_regex).length > 1
         odie "Unable to update resource blocks for \"#{formula.name}\" automatically. Please update them manually."
       end
       s.sub! inreplace_regex, resource_section

@@ -5,12 +5,14 @@ require "bundle_version"
 require "cask/cask"
 require "cask/installer"
 require "system_command"
+require "utils/output"
 
 module Homebrew
   # Check unversioned casks for updates by extracting their
   # contents and guessing the version from contained files.
   class UnversionedCaskChecker
     include SystemCommand::Mixin
+    include Utils::Output::Mixin
 
     sig { returns(Cask::Cask) }
     attr_reader :cask
@@ -116,6 +118,7 @@ module Homebrew
         dir = Pathname(dir)
 
         installer.extract_primary_container(to: dir)
+        installer.process_rename_operations(target_dir: dir)
 
         info_plist_paths = [
           *apps,

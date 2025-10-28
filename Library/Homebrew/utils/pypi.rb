@@ -2,9 +2,12 @@
 # frozen_string_literal: true
 
 require "utils/inreplace"
+require "utils/output"
 
 # Helper functions for updating PyPI resources.
 module PyPI
+  extend Utils::Output::Mixin
+
   PYTHONHOSTED_URL_PREFIX = "https://files.pythonhosted.org/packages/"
   private_constant :PYTHONHOSTED_URL_PREFIX
 
@@ -12,6 +15,8 @@ module PyPI
   # This package can be a PyPI package (either by name/version or PyPI distribution URL),
   # or it can be a non-PyPI URL.
   class Package
+    include Utils::Output::Mixin
+
     sig { params(package_string: String, is_url: T::Boolean, python_name: String).void }
     def initialize(package_string, is_url: false, python_name: "python")
       @pypi_info = T.let(nil, T.nilable(T::Array[String]))
@@ -152,7 +157,8 @@ module PyPI
         @extras ||= T.let([], T.nilable(T::Array[String]))
         @version ||= T.let(match[2], T.nilable(String))
       elsif @is_url
-        ensure_formula_installed!(@python_name)
+        require "formula"
+        Formula[@python_name].ensure_installed!
 
         # The URL might be a source distribution hosted somewhere;
         # try and use `pip install -q --no-deps --dry-run --report ...` to get its
@@ -231,23 +237,16 @@ module PyPI
                                     exclude_packages: nil, dependencies: nil, install_dependencies: false,
                                     print_only: false, silent: false, verbose: false,
                                     ignore_errors: false, ignore_non_pypi_packages: false)
-    auto_update_list = formula.tap&.pypi_formula_mappings
-    if auto_update_list.present? && auto_update_list.key?(formula.full_name) &&
-       package_name.blank? && extra_packages.blank? && exclude_packages.blank?
+    list_entry = formula.pypi_packages_info
+    if list_entry.defined_pypi_mapping? && package_name.blank? && extra_packages.blank? && exclude_packages.blank?
 
-      list_entry = auto_update_list[formula.full_name]
-      case list_entry
-      when false
-        unless print_only
-          odie "The resources for \"#{formula.name}\" need special attention. Please update them manually."
-        end
-      when String
-        package_name = list_entry
-      when Hash
-        package_name = list_entry["package_name"]
-        extra_packages = list_entry["extra_packages"]
-        exclude_packages = list_entry["exclude_packages"]
-        dependencies = list_entry["dependencies"]
+      if list_entry.needs_manual_update? && !print_only
+        odie "The resources for \"#{formula.name}\" need special attention. Please update them manually."
+      else
+        package_name = list_entry.package_name
+        extra_packages = list_entry.extra_packages
+        exclude_packages = list_entry.exclude_packages
+        dependencies = list_entry.dependencies
       end
     end
 
@@ -260,7 +259,8 @@ module PyPI
       missing_msg = "formulae required to update \"#{formula.name}\" resources: #{missing_dependencies.join(", ")}"
       odie "Missing #{missing_msg}" unless install_dependencies
       ohai "Installing #{missing_msg}"
-      missing_dependencies.each(&:ensure_formula_installed!)
+      require "formula"
+      missing_dependencies.each { |dep| Formula[dep].ensure_installed! }
     end
 
     python_deps = formula.deps
@@ -334,7 +334,8 @@ module PyPI
       end
     end
 
-    ensure_formula_installed!(python_name)
+    require "formula"
+    Formula[python_name].ensure_installed!
 
     # Resolve the dependency tree of all input packages
     show_info = !print_only && !silent
@@ -433,7 +434,7 @@ module PyPI
 
     ohai "Updating resource blocks" unless silent
     Utils::Inreplace.inreplace formula.path do |s|
-      if T.must(s.inreplace_string.split(/^  test do\b/, 2).first).scan(inreplace_regex).length > 1
+      if s.inreplace_string.split(/^  test do\b/, 2).fetch(0).scan(inreplace_regex).length > 1
         odie "Unable to update resource blocks for \"#{formula.name}\" automatically. Please update them manually."
       end
       s.sub! inreplace_regex, resource_section

@@ -1,14 +1,17 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 module Homebrew
   module Bundle
     module VscodeExtensionDumper
+      sig { void }
       def self.reset!
         @extensions = nil
       end
 
+      sig { returns(T::Array[String]) }
       def self.extensions
+        @extensions ||= T.let(nil, T.nilable(T::Array[String]))
         @extensions ||= if Bundle.vscode_installed?
           Bundle.exchange_uid_if_needed! do
             `"#{Bundle.which_vscode}" --list-extensions 2>/dev/null`
@@ -18,6 +21,7 @@ module Homebrew
         end
       end
 
+      sig { returns(String) }
       def self.dump
         extensions.map { |name| "vscode \"#{name}\"" }.join("\n")
       end

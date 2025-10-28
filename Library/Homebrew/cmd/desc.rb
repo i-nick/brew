@@ -49,7 +49,7 @@ module Homebrew
 
         if search_type.present?
           if !args.eval_all? && Homebrew::EnvConfig.no_install_from_api?
-            raise UsageError, "`brew desc --search` needs `--eval-all` passed or `$HOMEBREW_EVAL_ALL` set!"
+            raise UsageError, "`brew desc --search` needs `--eval-all` passed or `HOMEBREW_EVAL_ALL=1` set!"
           end
 
           query = args.named.join(" ")

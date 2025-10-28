@@ -32,7 +32,6 @@ jobs:
         with:
           core: false
           cask: false
-          test-bot: false
 
       - name: Determine runners to use for this job
         id: determine-runners
@@ -59,7 +58,6 @@ jobs:
         with:
           core: false
           cask: false
-          test-bot: true
 
       - run: brew test-bot --only-cleanup-before
         if: matrix.cleanup

@@ -11,6 +11,7 @@ module Homebrew
   module Cmd
     class FetchCmd < AbstractCommand
       include Fetch
+
       FETCH_MAX_TRIES = 5
 
       cmd_args do
@@ -46,9 +47,11 @@ module Homebrew
         switch "--force-bottle",
                description: "Download a bottle if it exists for the current or newest version of macOS, " \
                             "even if it would not be used during installation."
+        # odeprecated deprecate for 4.7.0
         switch "--[no-]quarantine",
                description: "Disable/enable quarantining of downloads (default: enabled).",
-               env:         :cask_opts_quarantine
+               env:         :cask_opts_quarantine,
+               hidden:      true
         switch "--formula", "--formulae",
                description: "Treat all named arguments as formulae."
         switch "--cask", "--casks",

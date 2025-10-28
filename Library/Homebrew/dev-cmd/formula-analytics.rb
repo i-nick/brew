@@ -17,19 +17,19 @@ module Homebrew
                description: "Query from the specified days ago until the present. The default is 30 days."
         switch "--install",
                description: "Output the number of specifically requested installations or installation as " \
-                            "dependencies of the formula. This is the default."
+                            "dependencies of formulae. This is the default."
+        switch "--install-on-request",
+               description: "Output the number of specifically requested installations of formulae."
         switch "--cask-install",
                description: "Output the number of installations of casks."
-        switch "--install-on-request",
-               description: "Output the number of specifically requested installations of the formula."
         switch "--build-error",
-               description: "Output the number of build errors for the formulae."
+               description: "Output the number of build errors for formulae."
         switch "--os-version",
-               description: "Output OS versions."
+               description: "Output the number of events by OS name and version."
         switch "--homebrew-devcmdrun-developer",
-               description: "Output devcmdrun/HOMEBREW_DEVELOPER."
+               description: "Output the number of devcmdrun/HOMEBREW_DEVELOPER events."
         switch "--homebrew-os-arch-ci",
-               description: "Output OS/Architecture/CI."
+               description: "Output the number of OS/Architecture/CI events."
         switch "--homebrew-prefixes",
                description: "Output Homebrew prefixes."
         switch "--homebrew-versions",
@@ -47,10 +47,12 @@ module Homebrew
                             "Homebrew/homebrew-core formulae."
         switch "--setup",
                description: "Install the necessary gems, require them and exit without running a query."
+
         conflicts "--install", "--cask-install", "--install-on-request", "--build-error", "--os-version",
                   "--homebrew-devcmdrun-developer", "--homebrew-os-arch-ci", "--homebrew-prefixes",
                   "--homebrew-versions", "--brew-command-run", "--brew-command-run-options", "--brew-test-bot-test"
         conflicts "--json", "--all-core-formulae-json", "--setup"
+
         named_args :none
       end
 
@@ -107,10 +109,10 @@ module Homebrew
 
         return if args.setup?
 
-        odie "HOMEBREW_NO_ANALYTICS is set!" if ENV["HOMEBREW_NO_ANALYTICS"]
+        odie "`$HOMEBREW_NO_ANALYTICS` is set!" if ENV["HOMEBREW_NO_ANALYTICS"]
 
         token = ENV.fetch("HOMEBREW_INFLUXDB_TOKEN", nil)
-        odie "No InfluxDB credentials found in HOMEBREW_INFLUXDB_TOKEN!" unless token
+        odie "No InfluxDB credentials found in `$HOMEBREW_INFLUXDB_TOKEN`!" unless token
 
         client = InfluxDBClient3.new(
           token:,
@@ -201,7 +203,7 @@ module Homebrew
             client.query(query:, language: "sql").to_batches
           rescue PyCall::PyError => e
             if e.message.include?("message: unauthenticated")
-              odie "Could not authenticate with InfluxDB! Please check your HOMEBREW_INFLUXDB_TOKEN!"
+              odie "Could not authenticate with InfluxDB! Please check your `$HOMEBREW_INFLUXDB_TOKEN`!"
             end
             raise
           end
@@ -363,21 +365,18 @@ module Homebrew
       def format_os_version_dimension(dimension)
         return if dimension.blank?
 
+        require "macos_version"
+
         dimension = dimension.gsub(/^Intel ?/, "")
                              .gsub(/^macOS ?/, "")
                              .gsub(/ \(.+\)$/, "")
+
+        if (macos_pretty_name = ::MacOSVersion.analytics_pretty_name(dimension))
+          return macos_pretty_name
+        end
+
         case dimension
-        when "10.11", /^10\.11\.?/ then "OS X El Capitan (10.11)"
-        when "10.12", /^10\.12\.?/ then "macOS Sierra (10.12)"
-        when "10.13", /^10\.13\.?/ then "macOS High Sierra (10.13)"
-        when "10.14", /^10\.14\.?/ then "macOS Mojave (10.14)"
-        when "10.15", /^10\.15\.?/ then "macOS Catalina (10.15)"
-        when "10.16", /^11\.?/ then "macOS Big Sur (11)"
-        when /^12\.?/ then "macOS Monterey (12)"
-        when /^13\.?/ then "macOS Ventura (13)"
-        when /^14\.?/ then "macOS Sonoma (14)"
-        when /^15\.?/ then "macOS Sequoia (15)"
-        when /Ubuntu(-Server)? (14|16|18|20|22)\.04/ then "Ubuntu #{Regexp.last_match(2)}.04 LTS"
+        when /Ubuntu(-Server)? (14|16|18|20|22|24)\.04/ then "Ubuntu #{Regexp.last_match(2)}.04 LTS"
         when /Ubuntu(-Server)? (\d+\.\d+).\d ?(LTS)?/
           "Ubuntu #{Regexp.last_match(2)} #{Regexp.last_match(3)}".strip
         when %r{Debian GNU/Linux (\d+)\.\d+} then "Debian #{Regexp.last_match(1)} #{Regexp.last_match(2)}"
@@ -385,6 +384,10 @@ module Homebrew
         when /Fedora Linux (\d+)[.\d]*/ then "Fedora Linux #{Regexp.last_match(1)}"
         when /KDE neon .*?([\d.]+)/ then "KDE neon #{Regexp.last_match(1)}"
         when /Amazon Linux (\d+)\.[.\d]*/ then "Amazon Linux #{Regexp.last_match(1)}"
+        when /Fedora Linux Rawhide[.\dn]*/ then "Fedora Linux Rawhide"
+        when /Red Hat Enterprise Linux CoreOS (\d+\.\d+)[-.\d]*/
+          "Red Hat Enterprise Linux CoreOS #{Regexp.last_match(1)}"
+        when /([A-Za-z ]+)\s+(\d+)\.\d{8}[.\d]*/ then "#{Regexp.last_match(1)} #{Regexp.last_match(2)}"
         else dimension
         end
       end

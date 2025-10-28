@@ -40,7 +40,7 @@ class CompilerFailure
     # Non-Apple compilers are in the format fails_with compiler => version
     if spec.is_a?(Hash)
       compiler, major_version = spec.first
-      raise ArgumentError, "The hash `fails_with` syntax only supports GCC" if compiler != :gcc
+      raise ArgumentError, "The `fails_with` hash syntax only supports GCC" if compiler != :gcc
 
       type = compiler
       # so fails_with :gcc => '7' simply marks all 7 releases incompatible
@@ -102,12 +102,18 @@ class CompilerSelector
   Compiler = Struct.new(:type, :name, :version)
 
   COMPILER_PRIORITY = {
-    clang: [:clang, :gnu, :llvm_clang],
+    clang: [:clang, :llvm_clang, :gnu],
     gcc:   [:gnu, :gcc, :llvm_clang, :clang],
   }.freeze
 
-  def self.select_for(formula, compilers = self.compilers)
-    new(formula, DevelopmentTools, compilers).compiler
+  def self.select_for(formula, compilers = nil, testing_formula: false)
+    if compilers.nil? && DevelopmentTools.default_compiler == :clang
+      deps = formula.deps.filter_map do |dep|
+        dep.name if dep.required? || (testing_formula && dep.test?) || (!testing_formula && dep.build?)
+      end
+      compilers = [:clang, :gnu, :llvm_clang] if deps.none?("llvm") && deps.any?(/^gcc(@\d+)?$/)
+    end
+    new(formula, DevelopmentTools, compilers || self.compilers).compiler
   end
 
   def self.compilers

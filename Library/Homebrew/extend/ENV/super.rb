@@ -1,8 +1,9 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "extend/ENV/shared"
 require "development_tools"
+require "utils/output"
 
 # ### Why `superenv`?
 #
@@ -16,8 +17,16 @@ require "development_tools"
 # 8. Build-system agnostic configuration of the toolchain
 module Superenv
   include SharedEnvExtension
+  include Utils::Output::Mixin
 
-  attr_accessor :keg_only_deps, :deps, :run_time_deps
+  sig { returns(T::Array[Formula]) }
+  attr_accessor :keg_only_deps
+
+  sig { returns(T::Array[Formula]) }
+  attr_accessor :deps
+
+  sig { returns(T::Array[Formula]) }
+  attr_accessor :run_time_deps
 
   sig { params(base: Superenv).void }
   def self.extended(base)
@@ -36,6 +45,15 @@ module Superenv
 
   sig { returns(T.nilable(Pathname)) }
   def self.bin; end
+
+  sig { void }
+  def initialize
+    @keg_only_deps = T.let([], T::Array[Formula])
+    @deps = T.let([], T::Array[Formula])
+    @run_time_deps = T.let([], T::Array[Formula])
+
+    @formula = T.let(nil, T.nilable(Formula))
+  end
 
   sig { void }
   def reset
@@ -62,12 +80,13 @@ module Superenv
 
     self["HOMEBREW_ENV"] = "super"
     self["MAKEFLAGS"] ||= "-j#{determine_make_jobs}"
-    self["RUSTFLAGS"] = Hardware.rustflags_target_cpu(effective_arch)
+    self["RUSTC_WRAPPER"] = "#{HOMEBREW_SHIMS_PATH}/super/rustc_wrapper"
+    self["HOMEBREW_RUSTFLAGS"] = Hardware.rustflags_target_cpu(effective_arch)
     self["PATH"] = determine_path
     self["PKG_CONFIG_PATH"] = determine_pkg_config_path
     self["PKG_CONFIG_LIBDIR"] = determine_pkg_config_libdir || ""
     self["HOMEBREW_CCCFG"] = determine_cccfg
-    self["HOMEBREW_OPTIMIZATION_LEVEL"] = "Os"
+    self["HOMEBREW_OPTIMIZATION_LEVEL"] = compiler.match?(GNU_GCC_REGEXP) ? "O2" : "Os"
     self["HOMEBREW_BREW_FILE"] = HOMEBREW_BREW_FILE.to_s
     self["HOMEBREW_PREFIX"] = HOMEBREW_PREFIX.to_s
     self["HOMEBREW_CELLAR"] = HOMEBREW_CELLAR.to_s
@@ -241,7 +260,7 @@ module Superenv
     end
 
     # Don't add `llvm` to library paths; this leads to undesired linkage to LLVM's `libunwind`
-    paths << keg_only_deps.reject { |dep| dep.name.match?(/^llvm(@\d+)?$/) }
+    paths += keg_only_deps.reject { |dep| dep.name.match?(/^llvm(@\d+)?$/) }
                           .map(&:opt_lib)
     paths << (HOMEBREW_PREFIX/"lib")
 

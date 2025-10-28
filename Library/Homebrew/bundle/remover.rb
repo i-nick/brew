@@ -1,9 +1,13 @@
 # typed: true # rubocop:todo Sorbet/StrictSigil
 # frozen_string_literal: true
 
+require "utils/output"
+
 module Homebrew
   module Bundle
     module Remover
+      extend ::Utils::Output::Mixin
+
       def self.remove(*args, type:, global:, file:)
         require "bundle/brewfile"
         require "bundle/dumper"

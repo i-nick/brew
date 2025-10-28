@@ -104,6 +104,8 @@ class DevelopmentTools
         else
           Version::NULL
         end
+      rescue FormulaUnavailableError
+        Version::NULL
       end, T.nilable(Version))
     end
 
@@ -114,9 +116,9 @@ class DevelopmentTools
 
     # Get the GCC version.
     #
-    # @api internal
+    # @api public
     sig { params(cc: String).returns(Version) }
-    def gcc_version(cc)
+    def gcc_version(cc = host_gcc_path.to_s)
       (@gcc_version ||= T.let({}, T.nilable(T::Hash[String, Version]))).fetch(cc) do
         path = HOMEBREW_PREFIX/"opt/#{CompilerSelector.preferred_gcc}/bin"/cc
         path = locate(cc) unless path.exist?

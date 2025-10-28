@@ -2,10 +2,13 @@
 # frozen_string_literal: true
 
 require_relative "system/systemctl"
+require "utils/output"
 
 module Homebrew
   module Services
     module System
+      extend Utils::Output::Mixin
+
       LAUNCHCTL_DOMAIN_ACTION_NOT_SUPPORTED = T.let(125, Integer)
 
       # Path to launchctl binary.
@@ -90,8 +93,8 @@ module Homebrew
               opoo "uid and euid do not match, using user/* instead of gui/* domain!"
             end
             unless Homebrew::EnvConfig.no_env_hints?
-              puts "Hide this warning by setting HOMEBREW_SERVICES_NO_DOMAIN_WARNING."
-              puts "Hide these hints with HOMEBREW_NO_ENV_HINTS (see `man brew`)."
+              puts "Hide this warning by setting `HOMEBREW_SERVICES_NO_DOMAIN_WARNING=1`."
+              puts "Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`)."
             end
             @output_warning = T.let(true, T.nilable(TrueClass))
           end

@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "system_command"
+require "utils/output"
 
 module GitHub
   sig { params(scopes: T::Array[String]).returns(String) }
@@ -39,9 +40,12 @@ module GitHub
   # @api internal
   module API
     extend SystemCommand::Mixin
+    extend Utils::Output::Mixin
 
     # Generic API error.
     class Error < RuntimeError
+      include Utils::Output::Mixin
+
       sig { returns(T.nilable(String)) }
       attr_reader :github_message
 
@@ -62,19 +66,24 @@ module GitHub
 
     # Error when the API rate limit is exceeded.
     class RateLimitExceededError < Error
-      sig { params(reset: Integer, github_message: String).void }
-      def initialize(reset, github_message)
+      sig { params(github_message: String, reset: Integer, resource: String, limit: Integer).void }
+      def initialize(github_message, reset:, resource:, limit:)
+        @reset = T.let(reset, Integer)
         new_pat_message = ", or:\n#{GitHub.pat_blurb}" if API.credentials.blank?
         message = <<~EOS
           GitHub API Error: #{github_message}
-          Try again in #{pretty_ratelimit_reset(reset)}#{new_pat_message}
+          Rate limit exceeded for #{resource} resource (#{limit} limit).
+          Try again in #{pretty_ratelimit_reset}#{new_pat_message}
         EOS
         super(message, github_message)
       end
 
-      sig { params(reset: Integer).returns(String) }
-      def pretty_ratelimit_reset(reset)
-        pretty_duration(Time.at(reset) - Time.now)
+      sig { returns(Integer) }
+      attr_reader :reset
+
+      sig { returns(String) }
+      def pretty_ratelimit_reset
+        pretty_duration(Time.at(@reset) - Time.now)
       end
     end
 
@@ -113,7 +122,7 @@ module GitHub
         when :env_token
           require "utils/formatter"
           <<~EOS
-            HOMEBREW_GITHUB_API_TOKEN may be invalid or expired; check:
+            `$HOMEBREW_GITHUB_API_TOKEN` may be invalid or expired; check:
               #{Formatter.url("https://github.com/settings/tokens")}
           EOS
         when :none
@@ -123,7 +132,7 @@ module GitHub
       end
     end
 
-    # Error when the user has no GitHub API credentials set at all (macOS keychain, GitHub CLI or envvar).
+    # Error when the user has no GitHub API credentials set at all (macOS keychain, GitHub CLI or env var).
     class MissingAuthenticationError < Error
       sig { void }
       def initialize
@@ -159,10 +168,10 @@ module GitHub
           "PATH" => PATH.new(HOMEBREW_PREFIX/"opt/gh/bin", ENV.fetch("PATH")),
           "HOME" => Utils::UID.uid_home,
         }.compact
-        gh_out, _, result = system_command "gh",
+        gh_out, _, result = system_command("gh",
                                            args:         ["auth", "token", "--hostname", "github.com"],
                                            env:,
-                                           print_stderr: false
+                                           print_stderr: false).to_a
         return unless result.success?
 
         gh_out.chomp.presence
@@ -175,11 +184,11 @@ module GitHub
     def self.keychain_username_password
       require "utils/uid"
       Utils::UID.drop_euid do
-        git_credential_out, _, result = system_command "git",
+        git_credential_out, _, result = system_command("git",
                                                        args:         ["credential-osxkeychain", "get"],
                                                        input:        ["protocol=https\n", "host=github.com\n"],
                                                        env:          { "HOME" => Utils::UID.uid_home }.compact,
-                                                       print_stderr: false
+                                                       print_stderr: false).to_a
         return unless result.success?
 
         git_credential_out.force_encoding("ASCII-8BIT")
@@ -448,7 +457,9 @@ module GitHub
       when "403"
         if meta.fetch("x-ratelimit-remaining", 1).to_i <= 0
           reset = meta.fetch("x-ratelimit-reset").to_i
-          raise RateLimitExceededError.new(reset, message)
+          resource = meta.fetch("x-ratelimit-resource")
+          limit = meta.fetch("x-ratelimit-limit").to_i
+          raise RateLimitExceededError.new(message, reset:, resource:, limit:)
         end
 
         raise AuthenticationFailedError.new(credentials_type, message)

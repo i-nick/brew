@@ -51,18 +51,18 @@ RSpec.describe Cask::Reinstall, :cask do
   end
 
   it "allows reinstalling a Cask" do
-    Cask::Installer.new(Cask::CaskLoader.load(cask_path("local-transmission"))).install
+    Cask::Installer.new(Cask::CaskLoader.load(cask_path("local-transmission-zip"))).install
 
-    expect(Cask::CaskLoader.load(cask_path("local-transmission"))).to be_installed
+    expect(Cask::CaskLoader.load(cask_path("local-transmission-zip"))).to be_installed
 
-    described_class.reinstall_casks(Cask::CaskLoader.load("local-transmission"))
-    expect(Cask::CaskLoader.load(cask_path("local-transmission"))).to be_installed
+    described_class.reinstall_casks(Cask::CaskLoader.load("local-transmission-zip"))
+    expect(Cask::CaskLoader.load(cask_path("local-transmission-zip"))).to be_installed
   end
 
   it "allows reinstalling a non installed Cask" do
-    expect(Cask::CaskLoader.load(cask_path("local-transmission"))).not_to be_installed
+    expect(Cask::CaskLoader.load(cask_path("local-transmission-zip"))).not_to be_installed
 
-    described_class.reinstall_casks(Cask::CaskLoader.load("local-transmission"))
-    expect(Cask::CaskLoader.load(cask_path("local-transmission"))).to be_installed
+    described_class.reinstall_casks(Cask::CaskLoader.load("local-transmission-zip"))
+    expect(Cask::CaskLoader.load(cask_path("local-transmission-zip"))).to be_installed
   end
 end

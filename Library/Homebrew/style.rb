@@ -4,10 +4,12 @@
 require "shellwords"
 require "source_location"
 require "system_command"
+require "utils/output"
 
 module Homebrew
   # Helper module for running RuboCop.
   module Style
+    extend Utils::Output::Mixin
     extend SystemCommand::Mixin
 
     # Checks style for a list of files, printing simple RuboCop output.
@@ -47,7 +49,7 @@ module Homebrew
       ruby_files = T.let([], T::Array[Pathname])
       shell_files = T.let([], T::Array[Pathname])
       actionlint_files = T.let([], T::Array[Pathname])
-      Array(files).map(&method(:Pathname))
+      Array(files).map { Pathname(_1) }
                   .each do |path|
         case path.extname
         when ".rb"
@@ -119,11 +121,7 @@ module Homebrew
       args = %w[
         --force-exclusion
       ]
-      args << if fix
-        "--autocorrect-all"
-      else
-        "--parallel"
-      end
+      args << "--autocorrect-all" if fix
 
       args += ["--extra-details"] if verbose
 
@@ -161,13 +159,20 @@ module Homebrew
         base_dir = HOMEBREW_LIBRARY if files.any? { |f| f.to_s.start_with? HOMEBREW_LIBRARY }
       end
 
-      args += files
-
       HOMEBREW_CACHE.mkpath
-      cache_dir = HOMEBREW_CACHE.realpath
-      cache_env = { "XDG_CACHE_HOME" => "#{cache_dir}/style" }
+      cache_env = if (cache_dir = HOMEBREW_CACHE.realpath/"style") && cache_dir.writable?
+        args << "--parallel" unless fix
 
-      FileUtils.rm_rf cache_env["XDG_CACHE_HOME"] if reset_cache
+        FileUtils.rm_rf cache_dir if reset_cache
+
+        { "XDG_CACHE_HOME" => cache_dir.to_s }
+      else
+        args << "--cache" << "false"
+
+        {}
+      end
+
+      args += files
 
       ruby_args = HOMEBREW_RUBY_EXEC_ARGS.dup
       case output_type
@@ -320,25 +325,20 @@ module Homebrew
       HOMEBREW_REPOSITORY.glob(".github/workflows/*.yml")
     end
 
-    def self.rubocop
-      ensure_formula_installed!("rubocop", latest: true,
-                                           reason: "Ruby style checks").opt_bin/"rubocop"
-    end
-
     def self.shellcheck
-      ensure_formula_installed!("shellcheck", latest: true,
-                                              reason: "shell style checks").opt_bin/"shellcheck"
+      require "formula"
+      Formula["shellcheck"].ensure_installed!(latest: true, reason: "shell style checks").opt_bin/"shellcheck"
     end
 
     def self.shfmt
-      ensure_formula_installed!("shfmt", latest: true,
-                                         reason: "formatting shell scripts")
+      require "formula"
+      Formula["shfmt"].ensure_installed!(latest: true, reason: "formatting shell scripts")
       HOMEBREW_LIBRARY/"Homebrew/utils/shfmt.sh"
     end
 
     def self.actionlint
-      ensure_formula_installed!("actionlint", latest: true,
-                                              reason: "GitHub Actions checks").opt_bin/"actionlint"
+      require "formula"
+      Formula["actionlint"].ensure_installed!(latest: true, reason: "GitHub Actions checks").opt_bin/"actionlint"
     end
 
     # Collection of style offenses.

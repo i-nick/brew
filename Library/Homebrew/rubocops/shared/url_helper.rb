@@ -41,10 +41,10 @@ module RuboCop
           problem "Please use the ASCII (Punycode-encoded host, URL-encoded path and query) version of #{url}."
         end
 
-        # GNU URLs; doesn't apply to mirrors
-        gnu_pattern = %r{^(?:https?|ftp)://ftpmirror\.gnu\.org/(.*)}
+        # Prefer ftpmirror.gnu.org as suggested by https://www.gnu.org/prep/ftp.en.html
+        gnu_pattern = %r{^(?:https?|ftp)://ftp\.gnu\.org/(.*)}
         audit_urls(urls, gnu_pattern) do |match, url|
-          problem "#{url} should be: https://ftp.gnu.org/gnu/#{match[1]}"
+          problem "#{url} should be: https://ftpmirror.gnu.org/gnu/#{match[1]}"
         end
 
         # Fossies upstream requests they aren't used as primary URLs

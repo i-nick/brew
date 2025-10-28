@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "macos_version"
@@ -20,7 +20,7 @@ module OS
     # Provide MacOS alias for backwards compatibility and nicer APIs.
     ::MacOS = OS::Mac
 
-    VERSION = ENV.fetch("HOMEBREW_MACOS_VERSION").chomp.freeze
+    VERSION = T.let(ENV.fetch("HOMEBREW_MACOS_VERSION").chomp.freeze, String)
     private_constant :VERSION
 
     # This can be compared to numerics, strings, or symbols
@@ -29,7 +29,7 @@ module OS
     # @api internal
     sig { returns(MacOSVersion) }
     def self.version
-      @version ||= full_version.strip_patch
+      @version ||= T.let(full_version.strip_patch, T.nilable(MacOSVersion))
     end
 
     # This can be compared to numerics, strings, or symbols
@@ -38,6 +38,7 @@ module OS
     # @api internal
     sig { returns(MacOSVersion) }
     def self.full_version
+      @full_version ||= T.let(nil, T.nilable(MacOSVersion))
       @full_version ||= if (fake_macos = ENV.fetch("HOMEBREW_FAKE_MACOS", nil)) # for Portable Ruby building
         MacOSVersion.new(fake_macos)
       else
@@ -55,7 +56,7 @@ module OS
     def self.latest_sdk_version
       # TODO: bump version when new Xcode macOS SDK is released
       # NOTE: We only track the major version of the SDK.
-      ::Version.new("15")
+      ::Version.new("26")
     end
 
     sig { returns(String) }
@@ -71,6 +72,7 @@ module OS
 
     sig { returns(T::Array[String]) }
     def self.languages
+      @languages ||= T.let(nil, T.nilable(T::Array[String]))
       return @languages if @languages
 
       os_langs = Utils.popen_read("defaults", "read", "-g", "AppleLanguages")
@@ -83,13 +85,17 @@ module OS
       @languages = os_langs
     end
 
+    sig { returns(T.nilable(String)) }
     def self.language
       languages.first
     end
 
     sig { returns(String) }
     def self.active_developer_dir
-      @active_developer_dir ||= Utils.popen_read("/usr/bin/xcode-select", "-print-path").strip
+      @active_developer_dir ||= T.let(
+        Utils.popen_read("/usr/bin/xcode-select", "-print-path").strip,
+        T.nilable(String),
+      )
     end
 
     sig { returns(T::Boolean) }
@@ -114,6 +120,7 @@ module OS
     # If no specific SDK is requested, the SDK matching the OS version is returned,
     # if available. Otherwise, the latest SDK is returned.
 
+    sig { returns(T.any(CLTSDKLocator, XcodeSDKLocator)) }
     def self.sdk_locator
       if CLT.installed? && CLT.provides_sdk?
         CLT.sdk_locator
@@ -122,10 +129,18 @@ module OS
       end
     end
 
+    sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(SDK)) }
     def self.sdk(version = nil)
       sdk_locator.sdk_if_applicable(version)
     end
 
+    sig {
+      params(
+        formula:                         Formula,
+        version:                         T.nilable(MacOSVersion),
+        check_only_runtime_requirements: T::Boolean,
+      ).returns(T.nilable(SDK))
+    }
     def self.sdk_for_formula(formula, version = nil, check_only_runtime_requirements: false)
       # If the formula requires Xcode, don't return the CLT SDK
       # If check_only_runtime_requirements is true, don't necessarily return the
@@ -141,11 +156,13 @@ module OS
     end
 
     # Returns the path to an SDK or nil, following the rules set by {sdk}.
+    sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(Pathname)) }
     def self.sdk_path(version = nil)
       s = sdk(version)
       s&.path
     end
 
+    sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(Pathname)) }
     def self.sdk_path_if_needed(version = nil)
       # Prefer CLT SDK when both Xcode and the CLT are installed.
       # Expected results:
@@ -165,6 +182,7 @@ module OS
     # - {https://github.com/Homebrew/legacy-homebrew/issues/13}
     # - {https://github.com/Homebrew/legacy-homebrew/issues/41}
     # - {https://github.com/Homebrew/legacy-homebrew/issues/48}
+    sig { returns(T::Array[Pathname]) }
     def self.macports_or_fink
       paths = []
 
@@ -209,12 +227,15 @@ module OS
 
     sig { params(ids: String).returns(T::Array[String]) }
     def self.mdfind(*ids)
+      @mdfind ||= T.let(nil, T.nilable(T::Hash[T::Array[String], String]))
       (@mdfind ||= {}).fetch(ids) do
         @mdfind[ids] = Utils.popen_read("/usr/bin/mdfind", mdfind_query(*ids)).split("\n")
       end
     end
 
+    sig { params(id: String).returns(String) }
     def self.pkgutil_info(id)
+      @pkginfo ||= T.let(nil, T.nilable(T::Hash[String, String]))
       (@pkginfo ||= {}).fetch(id) do |key|
         @pkginfo[key] = Utils.popen_read("/usr/sbin/pkgutil", "--pkg-info", key).strip
       end

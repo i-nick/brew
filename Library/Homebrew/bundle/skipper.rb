@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "hardware"
@@ -29,17 +29,19 @@ module Homebrew
           true
         end
 
+        sig { params(tap_name: String).void }
         def tap_failed!(tap_name)
-          @failed_taps ||= []
+          @failed_taps ||= T.let([], T.nilable(T::Array[String]))
           @failed_taps << tap_name
         end
 
         private
 
+        sig { returns(T::Hash[Symbol, T.nilable(T::Array[String])]) }
         def skipped_entries
           return @skipped_entries if @skipped_entries
 
-          @skipped_entries = {}
+          @skipped_entries ||= T.let({}, T.nilable(T::Hash[Symbol, T.nilable(T::Array[String])]))
           [:brew, :cask, :mas, :tap, :whalebrew].each do |type|
             @skipped_entries[type] =
               ENV["HOMEBREW_BUNDLE_#{type.to_s.upcase}_SKIP"]&.split

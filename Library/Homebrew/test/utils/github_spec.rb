@@ -32,9 +32,9 @@ RSpec.describe GitHub do
     end
   end
 
-  describe "::approved_reviews", :needs_network do
+  describe "::repository_approved_reviews", :needs_network do
     it "can get reviews for a pull request" do
-      reviews = described_class.approved_reviews("Homebrew", "homebrew-core", 1, commit: "deadbeef")
+      reviews = described_class.repository_approved_reviews("Homebrew", "homebrew-core", 1, commit: "deadbeef")
       expect(reviews).to eq([])
     end
   end
@@ -88,51 +88,60 @@ RSpec.describe GitHub do
   describe "::count_repo_commits" do
     let(:five_shas) { %w[abcdef ghjkl mnop qrst uvwxyz] }
     let(:ten_shas) { %w[abcdef ghjkl mnop qrst uvwxyz fedcba lkjhg ponm tsrq zyxwvu] }
+    let(:max) { 1000 }
+    let(:verbose) { false }
+    let(:from) { nil }
+    let(:to) { nil }
 
     it "counts commits authored by a user" do
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/cask", "user1", "author", nil, nil, nil).and_return(five_shas)
+        .with("homebrew/cask", "user1", "author", nil, nil, max, verbose).and_return(five_shas)
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/cask", "user1", "committer", nil, nil, nil).and_return([])
+        .with("homebrew/cask", "user1", "committer", nil, nil, max, verbose).and_return([])
 
-      expect(described_class.count_repo_commits("homebrew/cask", "user1")).to eq([5, 0])
+      expect(described_class.count_repository_commits("homebrew/cask", "user1", max:, verbose:, from:,
+to:)).to eq(5)
     end
 
     it "counts commits committed by a user" do
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/core", "user1", "author", nil, nil, nil).and_return([])
+        .with("homebrew/core", "user1", "author", nil, nil, max, verbose).and_return([])
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/core", "user1", "committer", nil, nil, nil).and_return(five_shas)
+        .with("homebrew/core", "user1", "committer", nil, nil, max, verbose).and_return(five_shas)
 
-      expect(described_class.count_repo_commits("homebrew/core", "user1")).to eq([0, 5])
+      expect(described_class.count_repository_commits("homebrew/core", "user1", max:, verbose:, from:,
+to:)).to eq(5)
     end
 
     it "calculates correctly when authored > committed with different shas" do
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/cask", "user1", "author", nil, nil, nil).and_return(ten_shas)
+        .with("homebrew/cask", "user1", "author", nil, nil, max, verbose).and_return(ten_shas)
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/cask", "user1", "committer", nil, nil, nil).and_return(%w[1 2 3 4 5])
+        .with("homebrew/cask", "user1", "committer", nil, nil, max, verbose).and_return(%w[1 2 3 4 5])
 
-      expect(described_class.count_repo_commits("homebrew/cask", "user1")).to eq([10, 5])
+      expect(described_class.count_repository_commits("homebrew/cask", "user1", max:, verbose:, from:,
+to:)).to eq(15)
     end
 
     it "calculates correctly when committed > authored" do
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/cask", "user1", "author", nil, nil, nil).and_return(five_shas)
+        .with("homebrew/cask", "user1", "author", nil, nil, max, verbose).and_return(five_shas)
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/cask", "user1", "committer", nil, nil, nil).and_return(ten_shas)
+        .with("homebrew/cask", "user1", "committer", nil, nil, max, verbose).and_return(ten_shas)
 
-      expect(described_class.count_repo_commits("homebrew/cask", "user1")).to eq([5, 5])
+      expect(described_class.count_repository_commits("homebrew/cask", "user1", max:, verbose:, from:,
+to:)).to eq(10)
     end
 
     it "deduplicates commits authored and committed by the same user" do
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/core", "user1", "author", nil, nil, nil).and_return(five_shas)
+        .with("homebrew/core", "user1", "author", nil, nil, max, verbose).and_return(five_shas)
       allow(described_class).to receive(:repo_commits_for_user)
-        .with("homebrew/core", "user1", "committer", nil, nil, nil).and_return(five_shas)
+        .with("homebrew/core", "user1", "committer", nil, nil, max, verbose).and_return(five_shas)
 
       # Because user1 authored and committed the same 5 commits.
-      expect(described_class.count_repo_commits("homebrew/core", "user1")).to eq([5, 0])
+      expect(described_class.count_repository_commits("homebrew/core", "user1", max:, verbose:, from:,
+to:)).to eq(5)
     end
   end
 end

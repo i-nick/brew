@@ -38,7 +38,7 @@ module RuboCop
             end
 
             if find_node_method_by_name(body_node, :keg_only)&.source&.include?("HOMEBREW_PREFIX")
-              problem "`keg_only` reason should not include `HOMEBREW_PREFIX` " \
+              problem "`keg_only` reason should not include `$HOMEBREW_PREFIX` " \
                       "as it creates confusing `brew info` output."
             end
           end
@@ -135,10 +135,6 @@ module RuboCop
         def audit_formula(formula_nodes)
           return if (body_node = formula_nodes.body_node).nil?
 
-          find_method_with_args(body_node, :go_resource) do
-            problem "`go_resource`s are deprecated. Please ask upstream to implement Go vendoring"
-          end
-
           find_method_with_args(body_node, :env, :userpaths) do
             problem "`env :userpaths` in homebrew/core formulae is deprecated"
           end
@@ -171,7 +167,7 @@ module RuboCop
         end
 
         # Check whether value starts with the formula name and then a "/", " " or EOS.
-        # If we're checking for "#{bin}", we also check for "-" since similar binaries also don't need interpolation.
+        # If we're checking for "#\\{bin}", we also check for "-" b/c similar binaries don't also need interpolation.
         sig { params(path: String, starts_with: String, bin: T::Boolean).returns(T::Boolean) }
         def path_starts_with?(path, starts_with, bin: false)
           ending = bin ? "/|-|$" : "/| |$"

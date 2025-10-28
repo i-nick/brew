@@ -18,7 +18,7 @@ on:
         required: true
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
 
 defaults:
@@ -28,7 +28,7 @@ defaults:
 jobs:
   vendor-gems:
     if: github.repository_owner == 'Homebrew'
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -36,7 +36,6 @@ jobs:
         with:
           core: false
           cask: false
-          test-bot: false
 
       - name: Configure Git user
         if: github.event_name == 'workflow_dispatch'
@@ -52,7 +51,7 @@ jobs:
 
       - name: Check out pull request
         id: checkout
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot')
         run: |
           gh pr checkout "${PR}"
 
@@ -68,7 +67,7 @@ jobs:
 
       - name: Vendor Gems
         run: |
-          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" || ("${GITHUB_EVENT_NAME}" == "pull_request" && "${GITHUB_ACTOR}" == "dependabot") ]]
           then
             brew vendor-gems --non-bundler-gems
           else
@@ -79,7 +78,7 @@ jobs:
         run: brew typecheck --update
 
       - name: Commit RBI changes
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot')
         env:
           GEM_NAME: ${{ steps.checkout.outputs.gem_name }}
         working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
@@ -92,7 +91,7 @@ jobs:
           fi
 
       - name: Generate push token
-        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2.0.6
+        uses: actions/create-github-app-token@67018539274d69449ef7c02e8e71183d1719ab42 # v2.1.4
         id: app-token
         if: github.event_name == 'workflow_dispatch'
         with:
@@ -100,10 +99,10 @@ jobs:
           private-key: ${{ secrets.BREW_COMMIT_APP_KEY }}
 
       - name: Push to pull request
-        if: github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot')
         uses: Homebrew/actions/git-try-push@main
         with:
-          token: ${{ steps.app-token.outputs.token }}
+          token: ${{ steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
           branch: ${{ steps.checkout.outputs.branch }}
           force: true

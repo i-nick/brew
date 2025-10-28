@@ -1,11 +1,14 @@
 # typed: strict
 # frozen_string_literal: true
 
+require "utils/output"
+
 module OS
   module Mac
     module Readall
       module ClassMethods
         extend T::Helpers
+        include ::Utils::Output::Mixin
 
         requires_ancestor { Kernel }
 

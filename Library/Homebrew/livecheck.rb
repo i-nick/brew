@@ -41,7 +41,7 @@ class Livecheck
     @strategy = T.let(nil, T.nilable(Symbol))
     @strategy_block = T.let(nil, T.nilable(Proc))
     @throttle = T.let(nil, T.nilable(Integer))
-    @url = T.let(nil, T.any(NilClass, String, Symbol))
+    @url = T.let(nil, T.nilable(T.any(String, Symbol)))
   end
 
   # Sets the `@referenced_cask_name` instance variable to the provided `String`

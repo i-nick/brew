@@ -29,8 +29,6 @@ module OS
         else
           "#{description} (#{codename})"
         end
-      elsif (redhat_release = Pathname.new("/etc/redhat-release")).readable?
-        redhat_release.read.chomp
       elsif ::OS_VERSION.present?
         ::OS_VERSION
       else

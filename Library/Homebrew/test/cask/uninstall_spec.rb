@@ -37,7 +37,7 @@ RSpec.describe Cask::Uninstall, :cask do
 
   it "can uninstall and unlink multiple Casks at once" do
     caffeine = Cask::CaskLoader.load(cask_path("local-caffeine"))
-    transmission = Cask::CaskLoader.load(cask_path("local-transmission"))
+    transmission = Cask::CaskLoader.load(cask_path("local-transmission-zip"))
 
     Cask::Installer.new(caffeine).install
     Cask::Installer.new(transmission).install
@@ -123,8 +123,10 @@ RSpec.describe Cask::Uninstall, :cask do
 
     before do
       app.tap(&:mkpath)
-         .join("Contents").tap(&:mkpath)
-         .join("Info.plist").tap { FileUtils.touch(_1) }
+         .join("Contents")
+         .tap(&:mkpath)
+         .join("Info.plist")
+         .tap { |file| FileUtils.touch(file) }
 
       caskroom_path.mkpath
 

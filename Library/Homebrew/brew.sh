@@ -187,47 +187,10 @@ case "$@" in
     ;;
 esac
 
-# Include some helper functions.
-source "${HOMEBREW_LIBRARY}/Homebrew/utils/helpers.sh"
-
-# Require HOMEBREW_BREW_WRAPPER to be set if HOMEBREW_FORCE_BREW_WRAPPER is set
-# (and HOMEBREW_NO_FORCE_BREW_WRAPPER is not set) for all non-trivial commands
+# Check `HOMEBREW_FORCE_BREW_WRAPPER` for all non-trivial commands
 # (i.e. not defined above this line e.g. formulae or --cellar).
-if [[ -z "${HOMEBREW_NO_FORCE_BREW_WRAPPER:-}" && -n "${HOMEBREW_FORCE_BREW_WRAPPER:-}" ]]
-then
-  HOMEBREW_FORCE_BREW_WRAPPER_WITHOUT_BREW="${HOMEBREW_FORCE_BREW_WRAPPER%/brew}"
-  if [[ -z "${HOMEBREW_BREW_WRAPPER:-}" ]]
-  then
-    odie <<EOS
-conflicting Homebrew wrapper configuration!
-HOMEBREW_FORCE_BREW_WRAPPER was set to ${HOMEBREW_FORCE_BREW_WRAPPER}
-but   HOMEBREW_BREW_WRAPPER was unset.
-
-$(bold "Ensure you run ${HOMEBREW_FORCE_BREW_WRAPPER} directly (not ${HOMEBREW_BREW_FILE})")!
-
-Manually setting your PATH can interfere with Homebrew wrappers.
-Ensure your shell configuration contains:
-  eval "\$(${HOMEBREW_BREW_FILE} shellenv)"
-or that ${HOMEBREW_FORCE_BREW_WRAPPER_WITHOUT_BREW} comes before ${HOMEBREW_PREFIX}/bin in your PATH:
-  export PATH="${HOMEBREW_FORCE_BREW_WRAPPER_WITHOUT_BREW}:${HOMEBREW_PREFIX}/bin:\$PATH"
-EOS
-  elif [[ "${HOMEBREW_FORCE_BREW_WRAPPER}" != "${HOMEBREW_BREW_WRAPPER}" ]]
-  then
-    odie <<EOS
-conflicting Homebrew wrapper configuration!
-HOMEBREW_FORCE_BREW_WRAPPER was set to ${HOMEBREW_FORCE_BREW_WRAPPER}
-but HOMEBREW_BREW_WRAPPER   was set to ${HOMEBREW_BREW_WRAPPER}
-
-$(bold "Ensure you run ${HOMEBREW_FORCE_BREW_WRAPPER} directly (not ${HOMEBREW_BREW_FILE})")!
-
-Manually setting your PATH can interfere with Homebrew wrappers.
-Ensure your shell configuration contains:
-  eval "\$(${HOMEBREW_BREW_FILE} shellenv)"
-or that ${HOMEBREW_FORCE_BREW_WRAPPER_WITHOUT_BREW} comes before ${HOMEBREW_PREFIX}/bin in your PATH:
-  export PATH="${HOMEBREW_FORCE_BREW_WRAPPER_WITHOUT_BREW}:${HOMEBREW_PREFIX}/bin:\$PATH"
-EOS
-  fi
-fi
+source "${HOMEBREW_LIBRARY}/Homebrew/utils/wrapper.sh"
+check-brew-wrapper "$1"
 
 # commands that take a single or no arguments and need to write to HOMEBREW_PREFIX.
 # HOMEBREW_LIBRARY set by bin/brew
@@ -246,6 +209,8 @@ esac
 #####
 ##### Next, define all other helper functions.
 #####
+
+source "${HOMEBREW_LIBRARY}/Homebrew/utils/helpers.sh"
 
 check-run-command-as-root() {
   [[ "${EUID}" == 0 || "${UID}" == 0 ]] || return
@@ -611,18 +576,19 @@ esac
 # - docs/Installation.md
 # - https://github.com/Homebrew/install/blob/HEAD/install.sh
 # - Library/Homebrew/os/mac.rb (latest_sdk_version)
+# - Library/Homebrew/os/mac/xcode.rb (latest_version), (minimum_version)
 # and, if needed:
 # - MacOSVersion::SYMBOLS
-HOMEBREW_MACOS_NEWEST_UNSUPPORTED="16"
+HOMEBREW_MACOS_NEWEST_UNSUPPORTED="27"
 # TODO: bump version when new macOS is released
-HOMEBREW_MACOS_NEWEST_SUPPORTED="15"
+HOMEBREW_MACOS_NEWEST_SUPPORTED="26"
 # TODO: bump version when new macOS is released and update references in:
 # - docs/Installation.md
-# - HOMEBREW_MACOS_OLDEST_SUPPORTED in .github/workflows/pkg-installer.yml
+# - HOMEBREW_MACOS_OLDEST_SUPPORTED in .github/workflows/release.yml
 # - `os-version min` in package/Distribution.xml
 # - https://github.com/Homebrew/install/blob/HEAD/install.sh
-HOMEBREW_MACOS_OLDEST_SUPPORTED="13"
-HOMEBREW_MACOS_OLDEST_ALLOWED="10.11"
+HOMEBREW_MACOS_OLDEST_SUPPORTED="14"
+HOMEBREW_MACOS_OLDEST_ALLOWED="10.15"
 
 if [[ -n "${HOMEBREW_MACOS}" ]]
 then
@@ -634,7 +600,7 @@ then
 
   if [[ "$(sysctl -n hw.optional.arm64 2>/dev/null)" == "1" ]]
   then
-    # used in vendor-install.sh
+    # used in vendor-install.sh and update.sh
     # shellcheck disable=SC2034
     HOMEBREW_PHYSICAL_PROCESSOR="arm64"
   fi
@@ -713,8 +679,8 @@ else
   then
     message="Please update your system curl or set HOMEBREW_CURL_PATH to a newer version.
 Minimum required version: ${HOMEBREW_MINIMUM_CURL_VERSION}
-Your curl version: ${curl_name_and_version##* }
-Your curl executable: $(type -p "${HOMEBREW_CURL}")"
+       Your curl version: ${curl_name_and_version##* }
+    Your curl executable: $(type -p "${HOMEBREW_CURL}")"
 
     if [[ -z ${HOMEBREW_CURL_PATH} ]]
     then
@@ -741,8 +707,8 @@ Your curl executable: $(type -p "${HOMEBREW_CURL}")"
   then
     message="Please update your system Git or set HOMEBREW_GIT_PATH to a newer version.
 Minimum required version: ${HOMEBREW_MINIMUM_GIT_VERSION}
-Your Git version: ${major}.${minor}.${micro}.${build}
-Your Git executable: $(unset git && type -p "${HOMEBREW_GIT}")"
+        Your Git version: ${major}.${minor}.${micro}.${build}
+     Your Git executable: $(unset git && type -p "${HOMEBREW_GIT}")"
     if [[ -z ${HOMEBREW_GIT_PATH} ]]
     then
       HOMEBREW_FORCE_BREWED_GIT="1"
@@ -1033,6 +999,13 @@ if [[ -n "${HOMEBREW_DEVELOPER}" || -n "${HOMEBREW_DEV_CMD_RUN}" ]]
 then
   # Always run with Sorbet for Homebrew developers or when a Homebrew developer command has been run.
   export HOMEBREW_SORBET_RUNTIME="1"
+
+  # Enable concurrent downloads for Homebrew developers or when a Homebrew developer command has been
+  # run who haven't explicitly set a value.
+  if [[ -z "${HOMEBREW_DOWNLOAD_CONCURRENCY}" ]]
+  then
+    export HOMEBREW_DOWNLOAD_CONCURRENCY="auto"
+  fi
 fi
 
 # Provide a (temporary, undocumented) way to disable Sorbet globally if needed
@@ -1101,6 +1074,9 @@ then
   "${SUDO}" --reset-timestamp 2>/dev/null || true
 fi
 unset SUDO
+
+# Remove internal variables
+unset HOMEBREW_INTERNAL_ALLOW_PACKAGES_FROM_PATHS
 
 if [[ -n "${HOMEBREW_BASH_COMMAND}" ]]
 then

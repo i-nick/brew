@@ -13,11 +13,12 @@ module Cask
     # to the output by the caller, but that feature is only for the
     # convenience of cask authors.
     class Caveats < Base
+      sig { params(args: T.anything).void }
       def initialize(*args)
         super
-        @built_in_caveats = {}
-        @custom_caveats = []
-        @discontinued = false
+        @built_in_caveats = T.let({}, T::Hash[Symbol, String])
+        @custom_caveats = T.let([], T::Array[String])
+        @discontinued = T.let(false, T::Boolean)
       end
 
       def self.caveat(name, &block)
@@ -40,11 +41,13 @@ module Cask
       end
 
       # Override `puts` to collect caveats.
+      sig { params(args: String).returns(Symbol) }
       def puts(*args)
         @custom_caveats += args
         :built_in_caveat
       end
 
+      sig { params(block: T.proc.returns(T.nilable(T.any(Symbol, String)))).void }
       def eval_caveats(&block)
         result = instance_eval(&block)
         return unless result

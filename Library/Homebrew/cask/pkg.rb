@@ -2,10 +2,13 @@
 # frozen_string_literal: true
 
 require "cask/macos"
+require "utils/output"
 
 module Cask
   # Helper class for uninstalling `.pkg` installers.
   class Pkg
+    include ::Utils::Output::Mixin
+
     sig { params(regexp: String, command: T.class_of(SystemCommand)).returns(T::Array[Pkg]) }
     def self.all_matching(regexp, command)
       command.run("/usr/sbin/pkgutil", args: ["--pkgs=#{regexp}"]).stdout.split("\n").map do |package_id|
@@ -88,7 +91,7 @@ module Cask
                                    .stdout
                                    .split("\n")
                                    .map { |path| root.join(path) }
-                                   .reject { MacOS.undeletable?(_1) }
+                                   .reject { |path| MacOS.undeletable?(path) }
     end
 
     sig { returns(Pathname) }

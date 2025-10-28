@@ -1,4 +1,4 @@
-# typed: true # rubocop:disable Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "tempfile"
@@ -10,11 +10,13 @@ require "os/linux/kernel"
 module OS
   module Linux
     module Diagnostic
+      # Linux-specific diagnostic checks for Homebrew.
       module Checks
         extend T::Helpers
 
         requires_ancestor { Homebrew::Diagnostic::Checks }
 
+        sig { returns(T::Array[String]) }
         def fatal_preinstall_checks
           %w[
             check_access_directories
@@ -23,6 +25,7 @@ module OS
           ].freeze
         end
 
+        sig { returns(T::Array[String]) }
         def supported_configuration_checks
           %w[
             check_glibc_minimum_version
@@ -31,19 +34,21 @@ module OS
           ].freeze
         end
 
+        sig { returns(T.nilable(String)) }
         def check_tmpdir_sticky_bit
           message = super
           return if message.nil?
 
           message + <<~EOS
             If you don't have administrative privileges on this machine,
-            create a directory and set the HOMEBREW_TEMP environment variable,
+            create a directory and set the `$HOMEBREW_TEMP` environment variable,
             for example:
               install -d -m 1755 ~/tmp
               #{Utils::Shell.set_variable_in_profile("HOMEBREW_TEMP", "~/tmp")}
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
         def check_tmpdir_executable
           f = Tempfile.new(%w[homebrew_check_tmpdir_executable .sh], HOMEBREW_TEMP)
           f.write "#!/bin/sh\n"
@@ -53,7 +58,7 @@ module OS
 
           <<~EOS
             The directory #{HOMEBREW_TEMP} does not permit executing
-            programs. It is likely mounted as "noexec". Please set HOMEBREW_TEMP
+            programs. It is likely mounted as "noexec". Please set `$HOMEBREW_TEMP`
             in your #{Utils::Shell.profile} to a different directory, for example:
               export HOMEBREW_TEMP=~/tmp
               echo 'export HOMEBREW_TEMP=~/tmp' >> #{Utils::Shell.profile}
@@ -62,6 +67,7 @@ module OS
           f&.unlink
         end
 
+        sig { returns(T.nilable(String)) }
         def check_umask_not_zero
           return unless File.umask.zero?
 
@@ -73,6 +79,7 @@ module OS
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
         def check_supported_architecture
           return if ::Hardware::CPU.intel?
           return if Homebrew::EnvConfig.developer? && ENV["HOMEBREW_ARM64_TESTING"].present? && ::Hardware::CPU.arm?
@@ -85,6 +92,7 @@ module OS
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
         def check_glibc_minimum_version
           return unless OS::Linux::Glibc.below_minimum_version?
 
@@ -100,6 +108,7 @@ module OS
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
         def check_glibc_version
           return unless OS::Linux::Glibc.below_ci_version?
 
@@ -118,6 +127,7 @@ module OS
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
         def check_kernel_minimum_version
           return unless OS::Linux::Kernel.below_minimum_version?
 
@@ -134,6 +144,7 @@ module OS
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
         def check_linuxbrew_core
           return unless Homebrew::EnvConfig.no_install_from_api?
           return unless CoreTap.instance.linuxbrew_core?
@@ -144,16 +155,40 @@ module OS
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
         def check_linuxbrew_bottle_domain
           return unless Homebrew::EnvConfig.bottle_domain.include?("linuxbrew")
 
           <<~EOS
-            Your HOMEBREW_BOTTLE_DOMAIN still contains "linuxbrew".
+            Your `$HOMEBREW_BOTTLE_DOMAIN` still contains "linuxbrew".
             You must unset it (or adjust it to not contain linuxbrew
             e.g. by using homebrew instead).
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
+        def check_for_symlinked_home
+          return unless File.symlink?("/home")
+
+          <<~EOS
+            Your /home directory is a symlink.
+            This is known to cause issues with formula linking, particularly when installing
+            multiple formulae that create symlinks in shared directories.
+
+            While this may be a standard directory structure in some distributions
+            (e.g. Fedora Silverblue) there are known issues as-is.
+
+            If you encounter linking issues, you may need to manually create conflicting
+            directories or use `brew link --overwrite` as a workaround.
+
+            We'd welcome a PR to fix this functionality.
+            See https://github.com/Homebrew/brew/issues/18036 for more context.
+
+            #{support_tier_message(tier: 2)}
+          EOS
+        end
+
+        sig { returns(T.nilable(String)) }
         def check_gcc_dependent_linkage
           gcc_dependents = ::Formula.installed.select do |formula|
             next false unless formula.tap&.core_tap?
@@ -190,6 +225,7 @@ module OS
           EOS
         end
 
+        sig { returns(T.nilable(String)) }
         def check_cask_software_versions
           super
           add_info "Linux", OS::Linux.os_version

@@ -11,6 +11,7 @@ module Homebrew
   module Cmd
     class SearchCmd < AbstractCommand
       PACKAGE_MANAGERS = T.let({
+        alpine:    ->(query) { "https://pkgs.alpinelinux.org/packages?name=#{query}" },
         repology:  ->(query) { "https://repology.org/projects/?search=#{query}" },
         macports:  ->(query) { "https://ports.macports.org/search/?q=#{query}" },
         fink:      ->(query) { "https://pdb.finkproject.org/pdb/browse.php?summary=#{query}" },
@@ -38,7 +39,6 @@ module Homebrew
                description: "Search for formulae with a description matching <text> and casks with " \
                             "a name or description matching <text>."
         switch "--eval-all",
-               depends_on:  "--desc",
                description: "Evaluate all available formulae and casks, whether installed or not, to search their " \
                             "descriptions.",
                env:         :eval_all
@@ -72,7 +72,7 @@ module Homebrew
 
         if args.desc?
           if !args.eval_all? && Homebrew::EnvConfig.no_install_from_api?
-            raise UsageError, "`brew search --desc` needs `--eval-all` passed or `$HOMEBREW_EVAL_ALL` set!"
+            raise UsageError, "`brew search --desc` needs `--eval-all` passed or `HOMEBREW_EVAL_ALL=1` set!"
           end
 
           Search.search_descriptions(string_or_regex, args)

@@ -3,6 +3,7 @@
 
 require "utils/curl"
 require "utils/gzip"
+require "utils/output"
 require "json"
 require "zlib"
 require "extend/hash/keys"
@@ -12,6 +13,7 @@ require "system_command"
 class GitHubPackages
   include Context
   include SystemCommand::Mixin
+  include Utils::Output::Mixin
 
   URL_DOMAIN = "ghcr.io"
   URL_PREFIX = "https://#{URL_DOMAIN}/v2/".freeze
