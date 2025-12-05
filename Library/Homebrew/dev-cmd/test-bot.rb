@@ -20,8 +20,6 @@ module Homebrew
                description: "Print what would be done rather than doing it."
         switch "--cleanup",
                description: "Clean all state from the Homebrew directory. Use with care!"
-        switch "--concurrent-downloads",
-               description: "Invoke `brew` with `HOMEBREW_DOWNLOAD_CONCURRENCY=auto`."
         switch "--skip-setup",
                description: "Don't check if the local system is set up correctly."
         switch "--build-from-source",
@@ -76,7 +74,7 @@ module Homebrew
         switch "--skip-revision-audit",
                description: "Don't audit the revision."
         switch "--only-cleanup-before",
-               description: "Only run the pre-cleanup step. Needs `--cleanup`."
+               description: "Only run the pre-cleanup step. Needs `--cleanup`, except in GitHub Actions."
         switch "--only-setup",
                description: "Only run the local system setup check step."
         switch "--only-tap-syntax",
@@ -96,7 +94,7 @@ module Homebrew
                             "to be run on a single machine. The bottle commit to be tested must be on the tested " \
                             "branch."
         switch "--only-cleanup-after",
-               description: "Only run the post-cleanup step. Needs `--cleanup`."
+               description: "Only run the post-cleanup step. Needs `--cleanup`, except in GitHub Actions."
         comma_array "--testing-formulae=",
                     description: "Use these testing formulae rather than running the formulae detection steps."
         comma_array "--added-formulae=",
@@ -119,7 +117,7 @@ module Homebrew
 
       sig { override.void }
       def run
-        if ENV["GITHUB_ACTIONS"].present?
+        if GitHub::Actions.env_set?
           ENV["HOMEBREW_COLOR"] = "1"
           ENV["HOMEBREW_GITHUB_ACTIONS"] = "1"
         end

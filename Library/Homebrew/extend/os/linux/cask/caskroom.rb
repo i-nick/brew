@@ -6,7 +6,7 @@ module OS
     module Cask
       module Caskroom
         module ClassMethods
-          sig { params(path: Pathname, _sudo: T::Boolean).void }
+          sig { params(path: ::Pathname, _sudo: T::Boolean).void }
           def chgrp_path(path, _sudo)
             SystemCommand.run("chgrp", args: ["root", path], sudo: true)
           end

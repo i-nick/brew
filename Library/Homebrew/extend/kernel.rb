@@ -185,8 +185,8 @@ module Kernel
     out.close
   end
 
-  # Ensure the given executable is exist otherwise install the brewed version
-  sig { params(name: String, formula_name: T.nilable(String), reason: String, latest: T::Boolean).returns(T.nilable(Pathname)) }
+  # Ensure the given executable exists otherwise install the brewed version
+  sig { params(name: String, formula_name: T.nilable(String), reason: String, latest: T::Boolean).returns(Pathname) }
   def ensure_executable!(name, formula_name = nil, reason: "", latest: false)
     formula_name ||= name
 
@@ -197,29 +197,34 @@ module Kernel
       # path where available, since the former is stable during upgrades.
       HOMEBREW_PREFIX/"opt/#{formula_name}/bin/#{name}",
       HOMEBREW_PREFIX/"bin/#{name}",
-    ].compact.first
-    return executable if executable.exist?
+    ].compact.find(&:exist?)
+    return executable if executable
 
     require "formula"
-    Formula[formula_name].ensure_installed!(reason:, latest:).opt_bin/name
+    Formulary.factory_stub(formula_name).ensure_installed!(reason:, latest:).opt_bin/name
+  end
+
+  sig {
+    params(
+      size_in_bytes: T.any(Integer, Float),
+      precision:     T.nilable(Integer),
+    ).returns([T.any(Integer, Float), String])
+  }
+  def disk_usage_readable_size_unit(size_in_bytes, precision: nil)
+    size = size_in_bytes
+    unit = "B"
+    %w[KB MB GB].each do |next_unit|
+      break if (precision ? size.abs.round(precision) : size.abs) < 1000
+
+      size /= 1000.0
+      unit = next_unit
+    end
+    [size, unit]
   end
 
   sig { params(size_in_bytes: T.any(Integer, Float)).returns(String) }
   def disk_usage_readable(size_in_bytes)
-    if size_in_bytes.abs >= 1_073_741_824
-      size = size_in_bytes.to_f / 1_073_741_824
-      unit = "GB"
-    elsif size_in_bytes.abs >= 1_048_576
-      size = size_in_bytes.to_f / 1_048_576
-      unit = "MB"
-    elsif size_in_bytes.abs >= 1_024
-      size = size_in_bytes.to_f / 1_024
-      unit = "KB"
-    else
-      size = size_in_bytes
-      unit = "B"
-    end
-
+    size, unit = disk_usage_readable_size_unit(size_in_bytes)
     # avoid trailing zero after decimal point
     if ((size * 10).to_i % 10).zero?
       "#{size.to_i}#{unit}"

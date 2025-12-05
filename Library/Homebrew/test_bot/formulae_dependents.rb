@@ -44,7 +44,7 @@ module Homebrew
           puts
         end
 
-        return unless ENV["GITHUB_ACTIONS"]
+        return unless GitHub::Actions.env_set?
 
         # Remove `bash` after it is tested, since leaving a broken `bash`
         # installation in the environment can cause issues with subsequent
@@ -360,7 +360,7 @@ module Homebrew
           @tested_dependents_list.write("\n", mode: "a")
         end
 
-        return if ENV["GITHUB_ACTIONS"].blank?
+        return unless GitHub::Actions.env_set?
 
         if build_from_source &&
            !bottled_on_current_version &&

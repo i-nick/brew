@@ -12,7 +12,7 @@ module OS
           @volumes = T.let(get_mounts, T::Array[String])
         end
 
-        sig { params(path: T.nilable(Pathname)).returns(Integer) }
+        sig { params(path: T.nilable(::Pathname)).returns(Integer) }
         def index_of(path)
           vols = get_mounts path
 
@@ -26,7 +26,7 @@ module OS
           vol_index
         end
 
-        sig { params(path: T.nilable(Pathname)).returns(T::Array[String]) }
+        sig { params(path: T.nilable(::Pathname)).returns(T::Array[String]) }
         def get_mounts(path = nil)
           vols = []
           # get the volume of path, if path is nil returns all volumes
@@ -131,11 +131,15 @@ module OS
           tier = 2
           who = +"We"
           what = if OS::Mac.version.prerelease?
-            "pre-release version"
+            "pre-release version."
           elsif OS::Mac.version.outdated_release?
             tier = 3
             who << " (and Apple)"
-            "old version"
+            <<~EOS.chomp
+              old version.
+              You may have better luck with MacPorts which supports older versions of macOS:
+                #{Formatter.url("https://www.macports.org")}
+            EOS
           end
           return if what.blank?
 
@@ -143,7 +147,7 @@ module OS
 
           <<~EOS
             You are using macOS #{MacOS.version}.
-            #{who} do not provide support for this #{what}.
+            #{who} do not provide support for this #{what}
 
             #{support_tier_message(tier:)}
           EOS
@@ -186,10 +190,6 @@ module OS
           # repository. This only needs to support whatever CI providers
           # Homebrew/brew is currently using.
           return if GitHub::Actions.env_set?
-
-          # With fake El Capitan for Portable Ruby, we are intentionally not using Xcode 8.
-          # This is because we are not using the CLT and Xcode 8 has the 10.12 SDK.
-          return if ENV["HOMEBREW_FAKE_MACOS"]
 
           message = <<~EOS
             Your Xcode (#{MacOS::Xcode.version}) is outdated.
@@ -335,8 +335,8 @@ module OS
             # dir (e.g. /TMP and /tmp) this check falsely thinks it is case-insensitive
             # but we don't care because: 1. there is more than one dir checked, 2. the
             # check is not vital and 3. we would have to touch files otherwise.
-            upcased = Pathname.new(dir.to_s.upcase)
-            downcased = Pathname.new(dir.to_s.downcase)
+            upcased = ::Pathname.new(dir.to_s.upcase)
+            downcased = ::Pathname.new(dir.to_s.downcase)
             dir.exist? && !(upcased.exist? && downcased.exist?)
           end
           return if case_sensitive_dirs.empty?
@@ -377,7 +377,7 @@ module OS
             end
 
             return if @found.all? do |path|
-              realpath = Pathname.new(path).realpath.to_s
+              realpath = ::Pathname.new(path).realpath.to_s
               realpath.start_with?(*allowlist)
             end
           end
@@ -431,7 +431,7 @@ module OS
           where_cellar = volumes.index_of real_cellar
 
           begin
-            tmp = Pathname.new(Dir.mktmpdir("doctor", HOMEBREW_TEMP))
+            tmp = ::Pathname.new(Dir.mktmpdir("doctor", HOMEBREW_TEMP))
             begin
               real_tmp = tmp.realpath.parent
               where_tmp = volumes.index_of real_tmp
@@ -459,7 +459,6 @@ module OS
         sig { returns(T.nilable(String)) }
         def check_if_supported_sdk_available
           return unless ::DevelopmentTools.installed?
-          return unless MacOS.sdk_root_needed?
           return if MacOS.sdk
 
           locator = MacOS.sdk_locator

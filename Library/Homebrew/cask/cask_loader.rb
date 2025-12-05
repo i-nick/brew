@@ -412,17 +412,23 @@ module Cask
 
               dep_type = dep_value.keys.first
               if dep_type == :==
-                version_symbols = dep_value[dep_type].map do |version|
-                  MacOSVersion::SYMBOLS.key(version) || version
+                version_symbols = dep_value[dep_type].filter_map do |version|
+                  MacOSVersion::SYMBOLS.key(version)
                 end
-                next [dep_key, version_symbols]
+                next [dep_key, version_symbols.presence]
               end
 
               version_symbol = dep_value[dep_type].first
-              version_symbol = MacOSVersion::SYMBOLS.key(version_symbol) || version_symbol
-              [dep_key, "#{dep_type} :#{version_symbol}"]
+              version_symbol = MacOSVersion::SYMBOLS.key(version_symbol)
+              version_dep = "#{dep_type} :#{version_symbol}" if version_symbol
+              [dep_key, version_dep]
             end.compact
-            depends_on(**dep_hash)
+            begin
+              depends_on(**dep_hash)
+            rescue MacOSVersion::Error => e
+              odebug "Ignored invalid macOS version dependency in cask '#{token}': #{dep_hash.inspect} (#{e.message})"
+              nil
+            end
           end
 
           if json_cask[:container].present?

@@ -85,3 +85,6 @@ last_review_date: "2025-02-08"
 - [Homebrew Governance](Homebrew-Governance.md)
 - [Homebrew Leadership Responsibilities](Homebrew-Leadership-Responsibilities.md)
 - [Homebrew Governance Archives](Homebrew-Governance-Archives.md)
+- [Homebrew's Expense and Reimbursement Policy](Expense-and-Reimbursement-Policy.md)
+- [How To Organise the Homebrew AGM](How-To-Organise-the-AGM.md)
+- [Homebrew's Maintainer Stipends and Grants](Maintainer-Stipends-and-Grants.md)

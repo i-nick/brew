@@ -9,7 +9,7 @@ DATABASE_FILE="${HOMEBREW_CACHE}/api/${ENDPOINT}"
 
 is_formula_installed() {
   local name="$1"
-  if brew list --formula "${name}" &>/dev/null
+  if [[ -d "${HOMEBREW_CELLAR}/${name}" ]]
   then
     return 0
   else

@@ -118,6 +118,7 @@ module Homebrew
 
           checkout_branch_if_needed(git_repo)
           reset_if_needed(git_repo)
+          clean_if_needed(git_repo)
           prune_if_needed(git_repo)
         end
 

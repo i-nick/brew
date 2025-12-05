@@ -34,7 +34,7 @@ module Homebrew
       def previous_github_sha
         return if tap.blank?
         return unless repository.directory?
-        return if ENV["GITHUB_ACTIONS"].blank?
+        return unless GitHub::Actions.env_set?
         return if (payload = github_event_payload).blank?
 
         head_repo_owner = payload.dig("pull_request", "head", "repo", "owner", "login")
@@ -255,7 +255,7 @@ module Homebrew
           end
           bottle_message = "Bottle for #{formula_name} built at #{bottle_commit_details}".strip
 
-          if ENV["GITHUB_ACTIONS"].present?
+          if GitHub::Actions.env_set?
             puts GitHub::Actions::Annotation.new(
               :notice,
               bottle_message,

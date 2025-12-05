@@ -212,24 +212,24 @@ jobs:
           brew update-test --commit=HEAD
 
   tests:
-    if: github.event_name != 'push'
     name: ${{ matrix.name }}
     needs: syntax
     runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 30
     strategy:
       matrix:
         include:
           - name: tests (online)
-            test-flags: --online --coverage
+            test-flags: --online --coverage --profile 3
             runs-on: ubuntu-latest
           - name: tests (generic OS)
-            test-flags: --generic --coverage
+            test-flags: --generic --coverage --profile 3
             runs-on: ubuntu-latest
           - name: tests (Linux)
-            test-flags: --coverage
+            test-flags: --coverage --profile 3
             runs-on: ubuntu-24.04
           - name: tests (macOS)
-            test-flags: --coverage
+            test-flags: --coverage --profile 3
             runs-on: macos-26
     steps:
       - name: Set up Homebrew
@@ -282,15 +282,7 @@ jobs:
 
       - name: Run brew tests
         if: github.event_name == 'pull_request' || matrix.name != 'tests (online)'
-        run: |
-          # Retry multiple times to detect and submit flakiness to CodeCov (because rspec-retry is disabled).
-          if [[ -n "${CODECOV_TOKEN-}" ]]
-          then
-            brew tests ${{ matrix.test-flags }} ||
-            brew tests ${{ matrix.test-flags }}
-          else
-            brew tests ${{ matrix.test-flags }}
-          fi
+        run: brew tests ${{ matrix.test-flags }}
         env:
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # These cannot be queried at the macOS level on GitHub Actions.
@@ -345,7 +337,6 @@ jobs:
     env:
       HOMEBREW_TEST_BOT_ANALYTICS: 1
       HOMEBREW_ENFORCE_SBOM: 1
-      HOMEBREW_DOWNLOAD_CONCURRENCY: auto
     steps:
       - name: Install Homebrew and Homebrew's dependencies
         # All other images are built from our Homebrew Dockerfile.
@@ -391,9 +382,7 @@ jobs:
       - name: Setup environment variables
         run: |
           # Set enviroment variables to bypass `brew doctor` failures on Tier >=2 configurations
-          if [[ "${MATRIX_NAME}" == "test-bot (Linux arm64)" ]]; then
-            echo "HOMEBREW_ARM64_TESTING=1" >> "$GITHUB_ENV"
-          elif [[ "${MATRIX_NAME}" == "test-bot (Linux Homebrew glibc)" ]]; then
+          if [[ "${MATRIX_NAME}" == "test-bot (Linux Homebrew glibc)" ]]; then
             echo "HOMEBREW_GLIBC_TESTING=1" >> "$GITHUB_ENV"
           fi
         env:
@@ -474,7 +463,7 @@ jobs:
         uses: Homebrew/actions/setup-homebrew@main
 
       - name: Setup Python
-        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
           python-version-file: ${{ steps.set-up-homebrew.outputs.repository-path }}/Library/Homebrew/formula-analytics/.python-version
 

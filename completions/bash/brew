@@ -289,6 +289,22 @@ _brew___repository() {
   __brew_complete_tapped
 }
 
+_brew___taps() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --debug
+      --help
+      --quiet
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
 _brew___version() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   case "${cur}" in
@@ -425,6 +441,7 @@ _brew_audit() {
       --arch
       --audit-debug
       --cask
+      --changed
       --debug
       --display-filename
       --eval-all
@@ -658,6 +675,7 @@ _brew_bundle() {
       --debug
       --describe
       --file
+      --flatpak
       --force
       --formula
       --global
@@ -665,7 +683,10 @@ _brew_bundle() {
       --help
       --install
       --mas
+      --no-flatpak
+      --no-go
       --no-restart
+      --no-secrets
       --no-upgrade
       --no-vscode
       --quiet
@@ -675,7 +696,6 @@ _brew_bundle() {
       --upgrade-formulae
       --verbose
       --vscode
-      --whalebrew
       --zap
       "
       return
@@ -836,6 +856,7 @@ _brew_contributions() {
       --from
       --help
       --organisation
+      --quarter
       --quiet
       --repositories
       --team
@@ -1623,6 +1644,23 @@ _brew_leaves() {
       --help
       --installed-as-dependency
       --installed-on-request
+      --quiet
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+}
+
+_brew_lgtm() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --debug
+      --help
+      --online
       --quiet
       --verbose
       "
@@ -2603,7 +2641,6 @@ _brew_test_bot() {
       --build-dependents-from-source
       --build-from-source
       --cleanup
-      --concurrent-downloads
       --debug
       --deleted-formulae
       --dry-run
@@ -2667,8 +2704,11 @@ _brew_tests() {
       --only
       --profile
       --quiet
+      --ruby-prof
       --seed
+      --stackprof
       --verbose
+      --vernier
       "
       return
       ;;
@@ -3283,6 +3323,7 @@ _brew() {
     --prefix) _brew___prefix ;;
     --repo) _brew___repo ;;
     --repository) _brew___repository ;;
+    --taps) _brew___taps ;;
     --version) _brew___version ;;
     -S) _brew__s ;;
     -v) _brew__v ;;
@@ -3339,6 +3380,7 @@ _brew() {
     irb) _brew_irb ;;
     lc) _brew_lc ;;
     leaves) _brew_leaves ;;
+    lgtm) _brew_lgtm ;;
     link) _brew_link ;;
     linkage) _brew_linkage ;;
     list) _brew_list ;;

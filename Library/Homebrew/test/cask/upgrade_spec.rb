@@ -221,9 +221,11 @@ RSpec.describe Cask::Upgrade, :cask do
       ]
     end
 
-    output_reverted = Regexp.new <<~EOS
-      Warning: Reverting upgrade for Cask .*
-    EOS
+    let(:output_reverted) do
+      Regexp.new <<~EOS
+        Warning: Reverting upgrade for Cask .*
+      EOS
+    end
 
     it "restores the old Cask if the upgrade failed" do
       will_fail_if_upgraded = Cask::CaskLoader.load("will-fail-if-upgraded")

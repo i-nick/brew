@@ -785,14 +785,27 @@ class Reporter
 
       api_dir_prefix_basename = T.must(api_dir_prefix).basename
 
-      diff_output.lines.filter_map do |line|
+      diff_hash = diff_output.lines.each_with_object({}) do |line, hash|
         next if line.match?(header_regex)
         next unless add_delete_characters.include?(line[0])
 
-        line.sub(/^\+/, "A #{api_dir_prefix_basename}/")
-            .sub(/^-/,  "D #{api_dir_prefix_basename}/")
-            .sub(/$/,   ".rb")
-            .chomp
+        name = line.chomp.delete_prefix("+").delete_prefix("-")
+        file = "#{api_dir_prefix_basename}/#{name}.rb"
+
+        hash[file] ||= 0
+        if line.start_with?("+")
+          hash[file] += 1
+        elsif line.start_with?("-")
+          hash[file] -= 1
+        end
+      end
+
+      diff_hash.filter_map do |file, count|
+        if count.positive?
+          "A #{file}"
+        elsif count.negative?
+          "D #{file}"
+        end
       end.join("\n")
     else
       Utils.popen_read(

@@ -71,11 +71,11 @@ RSpec.describe Kernel do
 
   specify "#disk_usage_readable" do
     expect(disk_usage_readable(1)).to eq("1B")
-    expect(disk_usage_readable(1000)).to eq("1000B")
-    expect(disk_usage_readable(1024)).to eq("1KB")
+    expect(disk_usage_readable(999)).to eq("999B")
+    expect(disk_usage_readable(1000)).to eq("1KB")
     expect(disk_usage_readable(1025)).to eq("1KB")
-    expect(disk_usage_readable(4_404_020)).to eq("4.2MB")
-    expect(disk_usage_readable(4_509_715_660)).to eq("4.2GB")
+    expect(disk_usage_readable(4_404_020)).to eq("4.4MB")
+    expect(disk_usage_readable(4_509_715_660)).to eq("4.5GB")
   end
 
   describe "#number_readable" do

@@ -22,28 +22,28 @@ module Homebrew
           taps:       T::Boolean,
           casks:      T::Boolean,
           mas:        T::Boolean,
-          whalebrew:  T::Boolean,
           vscode:     T::Boolean,
           go:         T::Boolean,
+          flatpak:    T::Boolean,
         ).returns(String)
       }
-      def self.build_brewfile(describe:, no_restart:, formulae:, taps:, casks:, mas:, whalebrew:, vscode:, go:)
+      def self.build_brewfile(describe:, no_restart:, formulae:, taps:, casks:, mas:, vscode:, go:, flatpak:)
         require "bundle/tap_dumper"
         require "bundle/formula_dumper"
         require "bundle/cask_dumper"
         require "bundle/mac_app_store_dumper"
-        require "bundle/whalebrew_dumper"
         require "bundle/vscode_extension_dumper"
         require "bundle/go_dumper"
+        require "bundle/flatpak_dumper"
 
         content = []
         content << TapDumper.dump if taps
         content << FormulaDumper.dump(describe:, no_restart:) if formulae
         content << CaskDumper.dump(describe:) if casks
         content << MacAppStoreDumper.dump if mas
-        content << WhalebrewDumper.dump if whalebrew
         content << VscodeExtensionDumper.dump if vscode
         content << GoDumper.dump if go
+        content << FlatpakDumper.dump if flatpak
         "#{content.reject(&:empty?).join("\n")}\n"
       end
 
@@ -58,16 +58,16 @@ module Homebrew
           taps:       T::Boolean,
           casks:      T::Boolean,
           mas:        T::Boolean,
-          whalebrew:  T::Boolean,
           vscode:     T::Boolean,
           go:         T::Boolean,
+          flatpak:    T::Boolean,
         ).void
       }
       def self.dump_brewfile(global:, file:, describe:, force:, no_restart:, formulae:, taps:, casks:, mas:,
-                             whalebrew:, vscode:, go:)
+                             vscode:, go:, flatpak:)
         path = brewfile_path(global:, file:)
         can_write_to_brewfile?(path, force:)
-        content = build_brewfile(describe:, no_restart:, taps:, formulae:, casks:, mas:, whalebrew:, vscode:, go:)
+        content = build_brewfile(describe:, no_restart:, taps:, formulae:, casks:, mas:, vscode:, go:, flatpak:)
         write_file path, content
       end
 

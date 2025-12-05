@@ -81,11 +81,9 @@ module Homebrew
       # NOTE: We set HOMEBREW_NO_VERIFY_ATTESTATIONS when installing `gh` itself,
       #       to prevent a cycle during bootstrapping. This can eventually be resolved
       #       by vendoring a pure-Ruby Sigstore verifier client.
-      with_env(HOMEBREW_NO_VERIFY_ATTESTATIONS: "1") do
-        @gh_executable = ensure_executable!("gh", reason: "verifying attestations", latest: true)
+      @gh_executable = with_env(HOMEBREW_NO_VERIFY_ATTESTATIONS: "1") do
+        ensure_executable!("gh", reason: "verifying attestations", latest: true)
       end
-
-      T.must(@gh_executable)
     end
 
     # Prioritize installing `gh` first if it's in the formula list
@@ -98,8 +96,8 @@ module Homebrew
     # @api private
     sig { params(formulae: T::Array[Formula]).returns(T::Array[Formula]) }
     def self.sort_formulae_for_install(formulae)
-      if formulae.include?(Formula["gh"])
-        [Formula["gh"]] | formulae
+      if (gh = formulae.find { |f| f.full_name == "gh" })
+        [gh] | formulae
       else
         Homebrew::Attestation.gh_executable
         formulae

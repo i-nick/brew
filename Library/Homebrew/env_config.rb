@@ -92,12 +92,6 @@ module Homebrew
         description: "Use this URL as the Homebrew/brew `git`(1) remote.",
         default:     HOMEBREW_BREW_DEFAULT_GIT_REMOTE,
       },
-      HOMEBREW_BREW_WRAPPER:                     {
-        description: "If set, use wrapper to call `brew` rather than auto-detecting it.",
-        # We use backticks to render "Deprecated:" in bold.
-        # TODO: uncomment line below and remove the line above when odeprecated.
-        # description: "`Deprecated:` If set, use wrapper to call `brew` rather than auto-detecting it.",
-      },
       HOMEBREW_BROWSER:                          {
         description:  "Use this as the browser when opening project homepages.",
         default_text: "`$BROWSER` or the OS's default browser.",
@@ -191,11 +185,11 @@ module Homebrew
                      "Preferred over `$HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN`.",
       },
       HOMEBREW_DOWNLOAD_CONCURRENCY:             {
-        description: "If set, Homebrew will download in parallel using this many concurrent connections. " \
-                     "Setting to `auto` will use twice the number of available CPU cores " \
+        description: "Homebrew will download in parallel using this many concurrent connections. " \
+                     "The default, `auto`, will use twice the number of available CPU cores " \
                      "(what our benchmarks showed to produce the best performance). " \
-                     "If set to `1` (the default), Homebrew will download in serial.",
-        default:     1,
+                     "If set to `1`, Homebrew will download in serial.",
+        default:     "auto",
       },
       HOMEBREW_EDITOR:                           {
         description:  "Use this editor when editing a single formula, or several formulae in the " \
@@ -412,10 +406,7 @@ module Homebrew
         boolean:     true,
       },
       HOMEBREW_NO_FORCE_BREW_WRAPPER:            {
-        description: "If set, disables `$HOMEBREW_FORCE_BREW_WRAPPER` behaviour, even if set.",
-        # We use backticks to render "Deprecated:" in bold.
-        # TODO: uncomment line below and remove the line above when odeprecated.
-        # description: "`Deprecated:` If set, disables `$HOMEBREW_FORCE_BREW_WRAPPER` behaviour, even if set.",
+        description: "`Deprecated:` If set, disables `$HOMEBREW_FORCE_BREW_WRAPPER` behaviour, even if set.",
         boolean:     true,
       },
       HOMEBREW_NO_GITHUB_API:                    {
@@ -531,6 +522,10 @@ module Homebrew
         description: "A space-separated list of casks. Homebrew will act as " \
                      "if `--greedy` was passed when upgrading any cask on this list.",
       },
+      HOMEBREW_USE_INTERNAL_API:                 {
+        description: "If set, test the new beta internal API for fetching formula and cask data.",
+        boolean:     true,
+      },
       HOMEBREW_VERBOSE:                          {
         description: "If set, always assume `--verbose` when running commands.",
         boolean:     true,
@@ -576,23 +571,14 @@ module Homebrew
     end
 
     CUSTOM_IMPLEMENTATIONS = T.let(Set.new([
-      :HOMEBREW_BREW_WRAPPER,
       :HOMEBREW_MAKE_JOBS,
-      :HOMEBREW_NO_FORCE_BREW_WRAPPER,
       :HOMEBREW_CASK_OPTS,
       :HOMEBREW_FORBID_PACKAGES_FROM_PATHS,
+      :HOMEBREW_DOWNLOAD_CONCURRENCY,
+      :HOMEBREW_USE_INTERNAL_API,
     ]).freeze, T::Set[Symbol])
 
     FALSY_VALUES = T.let(%w[false no off nil 0].freeze, T::Array[String])
-
-    sig { params(env: String, env_value: T.nilable(String)).void }
-    def check_falsy_values(env, env_value)
-      return unless FALSY_VALUES.include?(env_value&.downcase)
-
-      odisabled "#{env}=#{env_value}", <<~EOS.chomp
-        #{env}=1 to enable and #{env}= (an empty value) to disable
-      EOS
-    end
 
     ENVS.each do |env, hash|
       # Needs a custom implementation.
@@ -605,10 +591,7 @@ module Homebrew
         define_method(method_name) do
           env_value = ENV.fetch(env, nil)
 
-          check_falsy_values(env, env_value)
-
-          # TODO: Uncomment the remaining part of the line below after `check_falsy_values` has been removed.
-          env_value.present? # && !FALSY_VALUES.include?(env_value.downcase)
+          env_value.present? && FALSY_VALUES.exclude?(env_value.downcase)
         end
       elsif hash[:default].present?
         define_method(method_name) do
@@ -619,25 +602,6 @@ module Homebrew
           ENV[env].presence
         end
       end
-    end
-
-    # Needs a custom implementation.
-    sig { returns(T::Boolean) }
-    def no_force_brew_wrapper?
-      # odeprecated "`HOMEBREW_NO_FORCE_BREW_WRAPPER`"
-      env = "HOMEBREW_NO_FORCE_BREW_WRAPPER"
-      env_value = ENV.fetch(env, nil)
-
-      check_falsy_values(env, env_value)
-
-      # TODO: Uncomment the remaining part of the line below after `check_falsy_values` has been removed.
-      env_value.present? # && !FALSY_VALUES.include?(env_value.downcase)
-    end
-
-    sig { returns(T.nilable(String)) }
-    def brew_wrapper
-      # odeprecated "`HOMEBREW_BREW_WRAPPER`"
-      ENV["HOMEBREW_BREW_WRAPPER"].presence
     end
 
     sig { returns(String) }
@@ -705,7 +669,7 @@ module Homebrew
 
     sig { returns(Integer) }
     def download_concurrency
-      concurrency = ENV.fetch("HOMEBREW_DOWNLOAD_CONCURRENCY", 1)
+      concurrency = ENV.fetch("HOMEBREW_DOWNLOAD_CONCURRENCY", "auto")
       concurrency = if concurrency == "auto"
         require "os"
         require "hardware"
@@ -719,7 +683,8 @@ module Homebrew
 
     sig { returns(T::Boolean) }
     def use_internal_api?
-      ENV["HOMEBREW_USE_INTERNAL_API"].present?
+      # TODO: re-enable this when the internal API is ready again.
+      false
     end
   end
 end

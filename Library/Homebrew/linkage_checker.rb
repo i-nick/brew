@@ -125,6 +125,13 @@ class LinkageChecker
       keg_files_dylibs_was_empty = true
       @keg.find do |file|
         next if file.symlink? || file.directory?
+
+        file = begin
+          BinaryPathname.wrap(file)
+        rescue NotImplementedError
+          next
+        end
+
         next if !file.dylib? && !file.binary_executable? && !file.mach_o_bundle?
         next unless file.arch_compatible?(Hardware::CPU.arch)
 

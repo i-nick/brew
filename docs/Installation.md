@@ -114,7 +114,7 @@ See [this tip in Tips and Tricks](Tips-and-Tricks.md#load-homebrew-from-the-same
 
 Uninstallation is documented in the [FAQ](FAQ.md#how-do-i-uninstall-homebrew).
 
-<a data-proofer-ignore name="1"><sup>1</sup></a> For 32-bit or PPC support see [Tigerbrew](https://github.com/mistydemeo/tigerbrew).
+<a data-proofer-ignore name="1"><sup>1</sup></a> For 32-bit or PPC support see [MacPorts](https://www.macports.org) or [Tigerbrew](https://github.com/mistydemeo/tigerbrew).
 
 <a data-proofer-ignore name="2"><sup>2</sup></a> macOS 14 (Sonoma) or higher is best and supported, 10.15 (Catalina) – 13 (Ventura) are unsupported but may work and 10.14 (Mojave) and older will not run Homebrew at all. Using OpenCore Legacy Patcher is a [Tier 2](Support-Tiers.md#tier-2) or [Tier 3](Support-Tiers.md#tier-3) configuration depending on CPU generation.
 

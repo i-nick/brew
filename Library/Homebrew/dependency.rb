@@ -352,7 +352,13 @@ class UsesFromMacOSDependency < Dependency
         MacOSVersion.from_symbol(Homebrew::SimulateSystem.current_os)
       end
 
-      since_os = MacOSVersion.from_symbol(since_os_bounds)
+      since_os = begin
+        MacOSVersion.from_symbol(since_os_bounds)
+      rescue MacOSVersion::Error
+        # If we can't parse the bound, it means it's an unsupported macOS version
+        # so let's default to the oldest possible macOS version
+        Version::NULL
+      end
       return true if effective_os >= since_os
     end
 

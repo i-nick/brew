@@ -69,6 +69,8 @@ module Homebrew
           File.write("_data/formula_canonical.json", "#{canonical_json}\n") unless args.dry_run?
 
           OnSystem::VALID_OS_ARCH_TAGS.each do |bottle_tag|
+            macos_version = bottle_tag.to_macos_version if bottle_tag.macos?
+
             aliases = {}
             renames = {}
             variation_formulae = all_formulae.to_h do |name, formula|
@@ -95,11 +97,31 @@ module Homebrew
 
               sha256 = bottle_collector.specification_for(bottle_tag)&.checksum&.to_s
 
-              [name, [pkg_version.to_s, version_scheme, rebuild, sha256]]
+              dependencies = Set.new(formula["dependencies"])
+
+              if macos_version
+                uses_from_macos = formula["uses_from_macos"].zip(formula["uses_from_macos_bounds"])
+                dependencies += uses_from_macos.filter_map do |dep, bounds|
+                  next if bounds.blank?
+
+                  since = bounds[:since]
+                  next if since.blank?
+
+                  since_macos_version = MacOSVersion.from_symbol(since)
+                  next if since_macos_version <= macos_version
+
+                  dep
+                end
+              else
+                dependencies += formula["uses_from_macos"]
+              end
+
+              [name, [pkg_version.to_s, version_scheme, rebuild, sha256, dependencies.to_a]]
             end
 
             json_contents = {
               formulae:       variation_formulae,
+              casks:          [],
               aliases:        aliases,
               renames:        renames,
               tap_migrations: CoreTap.instance.tap_migrations,

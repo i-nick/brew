@@ -21,7 +21,7 @@ class ArchRequirement < Requirement
   satisfy(build_env: false) do
     case @arch
     when :x86_64 then Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
-    when :arm64 then Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
+    when :arm64 then Hardware::CPU.arm64?
     when :arm, :intel, :ppc then Hardware::CPU.type == @arch
     end
   end

@@ -9,8 +9,10 @@ module OS
       requires_ancestor { ::Keg }
 
       module ClassMethods
-        sig { params(file: Pathname, string: String).returns(T::Array[String]) }
+        sig { params(file: ::Pathname, string: String).returns(T::Array[String]) }
         def file_linked_libraries(file, string)
+          file = MachOPathname.wrap(file)
+
           # Check dynamic library linkage. Importantly, do not perform for static
           # libraries, which will falsely report "linkage" to themselves.
           if file.mach_o_executable? || file.dylib? || file.mach_o_bundle?
@@ -101,12 +103,12 @@ module OS
         super
       end
 
-      sig { params(file: Pathname, target: String).returns(String) }
+      sig { params(file: MachOShim, target: String).returns(String) }
       def loader_name_for(file, target)
         # Use @loader_path-relative install names for other Homebrew-installed binaries.
         if ENV["HOMEBREW_RELOCATABLE_INSTALL_NAMES"] && target.start_with?(HOMEBREW_PREFIX)
           dylib_suffix = find_dylib_suffix_from(target)
-          target_dir = Pathname.new(target.delete_suffix(dylib_suffix)).cleanpath
+          target_dir = ::Pathname.new(target.delete_suffix(dylib_suffix)).cleanpath
 
           "@loader_path/#{target_dir.relative_path_from(file.dirname)/dylib_suffix}"
         else
@@ -117,7 +119,7 @@ module OS
       # If file is a dylib or bundle itself, look for the dylib named by
       # bad_name relative to the lib directory, so that we can skip the more
       # expensive recursive search if possible.
-      sig { params(file: Pathname, bad_name: String).returns(String) }
+      sig { params(file: MachOShim, bad_name: String).returns(String) }
       def fixed_name(file, bad_name)
         if bad_name.start_with? ::Keg::PREFIX_PLACEHOLDER
           bad_name.sub(::Keg::PREFIX_PLACEHOLDER, HOMEBREW_PREFIX)
@@ -139,14 +141,14 @@ module OS
 
       VARIABLE_REFERENCE_RX = T.let(/^@(loader_|executable_|r)path/, Regexp)
 
-      sig { params(file: Pathname, linkage_type: Symbol, resolve_variable_references: T::Boolean, block: T.proc.params(arg0: String).void).void }
+      sig { params(file: MachOShim, linkage_type: Symbol, resolve_variable_references: T::Boolean, block: T.proc.params(arg0: String).void).void }
       def each_linkage_for(file, linkage_type, resolve_variable_references: false, &block)
         file.public_send(linkage_type, resolve_variable_references:)
             .grep_v(VARIABLE_REFERENCE_RX)
             .each(&block)
       end
 
-      sig { params(file: Pathname).returns(String) }
+      sig { params(file: MachOShim).returns(String) }
       def dylib_id_for(file)
         # Swift dylib IDs should be /usr/lib/swift
         return file.dylib_id if file.dylib_id.start_with?("/usr/lib/swift/libswift")
@@ -193,7 +195,7 @@ module OS
         end
       end
 
-      sig { params(bad_name: String).returns(T.nilable(Pathname)) }
+      sig { params(bad_name: String).returns(T.nilable(::Pathname)) }
       def find_dylib(bad_name)
         return unless lib.directory?
 
@@ -201,13 +203,16 @@ module OS
         lib.find { |pn| break pn if pn.to_s.end_with?(suffix) }
       end
 
-      sig { returns(T::Array[Pathname]) }
+      sig { returns(T::Array[MachOShim]) }
       def mach_o_files
         hardlinks = Set.new
         mach_o_files = []
         path.find do |pn|
           next if pn.symlink? || pn.directory?
+
+          pn = MachOPathname.wrap(pn)
           next if !pn.dylib? && !pn.mach_o_bundle? && !pn.mach_o_executable?
+
           # if we've already processed a file, ignore its hardlinks (which have the same dev ID and inode)
           # this prevents relocations from being performed on a binary more than once
           next unless hardlinks.add? [pn.stat.dev, pn.stat.ino]

@@ -163,6 +163,12 @@ module Hardware
         type == :arm
       end
 
+      # Check whether the CPU architecture is 64-bit ARM.
+      sig { returns(T::Boolean) }
+      def arm64?
+        arm? && is_64_bit?
+      end
+
       sig { returns(T::Boolean) }
       def little_endian?
         !big_endian?

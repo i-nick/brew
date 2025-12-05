@@ -633,7 +633,7 @@ class Version
     0
   end
 
-  sig { override.params(other: T.untyped).returns(T::Boolean) }
+  sig { override.params(other: T.anything).returns(T::Boolean) }
   def ==(other)
     # Makes sure that the same instance of Version::NULL
     # will never equal itself; normally Comparable#==
@@ -746,7 +746,7 @@ class Version
   def inspect
     return "#<Version::NULL>" if null?
 
-    super
+    "#<Version #{self}>"
   end
 
   sig { returns(T.self_type) }

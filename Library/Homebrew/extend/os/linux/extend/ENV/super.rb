@@ -10,12 +10,12 @@ module OS
       requires_ancestor { ::Superenv }
 
       module ClassMethods
-        sig { returns(Pathname) }
+        sig { returns(::Pathname) }
         def shims_path
           HOMEBREW_SHIMS_PATH/"linux/super"
         end
 
-        sig { returns(T.nilable(Pathname)) }
+        sig { returns(T.nilable(::Pathname)) }
         def bin
           shims_path.realpath
         end
@@ -45,22 +45,22 @@ module OS
         self["HOMEBREW_RPATH_PATHS"] = determine_rpath_paths(@formula)
         m4_path_deps = ["libtool", "bison"]
         self["M4"] = "#{HOMEBREW_PREFIX}/opt/m4/bin/m4" if deps.any? { m4_path_deps.include?(_1.name) }
-        if ::Hardware::CPU.arch == :arm64
-          # Build jemalloc-sys rust crate on ARM64/AArch64 with support for page sizes up to 64K.
-          self["JEMALLOC_SYS_WITH_LG_PAGE"] = "16"
+        return unless ::Hardware::CPU.arm64?
 
-          # Workaround patchelf.rb bug causing segfaults and preventing bottling on ARM64/AArch64
-          # https://github.com/Homebrew/homebrew-core/issues/163826
-          self["CGO_ENABLED"] = "0"
-        end
+        # Build jemalloc-sys rust crate on ARM64/AArch64 with support for page sizes up to 64K.
+        self["JEMALLOC_SYS_WITH_LG_PAGE"] = "16"
+
+        # Workaround patchelf.rb bug causing segfaults and preventing bottling on ARM64/AArch64
+        # https://github.com/Homebrew/homebrew-core/issues/163826
+        self["CGO_ENABLED"] = "0"
 
         # Pointer authentication and BTI are hardening techniques most distros
         # use by default on their packages. arm64 Linux we're packaging
         # everything from scratch so the entire dependency tree can have it.
-        append_to_cccfg "b" if ::Hardware::CPU.arch == :arm64 && ::DevelopmentTools.gcc_version("gcc") >= 9
+        append_to_cccfg "b" if ::DevelopmentTools.gcc_version("gcc") >= 9
       end
 
-      sig { returns(T::Array[Pathname]) }
+      sig { returns(T::Array[::Pathname]) }
       def homebrew_extra_paths
         paths = super
         paths += %w[binutils make].filter_map do |f|
@@ -72,7 +72,7 @@ module OS
         paths
       end
 
-      sig { returns(T::Array[Pathname]) }
+      sig { returns(T::Array[::Pathname]) }
       def homebrew_extra_isystem_paths
         paths = []
         # Add paths for GCC headers when building against versioned glibc because we have to use -nostdinc.
@@ -81,7 +81,7 @@ module OS
           gcc_include_fixed_dir = Utils.safe_popen_read(cc, "--print-file-name=include-fixed").chomp
           paths << gcc_include_dir << gcc_include_fixed_dir
         end
-        paths.map { |p| Pathname(p) }
+        paths.map { |p| ::Pathname.new(p) }
       end
 
       sig { params(formula: T.nilable(Formula)).returns(PATH) }

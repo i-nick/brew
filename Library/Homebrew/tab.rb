@@ -57,10 +57,10 @@ class AbstractTab
     attributes.each do |key, value|
       case key.to_sym
       when :installed_as_dependency
-        @installed_as_dependency = value
+        @installed_as_dependency = value.nil? ? false : value
         @installed_as_dependency_present = true
       when :installed_on_request
-        @installed_on_request = value
+        @installed_on_request = value.nil? ? false : value
         @installed_on_request_present = true
       when :changed_files
         @changed_files = value&.map { |f| Pathname(f) }

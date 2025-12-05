@@ -50,6 +50,9 @@ group :style, optional: true do
   gem "rubocop-rspec", require: false
   gem "rubocop-sorbet", require: false
 end
+group :style, :tests, optional: true do
+  gem "test-prof", require: false
+end
 group :tests, optional: true do
   gem "parallel_tests", require: false
   gem "rspec", require: false

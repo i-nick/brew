@@ -4,6 +4,7 @@ require "formula"
 require "formula_installer"
 require "utils/bottles"
 
+# rubocop:todo RSpec/AggregateExamples
 RSpec.describe Formulary do
   let(:formula_name) { "testball_bottle" }
   let(:formula_path) { CoreTap.instance.new_formula_path(formula_name) }
@@ -814,3 +815,4 @@ RSpec.describe Formulary do
     end
   end
 end
+# rubocop:enable RSpec/AggregateExamples

@@ -3,6 +3,7 @@
 require "open3"
 
 require "formula_installer"
+require "uninstall"
 
 RSpec::Matchers.define_negated_matcher :be_a_failure, :be_a_success
 
@@ -214,6 +215,12 @@ RSpec.shared_context "integration test" do # rubocop:disable RSpec/ContextWordin
     fi.fetch
     fi.install
     fi.finish
+  end
+
+  def uninstall_test_formula(name)
+    rack = HOMEBREW_CELLAR/name
+    kegs = rack.children.map { |prefix| Keg.new(prefix) }
+    Homebrew::Uninstall.uninstall_kegs({ rack => kegs }, force: true, ignore_dependencies: true)
   end
 
   def setup_test_tap

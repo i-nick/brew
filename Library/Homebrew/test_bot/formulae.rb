@@ -68,7 +68,7 @@ module Homebrew
           puts
         end
 
-        return unless ENV["GITHUB_ACTIONS"]
+        return unless GitHub::Actions.env_set?
 
         # Remove `bash` after it is tested, since leaving a broken `bash`
         # installation in the environment can cause issues with subsequent
@@ -355,7 +355,7 @@ module Homebrew
             "Error encountered (no message provided)"
           end
 
-          if ENV["GITHUB_ACTIONS"].present?
+          if GitHub::Actions.env_set?
             puts GitHub::Actions::Annotation.new(
               :error,
               error_msg,
@@ -383,7 +383,7 @@ module Homebrew
           "The formula version is newer than the version from `brew livecheck`."
         end
 
-        if ENV["GITHUB_ACTIONS"].present?
+        if GitHub::Actions.env_set?
           puts GitHub::Actions::Annotation.new(
             :warning,
             newer_than_upstream_msg,
@@ -433,7 +433,7 @@ module Homebrew
         build_flag = if build_bottle?(formula, args:)
           "--build-bottle"
         else
-          if ENV["GITHUB_ACTIONS"].present?
+          if GitHub::Actions.env_set?
             puts GitHub::Actions::Annotation.new(
               :warning,
               "#{formula} has unbottled dependencies, so a bottle will not be built.",

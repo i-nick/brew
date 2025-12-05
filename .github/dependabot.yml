@@ -17,6 +17,8 @@ updates:
   - "*"
   allow:
   - dependency-type: all
+  cooldown:
+    default-days: 7
 - package-ecosystem: devcontainers
   directory: "/"
   multi-ecosystem-group: all
@@ -24,6 +26,8 @@ updates:
   - "*"
   allow:
   - dependency-type: all
+  cooldown:
+    default-days: 7
 - package-ecosystem: docker
   directory: "/"
   multi-ecosystem-group: all
@@ -31,6 +35,8 @@ updates:
   - "*"
   allow:
   - dependency-type: all
+  cooldown:
+    default-days: 7
 - package-ecosystem: github-actions
   directory: "/"
   multi-ecosystem-group: all
@@ -38,6 +44,8 @@ updates:
   - "*"
   allow:
   - dependency-type: all
+  cooldown:
+    default-days: 7
 - package-ecosystem: pip
   directories:
   - "/Library/Homebrew/formula-analytics/"
@@ -46,4 +54,6 @@ updates:
   - "*"
   allow:
   - dependency-type: all
+  cooldown:
+    default-days: 7
 

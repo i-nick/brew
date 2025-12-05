@@ -57,7 +57,7 @@ then
 
   HOMEBREW_MACOS_VERSION="$(/usr/bin/sw_vers -productVersion)"
 
-  IFS=. read -r -a MACOS_VERSION_ARRAY <<<"${HOMEBREW_MACOS_VERSION}"
+  IFS=. read -r -a MACOS_VERSION_ARRAY < <(printf '%s' "${HOMEBREW_MACOS_VERSION}")
   printf -v HOMEBREW_MACOS_VERSION_NUMERIC "%02d%02d%02d" "${MACOS_VERSION_ARRAY[@]}"
 
   unset MACOS_VERSION_ARRAY
@@ -79,7 +79,7 @@ realpath() {
 
 # Support systems where HOMEBREW_PREFIX is the default,
 # but a parent directory is a symlink.
-# Example: Fedora Silverblue symlinks /home -> var/home
+# Example: Fedora Silverblue symlinks /home -> /var/home
 if [[ "${HOMEBREW_PREFIX}" != "${HOMEBREW_DEFAULT_PREFIX}" && "$(realpath "${HOMEBREW_DEFAULT_PREFIX}")" == "${HOMEBREW_PREFIX}" ]]
 then
   HOMEBREW_PREFIX="${HOMEBREW_DEFAULT_PREFIX}"
@@ -102,6 +102,14 @@ then
   HOMEBREW_CELLAR="${HOMEBREW_REPOSITORY}/Cellar"
 else
   HOMEBREW_CELLAR="${HOMEBREW_PREFIX}/Cellar"
+fi
+
+# Support systems where HOMEBREW_CELLAR's parent directory is a symlink.
+# Example: Fedora Silverblue symlinks /home -> /var/home
+HOMEBREW_CELLAR_DEFAULT_PREFIX="${HOMEBREW_DEFAULT_PREFIX}/Cellar"
+if [[ "${HOMEBREW_CELLAR}" != "${HOMEBREW_CELLAR_DEFAULT_PREFIX}" && "$(realpath "${HOMEBREW_CELLAR_DEFAULT_PREFIX}")" == "${HOMEBREW_CELLAR}" ]]
+then
+  HOMEBREW_CELLAR="${HOMEBREW_CELLAR_DEFAULT_PREFIX}"
 fi
 
 HOMEBREW_CASKROOM="${HOMEBREW_PREFIX}/Caskroom"
@@ -159,6 +167,10 @@ case "$@" in
   --cache)
     echo "${HOMEBREW_CACHE}"
     exit 0
+    ;;
+  --taps)
+    source "${HOMEBREW_LIBRARY}/Homebrew/cmd/--taps.sh"
+    homebrew---taps "$@" && exit 0
     ;;
   # falls back to cmd/--prefix.rb and cmd/--cellar.rb on a non-zero return
   --prefix* | --cellar*)
@@ -595,7 +607,7 @@ then
   HOMEBREW_PRODUCT="Homebrew"
   HOMEBREW_SYSTEM="Macintosh"
   [[ "${HOMEBREW_PROCESSOR}" == "x86_64" ]] && HOMEBREW_PROCESSOR="Intel"
-  # Don't change this from Mac OS X to match what macOS itself does in Safari on 10.12
+  # Don't change this from Mac OS X to match what macOS itself does in Safari
   HOMEBREW_OS_USER_AGENT_VERSION="Mac OS X ${HOMEBREW_MACOS_VERSION}"
 
   if [[ "$(sysctl -n hw.optional.arm64 2>/dev/null)" == "1" ]]
@@ -605,7 +617,7 @@ then
     HOMEBREW_PHYSICAL_PROCESSOR="arm64"
   fi
 
-  IFS=. read -r -a MACOS_VERSION_ARRAY <<<"${HOMEBREW_MACOS_OLDEST_ALLOWED}"
+  IFS=. read -r -a MACOS_VERSION_ARRAY < <(printf '%s' "${HOMEBREW_MACOS_OLDEST_ALLOWED}")
   printf -v HOMEBREW_MACOS_OLDEST_ALLOWED_NUMERIC "%02d%02d%02d" "${MACOS_VERSION_ARRAY[@]}"
 
   unset MACOS_VERSION_ARRAY
@@ -618,22 +630,18 @@ then
     HOMEBREW_OS_VERSION="macOS ${HOMEBREW_MACOS_VERSION}"
   fi
 
-  # Refuse to run on pre-El Capitan
+  # Refuse to run on pre-Catalina
+  # odisabled: remove support for Catalina September (or later) 2026
   if [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -lt "${HOMEBREW_MACOS_OLDEST_ALLOWED_NUMERIC}" ]]
   then
     printf "ERROR: Your version of macOS (%s) is too old to run Homebrew!\\n" "${HOMEBREW_MACOS_VERSION}" >&2
     if [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -lt "100700" ]]
     then
       printf "         For 10.4 - 10.6 support see: https://github.com/mistydemeo/tigerbrew\\n" >&2
+    else
+      printf "         For 10.5 - %s support see: https://www.macports.org\\n" "${HOMEBREW_MACOS_VERSION}" >&2
     fi
     printf "\\n" >&2
-  fi
-
-  # Versions before Sierra don't handle custom cert files correctly, so need a full brewed curl.
-  if [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -lt "101200" ]]
-  then
-    HOMEBREW_SYSTEM_CURL_TOO_OLD="1"
-    HOMEBREW_FORCE_BREWED_CURL="1"
   fi
 
   # The system libressl has a bug before macOS 10.15.6 where it incorrectly handles expired roots.
@@ -643,26 +651,18 @@ then
     HOMEBREW_FORCE_BREWED_CA_CERTIFICATES="1"
   fi
 
-  # TEMP: backwards compatiblity with existing 10.11-cross image
-  # Can (probably) be removed in March 2024.
-  if [[ -n "${HOMEBREW_FAKE_EL_CAPITAN}" ]]
+  # Some Git versions are too old for some Homebrew functionality we rely on.
+  HOMEBREW_MINIMUM_GIT_VERSION="2.14.3"
+else
+  if [[ -r "/proc/cpuinfo" ]] &&
+     [[ "${HOMEBREW_PROCESSOR}" == "x86_64" ]]
   then
-    export HOMEBREW_FAKE_MACOS="10.11.6"
-  fi
-
-  if [[ "${HOMEBREW_FAKE_MACOS}" =~ ^10\.11(\.|$) ]]
-  then
-    # We only need this to work enough to update brew and build the set portable formulae, so relax the requirement.
-    HOMEBREW_MINIMUM_GIT_VERSION="2.7.4"
-  else
-    # The system Git on macOS versions before Sierra is too old for some Homebrew functionality we rely on.
-    HOMEBREW_MINIMUM_GIT_VERSION="2.14.3"
-    if [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -lt "101200" ]]
+    if ! grep -E "^(flags|Features)" /proc/cpuinfo | grep -q "ssse3"
     then
-      HOMEBREW_FORCE_BREWED_GIT="1"
+      odie "Homebrew's x86_64 support on Linux requires a CPU with SSSE3 support!"
     fi
   fi
-else
+
   HOMEBREW_PRODUCT="${HOMEBREW_SYSTEM}brew"
   # Don't try to follow /etc/os-release
   # shellcheck disable=SC1091,SC2154
@@ -702,7 +702,7 @@ Minimum required version: ${HOMEBREW_MINIMUM_CURL_VERSION}
   git_version_output="$(${HOMEBREW_GIT} --version 2>/dev/null)"
   # $extra is intentionally discarded.
   # shellcheck disable=SC2034
-  IFS='.' read -r major minor micro build extra <<<"${git_version_output##* }"
+  IFS='.' read -r major minor micro build extra < <(printf '%s' "${git_version_output##* }")
   if [[ "$(numeric "${major}.${minor}.${micro}.${build}")" -lt "$(numeric "${HOMEBREW_MINIMUM_GIT_VERSION}")" ]]
   then
     message="Please update your system Git or set HOMEBREW_GIT_PATH to a newer version.
@@ -999,13 +999,6 @@ if [[ -n "${HOMEBREW_DEVELOPER}" || -n "${HOMEBREW_DEV_CMD_RUN}" ]]
 then
   # Always run with Sorbet for Homebrew developers or when a Homebrew developer command has been run.
   export HOMEBREW_SORBET_RUNTIME="1"
-
-  # Enable concurrent downloads for Homebrew developers or when a Homebrew developer command has been
-  # run who haven't explicitly set a value.
-  if [[ -z "${HOMEBREW_DOWNLOAD_CONCURRENCY}" ]]
-  then
-    export HOMEBREW_DOWNLOAD_CONCURRENCY="auto"
-  fi
 fi
 
 # Provide a (temporary, undocumented) way to disable Sorbet globally if needed

@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 raise "#{__FILE__} must not be loaded via `require`." if $PROGRAM_NAME != __FILE__
@@ -17,7 +17,7 @@ require "dev-cmd/test"
 require "json/add/exception"
 require "extend/pathname/write_mkpath_extension"
 
-DEFAULT_TEST_TIMEOUT_SECONDS = 5 * 60
+DEFAULT_TEST_TIMEOUT_SECONDS = T.let(5 * 60, Integer)
 
 begin
   # Undocumented opt-out for internal use.
@@ -47,12 +47,12 @@ begin
 
   ENV.extend(Stdenv)
   ENV.setup_build_environment(formula:, testing_formula: true)
-  Pathname.prepend WriteMkpathExtension
+  Pathname.activate_extensions!
 
   # tests can also return false to indicate failure
-  run_test = proc { |_ = nil| raise "test returned false" if formula.run_test(keep_tmp: args.keep_tmp?) == false }
+  run_test = proc { |_| raise "test returned false" if formula.run_test(keep_tmp: args.keep_tmp?) == false }
   if args.debug? # --debug is interactive
-    run_test.call
+    run_test.call(nil)
   else
     # HOMEBREW_TEST_TIMEOUT_SECS is private API and subject to change.
     timeout = ENV["HOMEBREW_TEST_TIMEOUT_SECS"]&.to_i || DEFAULT_TEST_TIMEOUT_SECONDS

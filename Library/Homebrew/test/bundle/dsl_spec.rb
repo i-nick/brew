@@ -23,7 +23,6 @@ RSpec.describe Homebrew::Bundle::Dsl do
         cask 'java' unless system '/usr/libexec/java_home --failfast'
         cask 'firefox', args: { appdir: '~/my-apps/Applications' }
         mas '1Password', id: 443987910
-        whalebrew 'whalebrew/wget'
         vscode 'GitHub.codespaces'
         go 'github.com/charmbracelet/crush'
       EOS
@@ -53,9 +52,8 @@ RSpec.describe Homebrew::Bundle::Dsl do
       expect(dsl.entries[8].options).to eql(args: { appdir: "~/my-apps/Applications" }, full_name: "firefox")
       expect(dsl.entries[9].name).to eql("1Password")
       expect(dsl.entries[9].options).to eql(id: 443_987_910)
-      expect(dsl.entries[10].name).to eql("whalebrew/wget")
-      expect(dsl.entries[11].name).to eql("GitHub.codespaces")
-      expect(dsl.entries[12].name).to eql("github.com/charmbracelet/crush")
+      expect(dsl.entries[10].name).to eql("GitHub.codespaces")
+      expect(dsl.entries[11].name).to eql("github.com/charmbracelet/crush")
     end
   end
 
@@ -70,6 +68,32 @@ RSpec.describe Homebrew::Bundle::Dsl do
 
     it "merges the arguments" do
       expect(dsl.cask_arguments).to eql(appdir: "~/my-apps", require_sha: true)
+    end
+  end
+
+  context "with flatpak entries" do
+    it "processes flatpak without options" do
+      dsl = dsl_from_string 'flatpak "org.gnome.Calculator"'
+      expect(dsl.entries[0].name).to eql("org.gnome.Calculator")
+      expect(dsl.entries[0].options[:remote]).to eql("flathub")
+    end
+
+    it "processes flatpak with remote option" do
+      dsl = dsl_from_string 'flatpak "com.custom.App", remote: "custom-repo"'
+      expect(dsl.entries[0].name).to eql("com.custom.App")
+      expect(dsl.entries[0].options[:remote]).to eql("custom-repo")
+    end
+
+    it "processes flatpak with explicit flathub remote" do
+      dsl = dsl_from_string 'flatpak "org.gnome.Calculator", remote: "flathub"'
+      expect(dsl.entries[0].name).to eql("org.gnome.Calculator")
+      expect(dsl.entries[0].options[:remote]).to eql("flathub")
+    end
+
+    it "processes flatpak with URL remote" do
+      dsl = dsl_from_string 'flatpak "org.godotengine.Godot", remote: "https://dl.flathub.org/beta-repo/"'
+      expect(dsl.entries[0].name).to eql("org.godotengine.Godot")
+      expect(dsl.entries[0].options[:remote]).to eql("https://dl.flathub.org/beta-repo/")
     end
   end
 
@@ -89,6 +113,7 @@ RSpec.describe Homebrew::Bundle::Dsl do
       expect { dsl_from_string "brew 'foo', ['bad_option']" }.to raise_error(RuntimeError)
       expect { dsl_from_string "cask 'foo', ['bad_option']" }.to raise_error(RuntimeError)
       expect { dsl_from_string "tap 'foo', ['bad_clone_target']" }.to raise_error(RuntimeError)
+      expect { dsl_from_string "flatpak 'foo', ['bad_option']" }.to raise_error(RuntimeError)
     end
   end
 

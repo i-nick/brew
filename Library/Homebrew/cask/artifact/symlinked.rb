@@ -82,7 +82,12 @@ module Cask
       end
 
       sig { params(command: T.class_of(SystemCommand)).void }
-      def create_filesystem_link(command); end
+      def create_filesystem_link(command)
+        Utils.gain_permissions_mkpath(target.dirname, command:)
+
+        command.run! "/bin/ln", args: ["--no-dereference", "--force", "--symbolic", source, target],
+                                sudo: !target.dirname.writable?
+      end
 
       # Check if the target file is a symlink that originates from a formula
       # with the same name as this cask, indicating a potential conflict

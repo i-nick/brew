@@ -171,6 +171,7 @@ class GitHubRunnerMatrix
       x86_64_macos_version = MacOSVersion.new("10.15")
       @runners << create_runner(:macos, :x86_64, x86_64_spec, x86_64_macos_version)
 
+      # odisabled: remove support for Big Sur September (or later) 2027
       arm64_spec = MacOSRunnerSpec.new(
         name:    "macOS 11-arm64-cross",
         runner:  "11-arm64-cross-#{github_run_id}",
@@ -183,12 +184,9 @@ class GitHubRunnerMatrix
     end
 
     if !@all_supported || ENV.key?("HOMEBREW_LINUX_RUNNER")
+      self_hosted_deps = @dependent_matrix && ENV["HOMEBREW_LINUX_RUNNER"] == SELF_HOSTED_LINUX_RUNNER
       @runners << create_runner(:linux, :x86_64)
-
-      if !@dependent_matrix &&
-         @testing_formulae.any? { |tf| tf.formula.bottle_specification.tag?(Utils::Bottles.tag(:arm64_linux)) }
-        @runners << create_runner(:linux, :arm64)
-      end
+      @runners << create_runner(:linux, :arm64) unless self_hosted_deps
     end
 
     long_timeout       = ENV.fetch("HOMEBREW_MACOS_LONG_TIMEOUT", "false") == "true"
@@ -288,10 +286,10 @@ class GitHubRunnerMatrix
       macos_version = runner.macos_version
 
       @testing_formulae.select do |formula|
-        next false if macos_version && !formula.compatible_with?(macos_version)
-
         Homebrew::SimulateSystem.with(os: platform, arch: Homebrew::SimulateSystem.arch_symbols.fetch(arch)) do
           simulated_formula = TestRunnerFormula.new(Formulary.factory(formula.name))
+          next false if macos_version && !simulated_formula.compatible_with?(macos_version)
+
           simulated_formula.public_send(:"#{platform}_compatible?") &&
             simulated_formula.public_send(:"#{arch}_compatible?")
         end
@@ -309,10 +307,10 @@ class GitHubRunnerMatrix
       compatible_testing_formulae(runner).select do |formula|
         compatible_dependents = formula.dependents(platform:, arch:, macos_version: macos_version&.to_sym)
                                        .select do |dependent_f|
-          next false if macos_version && !dependent_f.compatible_with?(macos_version)
-
           Homebrew::SimulateSystem.with(os: platform, arch: Homebrew::SimulateSystem.arch_symbols.fetch(arch)) do
             simulated_dependent_f = TestRunnerFormula.new(Formulary.factory(dependent_f.name))
+            next false if macos_version && !simulated_dependent_f.compatible_with?(macos_version)
+
             simulated_dependent_f.public_send(:"#{platform}_compatible?") &&
               simulated_dependent_f.public_send(:"#{arch}_compatible?")
           end

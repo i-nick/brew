@@ -32,22 +32,12 @@ macos_version_name() {
     echo "monterey"
   elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "110000" ]]
   then
+    # odisabled: remove support for Big Sur and macOS x86_64 September (or later) 2027
     echo "big_sur"
   elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101500" ]]
   then
+    # odisabled: remove support for Catalina September (or later) 2026
     echo "catalina"
-  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101400" ]]
-  then
-    echo "mojave"
-  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101300" ]]
-  then
-    echo "high_sierra"
-  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101200" ]]
-  then
-    echo "sierra"
-  elif [[ "${HOMEBREW_MACOS_VERSION_NUMERIC}" -ge "101100" ]]
-  then
-    echo "el_capitan"
   fi
 }
 

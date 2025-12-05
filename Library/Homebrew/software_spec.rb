@@ -323,13 +323,6 @@ class SoftwareSpec
     compiler_failures << CompilerFailure.create(compiler, &block)
   end
 
-  sig { params(standards: T::Array[String]).void }
-  def needs(*standards)
-    standards.each do |standard|
-      compiler_failures.concat CompilerFailure.for_standard(standard)
-    end
-  end
-
   sig { params(dep: Dependable).void }
   def add_dep_option(dep)
     dep.option_names.each do |name|

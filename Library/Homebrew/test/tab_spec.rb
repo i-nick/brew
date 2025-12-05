@@ -105,7 +105,7 @@ RSpec.describe Tab do
     expect(tab).to include("without-bar")
   end
 
-  specify "#with?" do
+  specify "#with?" do # rubocop:todo RSpec/AggregateExamples
     expect(tab).to be_built_with("foo")
     expect(tab).to be_built_with("qux")
     expect(tab).not_to be_built_with("bar")
@@ -244,12 +244,12 @@ RSpec.describe Tab do
     end
   end
 
-  specify "#cxxstdlib" do
+  specify "#cxxstdlib" do # rubocop:todo RSpec/AggregateExamples
     expect(tab.cxxstdlib.compiler).to eq(:clang)
     expect(tab.cxxstdlib.type).to eq(:libcxx)
   end
 
-  specify "other attributes" do
+  specify "other attributes" do # rubocop:todo RSpec/AggregateExamples
     expect(tab.tap.name).to eq("homebrew/core")
     expect(tab.time).to eq(time)
     expect(tab).not_to be_built_as_bottle

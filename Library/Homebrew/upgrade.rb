@@ -182,8 +182,6 @@ module Homebrew
         formulae_to_install = formulae.reject { |f| f.core_formula? && f.versioned_formula? }
         return no_dependents if formulae_to_install.empty?
 
-        already_broken = check_broken_dependents(formulae_to_install)
-
         # TODO: this should be refactored to use FormulaInstaller new logic
         outdated = formulae_to_install.flat_map(&:runtime_installed_formula_dependents)
                                       .uniq
@@ -193,7 +191,7 @@ module Homebrew
         outdated, skipped = outdated.partition do |dependent|
           dependent.bottled? && dependent.deps.map(&:to_formula).all?(&:bottled?)
         end
-        return no_dependents if outdated.blank? && already_broken.blank?
+        return no_dependents if outdated.blank?
 
         outdated -= formulae_to_install if dry_run
         upgradeable = outdated.reject(&:pinned?)
@@ -285,8 +283,10 @@ module Homebrew
           upgrade_formulae(dependent_installers, dry_run:, verbose:)
         end
 
-        # Update installed formulae after upgrading
-        installed_formulae = FormulaInstaller.installed.to_a
+        # Update non-core installed formulae for linkage checks after upgrading
+        # Don't need to check core formulae because we do so at CI time.
+        installed_non_core_formulae = FormulaInstaller.installed.to_a.reject(&:core_formula?)
+        return if installed_non_core_formulae.blank?
 
         # Assess the dependents tree again now we've upgraded.
         unless dry_run
@@ -294,7 +294,7 @@ module Homebrew
           puts_no_installed_dependents_check_disable_message_if_not_already!
         end
 
-        broken_dependents = check_broken_dependents(installed_formulae)
+        broken_dependents = check_broken_dependents(installed_non_core_formulae)
         if broken_dependents.blank?
           if dry_run
             ohai "No currently broken dependents found!"

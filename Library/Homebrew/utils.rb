@@ -76,9 +76,9 @@ module Homebrew
 
   # `Module` and `Regexp` are global variables used as types here so they don't need to be imported
   # rubocop:disable Style/GlobalVars
-  sig { params(the_module: Module, pattern: Regexp).void }
+  sig { params(the_module: T::Module[T.anything], pattern: Regexp).void }
   def self.inject_dump_stats!(the_module, pattern)
-    @injected_dump_stat_modules ||= T.let({}, T.nilable(T::Hash[Module, T::Array[String]]))
+    @injected_dump_stat_modules ||= T.let({}, T.nilable(T::Hash[T::Module[T.anything], T::Array[String]]))
     @injected_dump_stat_modules[the_module] ||= []
     injected_methods = @injected_dump_stat_modules.fetch(the_module)
     the_module.module_eval do

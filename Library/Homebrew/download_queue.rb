@@ -27,6 +27,8 @@ module Homebrew
       @force = force
       @pour = pour
       @pool = T.let(Concurrent::FixedThreadPool.new(concurrency), Concurrent::FixedThreadPool)
+      @tty = T.let($stdout.tty?, T::Boolean)
+      @spinner = T.let(nil, T.nilable(Spinner))
     end
 
     sig {
@@ -53,65 +55,47 @@ module Homebrew
     def fetch
       return if downloads.empty?
 
+      context_before_fetch = Context.current
+
       if concurrency == 1
         downloads.each do |downloadable, promise|
           promise.wait!
         rescue ChecksumMismatchError => e
-          opoo "#{downloadable.download_queue_type} reports different checksum: #{e.expected}"
-          Homebrew.failed = true if downloadable.is_a?(Resource::Patch)
+          ofail "#{downloadable.download_queue_type} reports different checksum: #{e.expected}"
         rescue => e
           raise e unless bottle_manifest_error?(downloadable, e)
         end
       else
-        spinner = Spinner.new
         remaining_downloads = downloads.dup.to_a
         previous_pending_line_count = 0
-        tty = $stdout.tty?
 
         begin
           stdout_print_and_flush_if_tty Tty.hide_cursor
 
           output_message = lambda do |downloadable, future, last|
-            status = case future.state
-            when :fulfilled
-              if tty
-                "#{Tty.green}✔︎#{Tty.reset}"
-              else
-                "✔︎"
-              end
-            when :rejected
-              if tty
-                "#{Tty.red}✘#{Tty.reset}"
-              else
-                "✘"
-              end
-            when :pending, :processing
-              "#{Tty.blue}#{spinner}#{Tty.reset}" if tty
-            else
-              raise future.state.to_s
-            end
-
+            status = status_from_future(future)
             exception = future.reason if future.rejected?
             next 1 if bottle_manifest_error?(downloadable, exception)
 
             message = "#{downloadable.download_queue_type} #{downloadable.download_queue_name}"
             if tty
+              message = message_with_progress(downloadable, future, message)
               stdout_print_and_flush "#{status} #{message}#{"\n" unless last}"
             elsif status
-              puts "#{status} #{message}"
+              $stderr.puts "#{status} #{message}"
             end
 
             if future.rejected?
               if exception.is_a?(ChecksumMismatchError)
                 actual = Digest::SHA256.file(downloadable.cached_download).hexdigest
-                opoo "#{downloadable.download_queue_type} reports different checksum: #{exception.expected}"
-                puts (" " * downloadable.download_queue_type.size) + " SHA-256 checksum of downloaded file: #{actual}"
-                Homebrew.failed = true if downloadable.is_a?(Resource::Patch)
+                actual_message, expected_message = align_checksum_mismatch_message(downloadable.download_queue_type)
+
+                ofail "#{actual_message} #{exception.expected}"
+                puts "#{expected_message} #{actual}"
                 next 2
               elsif exception.is_a?(CannotInstallFormulaError)
-                if (cached_download = downloadable.cached_download)&.exist?
-                  cached_download.unlink
-                end
+                cached_download = downloadable.cached_download
+                cached_download.unlink if cached_download&.exist?
                 raise exception
               else
                 message = future.reason.to_s
@@ -177,6 +161,9 @@ module Homebrew
         end
       end
 
+      # Restore the pre-parallel fetch context to avoid e.g. quiet state bleeding out from threads.
+      Context.current = context_before_fetch
+
       downloads.clear
     end
 
@@ -232,9 +219,86 @@ module Homebrew
     sig { returns(T::Boolean) }
     attr_reader :pour
 
+    sig { returns(T::Boolean) }
+    attr_reader :tty
+
     sig { returns(T::Hash[Downloadable, Concurrent::Promises::Future]) }
     def downloads
       @downloads ||= T.let({}, T.nilable(T::Hash[Downloadable, Concurrent::Promises::Future]))
+    end
+
+    sig { params(future: Concurrent::Promises::Future).returns(T.nilable(String)) }
+    def status_from_future(future)
+      case future.state
+      when :fulfilled
+        if tty
+          "#{Tty.green}✔︎#{Tty.reset}"
+        else
+          "✔︎"
+        end
+      when :rejected
+        if tty
+          "#{Tty.red}✘#{Tty.reset}"
+        else
+          "✘"
+        end
+      when :pending, :processing
+        "#{Tty.blue}#{spinner}#{Tty.reset}" if tty
+      else
+        raise future.state.to_s
+      end
+    end
+
+    sig { params(downloadable_type: String).returns(T::Array[String]) }
+    def align_checksum_mismatch_message(downloadable_type)
+      actual_checksum_output = "#{downloadable_type} reports different checksum:"
+      expected_checksum_output = "SHA-256 checksum of downloaded file:"
+
+      # `.max` returns `T.nilable(Integer)`, use `|| 0` to pass the typecheck
+      rightpad = [actual_checksum_output, expected_checksum_output].map(&:size).max || 0
+
+      # 7 spaces are added to align with `ofail` message, which adds `Error: ` at the beginning
+      [actual_checksum_output.ljust(rightpad), (" " * 7) + expected_checksum_output.ljust(rightpad)]
+    end
+
+    sig { returns(Spinner) }
+    def spinner
+      @spinner ||= Spinner.new
+    end
+
+    sig { params(downloadable: Downloadable, future: Concurrent::Promises::Future, message: String).returns(String) }
+    def message_with_progress(downloadable, future, message)
+      tty_width = Tty.width
+      return message unless tty_width.positive?
+
+      available_width = tty_width - 2
+      fetched_size = downloadable.fetched_size
+      return message[0, available_width].to_s if fetched_size.blank?
+
+      precision = 1
+      size_length = 5
+      unit_length = 2
+      size_formatting_string = "%<size>#{size_length}.#{precision}f%<unit>#{unit_length}s"
+      size, unit = disk_usage_readable_size_unit(fetched_size, precision:)
+      formatted_fetched_size = format(size_formatting_string, size:, unit:)
+
+      formatted_total_size = if future.fulfilled?
+        formatted_fetched_size
+      elsif (total_size = downloadable.total_size)
+        size, unit = disk_usage_readable_size_unit(total_size, precision:)
+        format(size_formatting_string, size:, unit:)
+      else
+        # fill in the missing spaces for the size if we don't have it yet.
+        "-" * (size_length + unit_length)
+      end
+
+      max_phase_length = 11
+      phase = format("%-<phase>#{max_phase_length}s", phase: downloadable.phase.to_s.capitalize)
+      progress = " [#{phase} #{formatted_fetched_size}/#{formatted_total_size}]"
+      message_length = available_width - progress.length
+      return message[0, available_width].to_s unless message_length.positive?
+
+      "#{message[0, message_length].to_s.ljust(message_length)}#{progress}"
     end
 
     class Spinner

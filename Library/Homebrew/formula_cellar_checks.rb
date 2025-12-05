@@ -358,7 +358,8 @@ module FormulaCellarChecks
     keg = Keg.new(formula.prefix)
     mismatches = {}
     keg.binary_executable_or_library_files.each do |file|
-      farch = file.arch
+      # we know this has an `arch` method because it's a `MachOShim` or `ELFShim`
+      farch = T.unsafe(file).arch
       mismatches[file] = farch if farch != Hardware::CPU.arch
     end
     return if mismatches.empty?
@@ -453,11 +454,10 @@ module FormulaCellarChecks
     @instruction_column_index[objdump] ||= begin
       objdump_version = Utils.popen_read(objdump, "--version")
 
-      if (objdump_version.match?(/^Apple LLVM/) && MacOS.version <= :mojave) ||
-         objdump_version.exclude?("LLVM")
-        2 # Mojave `objdump` or GNU Binutils `objdump`
+      if objdump_version.include?("LLVM")
+        1 # `llvm-objdump` or macOS `objdump`
       else
-        1 # `llvm-objdump` or Catalina+ `objdump`
+        2 # GNU Binutils `objdump`
       end
     end
 

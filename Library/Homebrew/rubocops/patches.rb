@@ -7,7 +7,6 @@ module RuboCop
   module Cop
     module FormulaAudit
       # This cop audits `patch`es in formulae.
-      # TODO: Many of these could be auto-corrected.
       class Patches < FormulaCop
         extend AutoCorrector
 
@@ -22,7 +21,9 @@ module RuboCop
           external_patches.each do |patch_block|
             url_node = find_every_method_call_by_name(patch_block, :url).first
             url_string = parameters(url_node).first
-            patch_problems(url_string)
+            sha256_node = find_every_method_call_by_name(patch_block, :sha256).first
+            sha256_string = parameters(sha256_node).first if sha256_node
+            patch_problems(url_string, sha256_string)
           end
 
           inline_patches = find_every_method_call_by_name(body_node, :patch)
@@ -38,13 +39,13 @@ module RuboCop
 
           legacy_patches = find_strings(patches_node)
           problem "Use the `patch` DSL instead of defining a `patches` method"
-          legacy_patches.each { |p| patch_problems(p) }
+          legacy_patches.each { |p| patch_problems(p, nil) }
         end
 
         private
 
-        sig { params(patch_url_node: RuboCop::AST::Node).void }
-        def patch_problems(patch_url_node)
+        sig { params(patch_url_node: RuboCop::AST::Node, sha256_node: T.nilable(RuboCop::AST::Node)).void }
+        def patch_problems(patch_url_node, sha256_node)
           patch_url = string_content(patch_url_node)
 
           if regex_match_group(patch_url_node, %r{https://github.com/[^/]*/[^/]*/pull})
@@ -56,7 +57,12 @@ module RuboCop
           end
 
           if regex_match_group(patch_url_node, %r{https://github.com/[^/]*/[^/]*/commit/[a-fA-F0-9]*\.diff})
-            problem "GitHub patches should end with .patch, not .diff: #{patch_url}"
+            problem "GitHub patches should end with .patch, not .diff: #{patch_url}" do |corrector|
+              # Replace .diff with .patch, keeping either the closing quote or query parameter start
+              correct = patch_url_node.source.sub(/\.diff(["?])/, '.patch\1')
+              corrector.replace(patch_url_node.source_range, correct)
+              corrector.replace(sha256_node.source_range, '""') if sha256_node
+            end
           end
 
           bitbucket_regex = %r{bitbucket\.org/([^/]+)/([^/]+)/commits/([a-f0-9]+)/raw}i
@@ -65,18 +71,28 @@ module RuboCop
             correct_url = "https://api.bitbucket.org/2.0/repositories/#{owner}/#{repo}/diff/#{commit}"
             problem "Bitbucket patches should use the API URL: #{correct_url}" do |corrector|
               corrector.replace(patch_url_node.source_range, %Q("#{correct_url}"))
+              corrector.replace(sha256_node.source_range, '""') if sha256_node
             end
           end
 
           # Only .diff passes `--full-index` to `git diff` and there is no documented way
           # to get .patch to behave the same for GitLab.
           if regex_match_group(patch_url_node, %r{.*gitlab.*/commit/[a-fA-F0-9]*\.patch})
-            problem "GitLab patches should end with .diff, not .patch: #{patch_url}"
+            problem "GitLab patches should end with .diff, not .patch: #{patch_url}" do |corrector|
+              # Replace .patch with .diff, keeping either the closing quote or query parameter start
+              correct = patch_url_node.source.sub(/\.patch(["?])/, '.diff\1')
+              corrector.replace(patch_url_node.source_range, correct)
+              corrector.replace(sha256_node.source_range, '""') if sha256_node
+            end
           end
 
           gh_patch_param_pattern = %r{https?://github\.com/.+/.+/(?:commit|pull)/[a-fA-F0-9]*.(?:patch|diff)}
           if regex_match_group(patch_url_node, gh_patch_param_pattern) && !patch_url.match?(/\?full_index=\w+$/)
-            problem "GitHub patches should use the full_index parameter: #{patch_url}?full_index=1"
+            problem "GitHub patches should use the full_index parameter: #{patch_url}?full_index=1" do |corrector|
+              correct = patch_url_node.source.sub(/"$/, '?full_index=1"')
+              corrector.replace(patch_url_node.source_range, correct)
+              corrector.replace(sha256_node.source_range, '""') if sha256_node
+            end
           end
 
           gh_patch_patterns = Regexp.union([%r{/raw\.github\.com/},

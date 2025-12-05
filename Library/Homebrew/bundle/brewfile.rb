@@ -29,7 +29,7 @@ module Homebrew
             end
             user_config_home_brewfile = "#{user_config_home}/Brewfile"
 
-            if user_config_home.present? && Dir.exist?(user_config_home) && \
+            if user_config_home.present? && Dir.exist?(user_config_home) &&
                (File.exist?(user_config_home_brewfile) || !File.exist?(home_brewfile))
               user_config_home_brewfile
             else

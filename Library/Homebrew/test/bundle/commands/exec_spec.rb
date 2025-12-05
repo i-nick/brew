@@ -61,6 +61,33 @@ RSpec.describe Homebrew::Bundle::Commands::Exec do
       it "raises an exception if called without a command" do
         expect { described_class.run }.to raise_error(RuntimeError)
       end
+
+      describe "--no-secrets" do
+        around do |example|
+          original_env = ENV.to_hash
+          begin
+            example.run
+          ensure
+            ENV.replace(original_env)
+          end
+        end
+
+        it "removes sensitive environment variables when requested" do
+          ENV["SECRET_TOKEN"] = "password"
+
+          described_class.run("/usr/bin/true", subcommand: "exec", no_secrets: true)
+
+          expect(ENV).not_to have_key("SECRET_TOKEN")
+        end
+
+        it "preserves non-sensitive environment variables when removing secrets" do
+          ENV["NORMAL_VAR"] = "value"
+
+          described_class.run("/usr/bin/true", subcommand: "exec", no_secrets: true)
+
+          expect(ENV.fetch("NORMAL_VAR")).to eq("value")
+        end
+      end
     end
 
     context "with env command" do

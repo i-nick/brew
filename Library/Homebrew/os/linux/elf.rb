@@ -214,16 +214,17 @@ module ELFShim
 
     private
 
-    sig { params(basename: String).returns(Pathname) }
+    sig { params(basename: String).returns(::Pathname) }
     def find_full_lib_path(basename)
-      basename = Pathname(basename)
+      basename = ::Pathname.new(basename)
       local_paths = rpath&.split(":")
 
       # Search for dependencies in the runpath/rpath first
       local_paths&.each do |local_path|
         local_path = OS::Linux::Elf.expand_elf_dst(local_path, "ORIGIN", path.parent)
-        candidate = Pathname(local_path)/basename
-        return candidate if candidate.exist? && candidate.elf?
+        candidate = ::Pathname.new(local_path)/basename
+        elf_candidate = ELFPathname.wrap(candidate)
+        return candidate if candidate.exist? && elf_candidate.elf?
       end
 
       # Check if DF_1_NODEFLIB is set
@@ -248,14 +249,16 @@ module ELFShim
       # paths that are subdirectories of the system dirs if DF_1_NODEFLIB is set)
       linker_library_paths.each do |linker_library_path|
         candidate = Pathname(linker_library_path)/basename
-        return candidate if candidate.exist? && candidate.elf?
+        elf_candidate = ELFPathname.wrap(candidate)
+        return candidate if candidate.exist? && elf_candidate.elf?
       end
 
       # If not found, search in the system dirs, unless DF_1_NODEFLIB is set
       unless nodeflib_flag
         linker_system_dirs.each do |linker_system_dir|
           candidate = Pathname(linker_system_dir)/basename
-          return candidate if candidate.exist? && candidate.elf?
+          elf_candidate = ELFPathname.wrap(candidate)
+          return candidate if candidate.exist? && elf_candidate.elf?
         end
       end
 
@@ -304,7 +307,7 @@ module OS
     #
     # @api private
     module Elf
-      sig { params(str: String, ref: String, repl: T.any(String, Pathname)).returns(String) }
+      sig { params(str: String, ref: String, repl: T.any(String, ::Pathname)).returns(String) }
       def self.expand_elf_dst(str, ref, repl)
         # ELF gABI rules for DSTs:
         #   - Longest possible sequence using the rules (greedy).

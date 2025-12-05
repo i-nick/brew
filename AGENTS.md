@@ -17,6 +17,10 @@ Please follow these guidelines when contributing:
   Individual test files can be passed with `--only` e.g. to test `Library/Homebrew/cmd/reinstall.rb` with `Library/Homebrew/test/cmd/reinstall_spec.rb` run `brew tests --only=cmd/reinstall`.
 - All of the above can be run with the `brew-mcp-server`
 
+### Sandbox Setup
+
+- When working in a sandboxed environment e.g. OpenAI Codex, copy the contents of `$(brew --cache)/api/` to a writable location inside the repository (for example, `tmp/cache/api/`) and `export HOMEBREW_CACHE` to that writable directory before running `brew tests`. This avoids permission errors when the suite tries to write API cache or runtime logs.
+
 ### Development Flow
 
 - Write new code (using Sorbet `sig` type signatures and `typed: strict` for new files, but never for RSpec/test/`*_spec.rb` files)

@@ -25,10 +25,8 @@ module Homebrew
 
       sig { override.void }
       def run
-        Homebrew.install_bundler!
-
+        Homebrew.setup_gem_environment!
         ENV["BUNDLE_WITH"] = Homebrew.valid_gem_groups.join(":")
-        ENV["BUNDLER_VERSION"] = HOMEBREW_BUNDLER_VERSION
 
         ohai "cd #{HOMEBREW_LIBRARY_PATH}"
         HOMEBREW_LIBRARY_PATH.cd do
@@ -45,6 +43,11 @@ module Homebrew
           ohai "bundle install --standalone"
           run_bundle "install", "--standalone"
 
+          if GitHub::Actions.env_set? && HOMEBREW_PREFIX.to_s == HOMEBREW_LINUX_DEFAULT_PREFIX
+            ohai "chmod +t -R /home/linuxbrew/"
+            system "sudo", "chmod", "+t", "-R", "/home/linuxbrew/"
+          end
+
           ohai "bundle pristine"
           run_bundle "pristine"
 
@@ -54,7 +57,7 @@ module Homebrew
           # Workaround Bundler 2.4.21 issue where platforms may be removed.
           # Although we don't use 2.4.21, Dependabot does as it currently ignores your lockfile version.
           # https://github.com/rubygems/rubygems/issues/7169
-          run_bundle "lock", "--add-platform", "aarch64-linux", "arm-linux"
+          run_bundle "lock", "--add-platform", "aarch64-linux"
           system "git", "add", "Gemfile.lock" unless args.no_commit?
 
           if args.non_bundler_gems?

@@ -11,14 +11,14 @@ but the command isn't limited to any one location.
 ## The `brew tap` command
 
 * `brew tap` without arguments lists all currently tapped repositories. For
-  example:
+  example with one installed tap which is called `petere/postgresql`:
 
   ```console
   $ brew tap
-  homebrew/cask
-  homebrew/core
   petere/postgresql
   ```
+
+* It should be noted: `brew tap` will not output anything if no taps were added yet. That is the case after a fresh install of homebrew.
 
 * `brew tap <user>/<repo>` makes a clone of the repository at
   `https://github.com/<user>/homebrew-<repo>` into `$(brew --repository)/Library/Taps`.

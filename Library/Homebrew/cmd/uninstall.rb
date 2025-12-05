@@ -61,6 +61,9 @@ module Homebrew
           named_args:          args.named,
         )
 
+        Cask::Uninstall.check_dependent_casks(*casks, named_args: args.named) unless args.ignore_dependencies?
+        return if Homebrew.failed?
+
         if args.zap?
           casks.each do |cask|
             odebug "Zapping Cask #{cask}"

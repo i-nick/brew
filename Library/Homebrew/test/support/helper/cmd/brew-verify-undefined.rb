@@ -55,6 +55,8 @@ UNDEFINED_CONSTANTS = %w[
 module Homebrew
   module Cmd
     class VerifyUndefined < AbstractCommand
+      sig { override.void }
+      def run; end
     end
   end
 end

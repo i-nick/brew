@@ -58,7 +58,7 @@ RSpec.describe GitHub do
     it "fails to find artifacts that don't exist" do
       expect do
         described_class.get_artifact_urls(
-          described_class.get_workflow_run("Homebrew", "homebrew-core", "191680",
+          described_class.get_workflow_run("Homebrew", "homebrew-core", "252626",
                                            workflow_id: "triage.yml", artifact_pattern: "false_artifact"),
         )
       end.to raise_error(/No artifacts with the pattern .+ were found/)
@@ -66,15 +66,20 @@ RSpec.describe GitHub do
 
     it "gets artifact URLs" do
       urls = described_class.get_artifact_urls(
-        described_class.get_workflow_run("Homebrew", "homebrew-core", "191680",
+        described_class.get_workflow_run("Homebrew", "homebrew-core", "252626",
                                          workflow_id: "triage.yml", artifact_pattern: "event_payload"),
       )
-      expect(urls).to eq(["https://api.github.com/repos/Homebrew/homebrew-core/actions/artifacts/1969725476/zip"])
+      expect(urls).to eq(["https://api.github.com/repos/Homebrew/homebrew-core/actions/artifacts/4457761305/zip"])
     end
   end
 
   describe "::pull_request_commits", :needs_network do
-    hashes = %w[188606a4a9587365d930b02c98ad6857b1d00150 25a71fe1ea1558415d6496d23834dc70778ddee5]
+    let(:hashes) do
+      %w[
+        188606a4a9587365d930b02c98ad6857b1d00150
+        25a71fe1ea1558415d6496d23834dc70778ddee5
+      ]
+    end
 
     it "gets commit hashes for a pull request" do
       expect(described_class.pull_request_commits("Homebrew", "legacy-homebrew", 50678)).to eq(hashes)

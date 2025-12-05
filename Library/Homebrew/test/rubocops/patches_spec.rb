@@ -35,8 +35,6 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Patches do
       patch_urls = [
         "https://raw.github.com/mogaal/sendemail",
         "https://mirrors.ustc.edu.cn/macports/trunk/",
-        "http://trac.macports.org/export/102865/trunk/dports/mail/uudeview/files/inews.c.patch",
-        "http://bugs.debian.org/cgi-bin/bugreport.cgi?msg=5;filename=patch-libunac1.txt;att=1;bug=623340",
         "https://patch-diff.githubusercontent.com/raw/foo/foo-bar/pull/100.patch",
         "https://github.com/dlang/dub/commit/2c916b1a7999a050ac4970c3415ff8f91cd487aa.patch",
         "https://bitbucket.org/multicoreware/x265_git/commits/b354c009a60bcd6d7fc04014e200a1ee9c45c167/raw",
@@ -59,14 +57,6 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Patches do
         elsif patch_url.include?("macports/trunk")
           expect_offense_hash(message: <<~EOS.chomp, severity: :convention, line: 5, column: 4, source:)
             FormulaAudit/Patches: MacPorts patches should specify a revision instead of trunk: #{patch_url}
-          EOS
-        elsif patch_url.start_with?("http://trac.macports.org/")
-          expect_offense_hash(message: <<~EOS.chomp, severity: :convention, line: 5, column: 4, source:)
-            FormulaAudit/Patches: Patches from MacPorts Trac should be https://, not http: #{patch_url}
-          EOS
-        elsif patch_url.start_with?("http://bugs.debian.org/")
-          expect_offense_hash(message: <<~EOS.chomp, severity: :convention, line: 5, column: 4, source:)
-            FormulaAudit/Patches: Patches from Debian should be https://, not http: #{patch_url}
           EOS
         # GitHub patch diff regexps can't be any shorter.
         # rubocop:disable Layout/LineLength
@@ -191,8 +181,6 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Patches do
         "https://patch-diff.githubusercontent.com/raw/foo/foo-bar/pull/100.patch",
         "https://github.com/uber/h3/pull/362.patch?full_index=1",
         "https://gitlab.gnome.org/GNOME/gitg/-/merge_requests/142.diff",
-        "https://github.com/michaeldv/pit/commit/f64978d.diff?full_index=1",
-        "https://gitlab.gnome.org/GNOME/msitools/commit/248450a.patch",
       ]
       patch_urls.each do |patch_url|
         source = <<~RUBY
@@ -222,14 +210,6 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Patches do
           expect_offense_hash(message: <<~EOS.chomp, severity: :convention, line: 5, column: 8, source:)
             FormulaAudit/Patches: Use a commit hash URL rather than an unstable merge request URL: #{patch_url}
           EOS
-        elsif patch_url.match?(%r{https://github.com/[^/]*/[^/]*/commit/})
-          expect_offense_hash(message: <<~EOS.chomp, severity: :convention, line: 5, column: 8, source:)
-            FormulaAudit/Patches: GitHub patches should end with .patch, not .diff: #{patch_url}
-          EOS
-        elsif patch_url.match?(%r{.*gitlab.*/commit/})
-          expect_offense_hash(message: <<~EOS.chomp, severity: :convention, line: 5, column: 8, source:)
-            FormulaAudit/Patches: GitLab patches should end with .diff, not .patch: #{patch_url}
-          EOS
         # GitHub patch diff regexps can't be any shorter.
         # rubocop:disable Layout/LineLength
         elsif patch_url.match?(%r{https?://patch-diff\.githubusercontent\.com/raw/(.+)/(.+)/pull/(.+)\.(?:diff|patch)})
@@ -248,7 +228,7 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Patches do
     end
   end
 
-  context "when auditing auditing external patches with corrector" do
+  context "when auditing external patches with corrector" do
     it "corrects Bitbucket patch URLs to use API format" do
       expect_offense(<<~RUBY)
         class Foo < Formula
@@ -266,7 +246,7 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Patches do
           url "https://brew.sh/foo-1.0.tgz"
           patch do
             url "https://api.bitbucket.org/2.0/repositories/multicoreware/x265_git/diff/b354c009a60bcd6d7fc04014e200a1ee9c45c167"
-            sha256 "63376b8fdd6613a91976106d9376069274191860cd58f039b29ff16de1925621"
+            sha256 ""
           end
         end
       RUBY
@@ -313,6 +293,148 @@ RSpec.describe RuboCop::Cop::FormulaAudit::Patches do
           patch do
             url "https://bugs.debian.org/cgi-bin/bugreport.cgi?msg=5;filename=patch-libunac1.txt;att=1;bug=623340"
             sha256 "63376b8fdd6613a91976106d9376069274191860cd58f039b29ff16de1925621"
+          end
+        end
+      RUBY
+    end
+
+    it "corrects GitHub commit URLs from .diff to .patch" do
+      expect_offense(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://github.com/michaeldv/pit/commit/f64978d.diff"
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FormulaAudit/Patches: GitHub patches should end with .patch, not .diff: https://github.com/michaeldv/pit/commit/f64978d.diff
+            sha256 "63376b8fdd6613a91976106d9376069274191860cd58f039b29ff16de1925621"
+          end
+        end
+      RUBY
+
+      expect_correction(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://github.com/michaeldv/pit/commit/f64978d.patch?full_index=1"
+            sha256 ""
+          end
+        end
+      RUBY
+    end
+
+    it "corrects GitLab commit URLs from .patch to .diff" do
+      expect_offense(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://gitlab.com/inkscape/lib2geom/-/commit/0b8b4c26b4a.patch"
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FormulaAudit/Patches: GitLab patches should end with .diff, not .patch: https://gitlab.com/inkscape/lib2geom/-/commit/0b8b4c26b4a.patch
+            sha256 "63376b8fdd6613a91976106d9376069274191860cd58f039b29ff16de1925621"
+          end
+        end
+      RUBY
+
+      expect_correction(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://gitlab.com/inkscape/lib2geom/-/commit/0b8b4c26b4a.diff"
+            sha256 ""
+          end
+        end
+      RUBY
+    end
+
+    it "corrects GitHub patch URLs to add full_index parameter" do
+      expect_offense(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://github.com/foo/bar/commit/abc123.patch"
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FormulaAudit/Patches: GitHub patches should use the full_index parameter: https://github.com/foo/bar/commit/abc123.patch?full_index=1
+            sha256 "63376b8fdd6613a91976106d9376069274191860cd58f039b29ff16de1925621"
+          end
+        end
+      RUBY
+
+      expect_correction(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://github.com/foo/bar/commit/abc123.patch?full_index=1"
+            sha256 ""
+          end
+        end
+      RUBY
+    end
+
+    it "corrects GitHub URLs with 'diff' in the path" do
+      expect_offense(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://github.com/diff-tool/diff-utils/commit/abc123.diff"
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FormulaAudit/Patches: GitHub patches should end with .patch, not .diff: https://github.com/diff-tool/diff-utils/commit/abc123.diff
+            sha256 "63376b8fdd6613a91976106d9376069274191860cd58f039b29ff16de1925621"
+          end
+        end
+      RUBY
+
+      expect_correction(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://github.com/diff-tool/diff-utils/commit/abc123.patch?full_index=1"
+            sha256 ""
+          end
+        end
+      RUBY
+    end
+
+    it "corrects GitLab URLs with 'patch' in the path" do
+      expect_offense(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://gitlab.com/patch-tool/patch-utils/-/commit/abc123.patch"
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FormulaAudit/Patches: GitLab patches should end with .diff, not .patch: https://gitlab.com/patch-tool/patch-utils/-/commit/abc123.patch
+            sha256 "63376b8fdd6613a91976106d9376069274191860cd58f039b29ff16de1925621"
+          end
+        end
+      RUBY
+
+      expect_correction(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch do
+            url "https://gitlab.com/patch-tool/patch-utils/-/commit/abc123.diff"
+            sha256 ""
+          end
+        end
+      RUBY
+    end
+
+    it "corrects GitHub URLs without sha256 field (e.g. with on_linux block)" do
+      expect_offense(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch :p2 do
+            on_linux do
+              url "https://github.com/foo/bar/commit/abc123.diff"
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ FormulaAudit/Patches: GitHub patches should end with .patch, not .diff: https://github.com/foo/bar/commit/abc123.diff
+              directory "gl"
+            end
+          end
+        end
+      RUBY
+
+      expect_correction(<<~RUBY)
+        class Foo < Formula
+          url "https://brew.sh/foo-1.0.tgz"
+          patch :p2 do
+            on_linux do
+              url "https://github.com/foo/bar/commit/abc123.patch?full_index=1"
+              directory "gl"
+            end
           end
         end
       RUBY

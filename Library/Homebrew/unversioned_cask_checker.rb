@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "bundle_version"
@@ -24,52 +24,59 @@ module Homebrew
 
     sig { returns(Cask::Installer) }
     def installer
-      @installer ||= Cask::Installer.new(cask, verify_download_integrity: false)
+      @installer ||= T.let(Cask::Installer.new(cask, verify_download_integrity: false), T.nilable(Cask::Installer))
     end
 
     sig { returns(T::Array[Cask::Artifact::App]) }
     def apps
-      @apps ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::App) }
+      @apps ||= T.let(@cask.artifacts.grep(Cask::Artifact::App), T.nilable(T::Array[Cask::Artifact::App]))
     end
 
     sig { returns(T::Array[Cask::Artifact::KeyboardLayout]) }
     def keyboard_layouts
-      @keyboard_layouts ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::KeyboardLayout) }
+      @keyboard_layouts ||= T.let(@cask.artifacts.grep(Cask::Artifact::KeyboardLayout),
+                                  T.nilable(T::Array[Cask::Artifact::KeyboardLayout]))
     end
 
     sig { returns(T::Array[Cask::Artifact::Qlplugin]) }
     def qlplugins
-      @qlplugins ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::Qlplugin) }
+      @qlplugins ||= T.let(@cask.artifacts.grep(Cask::Artifact::Qlplugin),
+                           T.nilable(T::Array[Cask::Artifact::Qlplugin]))
     end
 
     sig { returns(T::Array[Cask::Artifact::Dictionary]) }
     def dictionaries
-      @dictionaries ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::Dictionary) }
+      @dictionaries ||= T.let(@cask.artifacts.grep(Cask::Artifact::Dictionary),
+                              T.nilable(T::Array[Cask::Artifact::Dictionary]))
     end
 
     sig { returns(T::Array[Cask::Artifact::ScreenSaver]) }
     def screen_savers
-      @screen_savers ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::ScreenSaver) }
+      @screen_savers ||= T.let(@cask.artifacts.grep(Cask::Artifact::ScreenSaver),
+                               T.nilable(T::Array[Cask::Artifact::ScreenSaver]))
     end
 
     sig { returns(T::Array[Cask::Artifact::Colorpicker]) }
     def colorpickers
-      @colorpickers ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::Colorpicker) }
+      @colorpickers ||= T.let(@cask.artifacts.grep(Cask::Artifact::Colorpicker),
+                              T.nilable(T::Array[Cask::Artifact::Colorpicker]))
     end
 
     sig { returns(T::Array[Cask::Artifact::Mdimporter]) }
     def mdimporters
-      @mdimporters ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::Mdimporter) }
+      @mdimporters ||= T.let(@cask.artifacts.grep(Cask::Artifact::Mdimporter),
+                             T.nilable(T::Array[Cask::Artifact::Mdimporter]))
     end
 
     sig { returns(T::Array[Cask::Artifact::Installer]) }
     def installers
-      @installers ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::Installer) }
+      @installers ||= T.let(@cask.artifacts.grep(Cask::Artifact::Installer),
+                            T.nilable(T::Array[Cask::Artifact::Installer]))
     end
 
     sig { returns(T::Array[Cask::Artifact::Pkg]) }
     def pkgs
-      @pkgs ||= @cask.artifacts.select { |a| a.is_a?(Cask::Artifact::Pkg) }
+      @pkgs ||= T.let(@cask.artifacts.grep(Cask::Artifact::Pkg), T.nilable(T::Array[Cask::Artifact::Pkg]))
     end
 
     sig { returns(T::Boolean) }

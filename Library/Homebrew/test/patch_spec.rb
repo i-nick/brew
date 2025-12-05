@@ -7,8 +7,11 @@ RSpec.describe Patch do
     context "with a simple patch" do
       subject(:patch) { described_class.create(:p2, nil) }
 
-      it { is_expected.to be_a ExternalPatch }
-      it { is_expected.to be_external }
+      specify(:aggregate_failures) do
+        expect(subject).to be_a ExternalPatch # rubocop:todo RSpec/NamedSubject
+        expect(subject).to be_external # rubocop:todo RSpec/NamedSubject
+      end
+
       it(:strip) { expect(patch.strip).to eq(:p2) }
     end
 
@@ -56,8 +59,11 @@ RSpec.describe Patch do
 
     context "when the patch is empty" do
       it(:resource) { expect(patch.resource).to be_a Resource::Patch }
-      it { expect(patch.patch_files).to eq(patch.resource.patch_files) }
-      it { expect(patch.patch_files).to eq([]) }
+
+      specify(:aggregate_failures) do
+        expect(patch.patch_files).to eq(patch.resource.patch_files)
+        expect(patch.patch_files).to eq([])
+      end
     end
 
     it "returns applied patch files" do

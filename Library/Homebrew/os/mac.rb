@@ -5,11 +5,12 @@ require "macos_version"
 
 require "os/mac/xcode"
 require "os/mac/sdk"
-require "os/mac/keg"
 
 module OS
   # Helper module for querying system information on macOS.
   module Mac
+    extend Utils::Output::Mixin
+
     raise "Loaded OS::Mac on generic OS!" if ENV["HOMEBREW_TEST_GENERIC_OS"]
 
     # This check is the only acceptable or necessary one in this file.
@@ -39,7 +40,10 @@ module OS
     sig { returns(MacOSVersion) }
     def self.full_version
       @full_version ||= T.let(nil, T.nilable(MacOSVersion))
-      @full_version ||= if (fake_macos = ENV.fetch("HOMEBREW_FAKE_MACOS", nil)) # for Portable Ruby building
+      # HOMEBREW_FAKE_MACOS is set system-wide in the macOS 11-arm64-cross image
+      # for building a macOS 11 Portable Ruby on macOS 12
+      # odisabled: remove support for Big Sur September (or later) 2027
+      @full_version ||= if (fake_macos = ENV.fetch("HOMEBREW_FAKE_MACOS", nil))
         MacOSVersion.new(fake_macos)
       else
         MacOSVersion.new(VERSION)
@@ -100,14 +104,17 @@ module OS
 
     sig { returns(T::Boolean) }
     def self.sdk_root_needed?
-      if MacOS::CLT.installed?
-        # If there's no CLT SDK, return false
-        return false unless MacOS::CLT.provides_sdk?
-        # If the CLT is installed and headers are provided by the system, return false
-        return false unless MacOS::CLT.separate_header_package?
-      end
-
+      odeprecated "OS::Mac.sdk_root_needed?"
       true
+    end
+
+    sig { returns(T.any(CLTSDKLocator, XcodeSDKLocator)) }
+    def self.sdk_locator
+      if CLT.installed?
+        CLT.sdk_locator
+      else
+        Xcode.sdk_locator
+      end
     end
 
     # If a specific SDK is requested:
@@ -119,21 +126,14 @@ module OS
     #
     # If no specific SDK is requested, the SDK matching the OS version is returned,
     # if available. Otherwise, the latest SDK is returned.
-
-    sig { returns(T.any(CLTSDKLocator, XcodeSDKLocator)) }
-    def self.sdk_locator
-      if CLT.installed? && CLT.provides_sdk?
-        CLT.sdk_locator
-      else
-        Xcode.sdk_locator
-      end
-    end
-
     sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(SDK)) }
     def self.sdk(version = nil)
       sdk_locator.sdk_if_applicable(version)
     end
 
+    # Returns the path to the SDK needed based on the formula's requirements.
+    #
+    # @api public
     sig {
       params(
         formula:                         Formula,
@@ -156,24 +156,22 @@ module OS
     end
 
     # Returns the path to an SDK or nil, following the rules set by {sdk}.
-    sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(Pathname)) }
+    #
+    # @api public
+    sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(::Pathname)) }
     def self.sdk_path(version = nil)
       s = sdk(version)
       s&.path
     end
 
-    sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(Pathname)) }
+    # Prefer CLT SDK when both Xcode and the CLT are installed.
+    # Expected results:
+    # 1. On Xcode-only systems, return the Xcode SDK.
+    # 2. On CLT-only systems, return the CLT SDK.
+    #
+    # @api public
+    sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(::Pathname)) }
     def self.sdk_path_if_needed(version = nil)
-      # Prefer CLT SDK when both Xcode and the CLT are installed.
-      # Expected results:
-      # 1. On Xcode-only systems, return the Xcode SDK.
-      # 2. On Xcode-and-CLT systems where headers are provided by the system, return nil.
-      # 3. On CLT-only systems with no CLT SDK, return nil.
-      # 4. On CLT-only systems with a CLT SDK, where headers are provided by the system, return nil.
-      # 5. On CLT-only systems with a CLT SDK, where headers are not provided by the system, return the CLT SDK.
-
-      return unless sdk_root_needed?
-
       sdk_path(version)
     end
 
@@ -197,7 +195,7 @@ module OS
       # not in the path they can still break builds if the build scripts
       # have these paths baked in.
       %w[/sw/bin/fink /opt/local/bin/port].each do |ponk|
-        path = Pathname.new(ponk)
+        path = ::Pathname.new(ponk)
         paths << path if path.exist?
       end
 
@@ -205,19 +203,19 @@ module OS
       # read-only in order to try out Homebrew, but this doesn't work as
       # some build scripts error out when trying to read from these now
       # unreadable paths.
-      %w[/sw /opt/local].map { |p| Pathname.new(p) }.each do |path|
+      %w[/sw /opt/local].map { |p| ::Pathname.new(p) }.each do |path|
         paths << path if path.exist? && !path.readable?
       end
 
       paths.uniq
     end
 
-    sig { params(ids: String).returns(T.nilable(Pathname)) }
+    sig { params(ids: String).returns(T.nilable(::Pathname)) }
     def self.app_with_bundle_id(*ids)
       require "bundle_version"
 
       paths = mdfind(*ids).filter_map do |bundle_path|
-        Pathname.new(bundle_path) if bundle_path.exclude?("/Backups.backupdb/")
+        ::Pathname.new(bundle_path) if bundle_path.exclude?("/Backups.backupdb/")
       end
       return paths.first unless paths.all? { |bp| (bp/"Contents/Info.plist").exist? }
 

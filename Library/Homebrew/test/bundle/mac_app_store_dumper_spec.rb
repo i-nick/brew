@@ -16,7 +16,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
       expect(dumper.apps).to be_empty
     end
 
-    it "dumps as empty string" do
+    it "dumps as empty string" do # rubocop:todo RSpec/AggregateExamples
       expect(dumper.dump).to eql("")
     end
   end
@@ -32,7 +32,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
       expect(dumper.apps).to be_empty
     end
 
-    it "dumps as empty string" do
+    it "dumps as empty string" do # rubocop:todo RSpec/AggregateExamples
       expect(dumper.dump).to eql("")
     end
   end
@@ -68,7 +68,6 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
         497799835 Xcode (9.2)
         425424353 The Unarchiver (4.0.0)
         08981434 iMovie (10.1.8)
-         Install macOS High Sierra (13105)
         409201541 Pages (7.1)
         123456789 123AppNameWithNumbers (1.0)
         409203825 Numbers (5.1)
@@ -146,7 +145,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
       expect(dumper.apps).to eql(expected_app_details_array)
     end
 
-    it "dumps excluding invalid apps" do
+    it "dumps excluding invalid apps" do # rubocop:todo RSpec/AggregateExamples
       expect(dumper.dump).to eq(expected_mas_dumped_output.strip)
     end
   end

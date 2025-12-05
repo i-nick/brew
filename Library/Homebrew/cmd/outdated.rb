@@ -93,10 +93,10 @@ module Homebrew
 
             if verbose?
               outdated_kegs = f.outdated_kegs(fetch_head: args.fetch_HEAD?)
+              latest_formula = f.latest_formula(prefer_stub: true)
 
-              current_version = if f.alias_changed? && !f.latest_formula.latest_version_installed?
-                latest = f.latest_formula
-                "#{latest.name} (#{latest.pkg_version})"
+              current_version = if f.alias_changed? && !latest_formula.latest_version_installed?
+                "#{latest_formula.name} (#{latest_formula.pkg_version})"
               elsif f.head?
                 latest_head_version = f.latest_head_pkg_version(fetch_head: args.fetch_HEAD?)
                 if outdated_kegs.any? { |k| k.version.to_s == latest_head_version.to_s }
@@ -106,7 +106,7 @@ module Homebrew
                   latest_head_version.to_s
                 end
               else
-                f.latest_formula.pkg_version.to_s
+                latest_formula.pkg_version.to_s
               end
 
               outdated_versions = outdated_kegs.group_by { |keg| Formulary.from_keg(keg).full_name }
@@ -124,7 +124,8 @@ module Homebrew
           else
             c = formula_or_cask
 
-            puts c.outdated_info(args.greedy?, verbose?, false, args.greedy_latest?, args.greedy_auto_updates?)
+            puts c.outdated_info(upgrade_greedy_cask?(args.greedy?, formula_or_cask), verbose?,
+                                 false, args.greedy_latest?, args.greedy_auto_updates?)
           end
         end
       end
@@ -154,7 +155,8 @@ module Homebrew
           else
             c = formula_or_cask
 
-            c.outdated_info(args.greedy?, verbose?, true, args.greedy_latest?, args.greedy_auto_updates?)
+            c.outdated_info(upgrade_greedy_cask?(args.greedy?, formula_or_cask),
+                            verbose?, true, args.greedy_latest?, args.greedy_auto_updates?)
           end
         end
       end
@@ -214,10 +216,25 @@ module Homebrew
           if formula_or_cask.is_a?(Formula)
             formula_or_cask.outdated?(fetch_head: args.fetch_HEAD?)
           else
-            formula_or_cask.outdated?(greedy: args.greedy?, greedy_latest: args.greedy_latest?,
+            formula_or_cask.outdated?(greedy:              upgrade_greedy_cask?(args.greedy?, formula_or_cask),
+                                      greedy_latest:       args.greedy_latest?,
                                       greedy_auto_updates: args.greedy_auto_updates?)
           end
         end
+      end
+
+      sig { params(greedy: T::Boolean, cask: Cask::Cask).returns(T::Boolean) }
+      def upgrade_greedy_cask?(greedy, cask)
+        return true if greedy
+
+        @greedy_list ||= T.let(
+          begin
+            upgrade_greedy_casks = Homebrew::EnvConfig.upgrade_greedy_casks.presence
+            upgrade_greedy_casks&.split || []
+          end, T.nilable(T::Array[String])
+        )
+
+        @greedy_list.include?(cask.token)
       end
     end
   end

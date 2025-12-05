@@ -97,6 +97,11 @@ class Bottle
     retry
   end
 
+  sig { override.returns(T.nilable(Integer)) }
+  def total_size
+    bottle_size || super
+  end
+
   sig { override.void }
   def clear_cache
     @resource.clear_cache

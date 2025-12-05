@@ -79,6 +79,9 @@ module Homebrew
 
   module Cmd
     # The command class for `brew` itself, allowing its args to be parsed.
-    class Brew < AbstractCommand; end
+    class Brew < AbstractCommand
+      sig { override.void }
+      def run; end
+    end
   end
 end

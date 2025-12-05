@@ -59,11 +59,11 @@ module Homebrew
           [repo/"#{name}.rb", repo/"**/#{name}.rb"]
         end
 
+        rev = T.let(nil, T.nilable(String))
         if args.version
           ohai "Searching repository history"
           version = args.version
           version_segments = Gem::Version.new(version).segments if Gem::Version.correct?(version)
-          rev = T.let(nil, T.nilable(String))
           test_formula = T.let(nil, T.nilable(Formula))
           result = ""
           loop do
@@ -79,7 +79,7 @@ module Homebrew
               odie "Could not find #{name}! The formula or version may not have existed."
             end
 
-            file = repo/path
+            file = repo/T.must(path)
             result = Utils::Git.last_revision_of_file(repo, file, before_commit: rev)
             if result.empty?
               odebug "Skipping revision #{rev} - file is empty at this revision"
@@ -114,7 +114,7 @@ module Homebrew
             ohai "Searching repository history"
             rev, (path,) = Utils::Git.last_revision_commit_of_files(repo, pattern, before_commit: start_rev)
             odie "Could not find #{name}! The formula or version may not have existed." if rev.nil?
-            file = repo/path
+            file = repo/T.must(path)
             version = T.must(formula_at_revision(repo, name, file, rev)).version
             result = Utils::Git.last_revision_of_file(repo, file)
           else

@@ -16,7 +16,7 @@ RSpec.describe Homebrew::Bundle::GoDumper do
       expect(dumper.packages).to be_empty
     end
 
-    it "dumps an empty string" do
+    it "dumps an empty string" do # rubocop:todo RSpec/AggregateExamples
       expect(dumper.dump).to eql("")
     end
   end

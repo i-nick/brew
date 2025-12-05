@@ -113,6 +113,10 @@ class Keg
         old: "/usr/local/var/log/#{name}",
         new: "#{PREFIX_PLACEHOLDER}/var/log/#{name}",
       },
+      var_lib_name: {
+        old: "/usr/local/var/lib/#{name}",
+        new: "#{PREFIX_PLACEHOLDER}/var/lib/#{name}",
+      },
       var_run_name: {
         old: "/usr/local/var/run/#{name}",
         new: "#{PREFIX_PLACEHOLDER}/var/run/#{name}",
@@ -208,6 +212,7 @@ class Keg
 
     changed_files = T.let([], T::Array[Pathname])
     files.map { path.join(_1) }.group_by { |f| f.stat.ino }.each_value do |first, *rest|
+      first = T.must(first)
       s = first.open("rb", &:read)
 
       # Use full prefix replacement for Homebrew-created files when using selective relocation
@@ -342,6 +347,7 @@ class Keg
     # been fixed upstream for some time, but a sufficiently new enough
     # file with that fix is only available in macOS Sierra.
     # https://bugs.gw.com/view.php?id=292
+    # TODO: remove custom logic as we're now not supporting pre-Sierra.
     with_custom_locale("C") do
       files = Set.new path.find.reject { |pn|
         next true if pn.symlink?

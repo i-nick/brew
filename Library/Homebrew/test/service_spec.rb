@@ -57,6 +57,189 @@ RSpec.describe Homebrew::Service do
     end
   end
 
+  describe "#throttle_interval" do
+    it "accepts a valid throttle_interval value" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          throttle_interval 5
+        end
+      end
+
+      expect(f.service.throttle_interval).to be(5)
+    end
+
+    it "includes throttle_interval value in plist output" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          throttle_interval 15
+        end
+      end
+
+      plist = f.service.to_plist
+      expect(plist).to include("<key>ThrottleInterval</key>")
+      expect(plist).to include("<integer>15</integer>")
+    end
+
+    # Launchd says that it ignores ThrottleInterval values of zero but it's not actually true.
+    # https://gist.github.com/dabrahams/4092951#:~:text=Set%20%3CThrottleInterval%3E%20to,than%2010%20seconds.
+    it "includes throttle_interval value of zero in plist output" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          throttle_interval 0
+        end
+      end
+
+      plist = f.service.to_plist
+      expect(plist).to include("<key>ThrottleInterval</key>")
+      expect(plist).to include("<integer>0</integer>")
+    end
+
+    it "does not include throttle_interval in plist when not set" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+        end
+      end
+
+      plist = f.service.to_plist
+      expect(plist).not_to include("<key>ThrottleInterval</key>")
+    end
+  end
+
+  describe "#nice" do
+    it "accepts a valid nice level" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          nice 5
+        end
+      end
+
+      expect(f.service.nice).to be(5)
+    end
+
+    it "throws error for negative nice values without require_root" do
+      expect do
+        stub_formula do
+          service do
+            run opt_bin/"beanstalkd"
+            nice(-10)
+          end
+        end.service
+      end.to raise_error TypeError, "Service#nice: require_root true is required for negative nice values"
+    end
+
+    it "allows negative nice values when require_root is set" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          require_root true
+          nice(-10)
+        end
+      end
+
+      expect(f.service.requires_root?).to be(true)
+      expect { f.service.to_plist }.not_to raise_error
+    end
+
+    it "does not require require_root for positive nice values" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          nice 10
+        end
+      end
+
+      expect(f.service.requires_root?).to be(false)
+      expect { f.service.to_plist }.not_to raise_error
+    end
+
+    it "accepts nice value of zero" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          nice 0
+        end
+      end
+
+      expect(f.service.nice).to be(0)
+      expect(f.service.requires_root?).to be(false)
+    end
+
+    it "includes nice value in plist output" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          nice 5
+        end
+      end
+
+      plist = f.service.to_plist
+      expect(plist).to include("<key>Nice</key>")
+      expect(plist).to include("<integer>5</integer>")
+    end
+
+    it "includes nice value in systemd unit output" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+          require_root true
+          nice(-5)
+        end
+      end
+
+      unit = f.service.to_systemd_unit
+      expect(unit).to include("Nice=-5")
+    end
+
+    it "does not include nice in plist when not set" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+        end
+      end
+
+      plist = f.service.to_plist
+      expect(plist).not_to include("<key>Nice</key>")
+    end
+
+    it "does not include nice in systemd unit when not set" do
+      f = stub_formula do
+        service do
+          run opt_bin/"beanstalkd"
+        end
+      end
+
+      unit = f.service.to_systemd_unit
+      expect(unit).not_to include("Nice=")
+    end
+
+    it "throws for nice too low" do
+      expect do
+        stub_formula do
+          service do
+            run opt_bin/"beanstalkd"
+            nice(-21)
+          end
+        end.service
+      end.to raise_error TypeError, "Service#nice value should be in -20..19"
+    end
+
+    it "throws for nice too high" do
+      expect do
+        stub_formula do
+          service do
+            run opt_bin/"beanstalkd"
+            nice 20
+          end
+        end.service
+      end.to raise_error TypeError, "Service#nice value should be in -20..19"
+    end
+  end
+
   describe "#keep_alive" do
     it "throws for unexpected keys" do
       f = stub_formula do
@@ -205,6 +388,8 @@ RSpec.describe Homebrew::Service do
           launch_only_once true
           process_type :interactive
           restart_delay 30
+          throttle_interval 5
+          nice 5
           interval 5
           macos_legacy_timers true
         end
@@ -241,6 +426,8 @@ RSpec.describe Homebrew::Service do
         \t\t<string>StandardIO</string>
         \t\t<string>System</string>
         \t</array>
+        \t<key>Nice</key>
+        \t<integer>5</integer>
         \t<key>ProcessType</key>
         \t<string>Interactive</string>
         \t<key>ProgramArguments</key>
@@ -258,6 +445,8 @@ RSpec.describe Homebrew::Service do
         \t<string>#{HOMEBREW_PREFIX}/var/in/beanstalkd</string>
         \t<key>StandardOutPath</key>
         \t<string>#{HOMEBREW_PREFIX}/var/log/beanstalkd.log</string>
+        \t<key>ThrottleInterval</key>
+        \t<integer>5</integer>
         \t<key>TimeOut</key>
         \t<integer>30</integer>
         \t<key>WorkingDirectory</key>
@@ -712,6 +901,7 @@ RSpec.describe Homebrew::Service do
           keep_alive true
           process_type :interactive
           restart_delay 30
+          nice(-15)
           macos_legacy_timers true
         end
       end
@@ -730,6 +920,7 @@ RSpec.describe Homebrew::Service do
         ExecStart="#{HOMEBREW_PREFIX}/opt/#{name}/bin/beanstalkd" "test"
         Restart=on-failure
         RestartSec=30
+        Nice=-15
         WorkingDirectory=#{HOMEBREW_PREFIX}/var
         RootDirectory=#{HOMEBREW_PREFIX}/var
         StandardInput=file:#{HOMEBREW_PREFIX}/var/in/beanstalkd

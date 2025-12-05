@@ -42,6 +42,8 @@ module Cask
         download_queue.fetch
       end
 
+      exit 1 if Homebrew.failed?
+
       cask_installers.each(&:install)
     end
   end

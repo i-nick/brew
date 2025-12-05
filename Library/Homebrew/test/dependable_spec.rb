@@ -19,19 +19,19 @@ RSpec.describe Dependable do
     expect(dependable.options.as_flags.sort).to eq(%w[--foo --bar].sort)
   end
 
-  specify "#build?" do
+  specify "#build?" do # rubocop:todo RSpec/AggregateExamples
     expect(dependable).to be_a_build_dependency
   end
 
-  specify "#optional?" do
+  specify "#optional?" do # rubocop:todo RSpec/AggregateExamples
     expect(dependable).not_to be_optional
   end
 
-  specify "#recommended?" do
+  specify "#recommended?" do # rubocop:todo RSpec/AggregateExamples
     expect(dependable).not_to be_recommended
   end
 
-  specify "#no_linkage?" do
+  specify "#no_linkage?" do # rubocop:todo RSpec/AggregateExamples
     expect(dependable).not_to be_no_linkage
   end
 
@@ -50,7 +50,7 @@ RSpec.describe Dependable do
       expect(dependable_no_linkage).to be_no_linkage
     end
 
-    specify "#required?" do
+    specify "#required?" do # rubocop:todo RSpec/AggregateExamples
       expect(dependable_no_linkage).to be_required
     end
   end

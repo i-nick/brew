@@ -76,7 +76,7 @@ RSpec.describe Resource do
       expect(resource.livecheck_defined?).to be false
     end
 
-    specify "`livecheck` block defined in resources" do
+    specify "`livecheck` block defined in resources" do # rubocop:todo RSpec/AggregateExamples
       expect(livecheck_resource.livecheck_defined?).to be true
     end
   end

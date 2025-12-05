@@ -58,15 +58,11 @@ We don’t accept software without a tagged version because they regularly break
 
 The software in question must:
 
-* be maintained (i.e. the last release wasn't ages ago, it works without patching on all Homebrew-supported OS versions and has no outstanding, unpatched security vulnerabilities)
 * be stable (e.g. not declared "unstable" or "beta" by upstream)
+* be maintainable (i.e. the new formula must be a stable release that works without patching on all Homebrew-supported OS versions and has no outstanding and unpatched security vulnerabilities)
 * be known (e.g. GitHub repositories should have >=30 forks, >=30 watchers or >=75 stars)
-* be used
-* have a homepage
-
-We will reject formulae that seem too obscure, partly because they won’t get maintained and partly because we have to draw the line somewhere.
-
-We frown on authors submitting their own work unless it is very popular.
+* be used by someone other than the author (e.g. someone other than the author submitted the pull request or opened an issue with us or them to add it to Homebrew)
+* have a homepage (e.g. somewhere on the internet, can be a GitHub repository with a README, which can be accessed in a browser to learn about the project)
 
 Don’t forget Homebrew is all Git underneath! [Maintain your own tap](How-to-Create-and-Maintain-a-Tap.md) if you have to!
 

@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "diagnostic"
@@ -17,7 +17,7 @@ module Homebrew
     class << self
       sig { params(all_fatal: T::Boolean).void }
       def perform_preinstall_checks_once(all_fatal: false)
-        @perform_preinstall_checks_once ||= {}
+        @perform_preinstall_checks_once ||= T.let({}, T.nilable(T::Hash[T::Boolean, TrueClass]))
         @perform_preinstall_checks_once[all_fatal] ||= begin
           perform_preinstall_checks(all_fatal:)
           true
@@ -28,7 +28,7 @@ module Homebrew
       def check_cc_argv(cc)
         return unless cc
 
-        @checks ||= Diagnostic::Checks.new
+        @checks ||= T.let(Diagnostic::Checks.new, T.nilable(Homebrew::Diagnostic::Checks))
         opoo <<~EOS
           You passed `--cc=#{cc}`.
 
@@ -414,9 +414,7 @@ module Homebrew
           return
         end
 
-        valid_formula_installers = fetch_formulae(formula_installers)
-
-        valid_formula_installers.each do |fi|
+        formula_installers.each do |fi|
           formula = fi.formula
           upgrade = formula.linked? && formula.outdated? && !formula.head? && !Homebrew::EnvConfig.no_install_upgrade?
           install_formula(fi, upgrade:)
@@ -424,8 +422,14 @@ module Homebrew
         end
       end
 
-      sig { params(formula: Formula, dependencies: T::Array[[Dependency, Options]]).void }
-      def print_dry_run_dependencies(formula, dependencies)
+      sig {
+        params(
+          formula:      Formula,
+          dependencies: T::Array[[Dependency, Options]],
+          _block:       T.proc.params(arg0: Formula).returns(String),
+        ).void
+      }
+      def print_dry_run_dependencies(formula, dependencies, &_block)
         return if dependencies.empty?
 
         ohai "Would install #{Utils.pluralize("dependency", dependencies.count, include_count: true)} " \

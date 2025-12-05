@@ -5,7 +5,7 @@ module OS
   module Mac
     # Helper module for querying Xcode information.
     module Xcode
-      DEFAULT_BUNDLE_PATH = T.let(Pathname("/Applications/Xcode.app").freeze, Pathname)
+      DEFAULT_BUNDLE_PATH = T.let(Pathname("/Applications/Xcode.app").freeze, ::Pathname)
       BUNDLE_ID = "com.apple.dt.Xcode"
       OLD_BUNDLE_ID = "com.apple.Xcode"
       APPLE_DEVELOPER_DOWNLOAD_URL = "https://developer.apple.com/download/all/"
@@ -24,10 +24,6 @@ module OS
         when "12" then "14.2"
         when "11" then "13.2.1"
         when "10.15" then "12.4"
-        when "10.14" then "11.3.1"
-        when "10.13" then "10.1"
-        when "10.12" then "9.2"
-        when "10.11" then "8.2.1"
         else
           raise "macOS '#{macos}' is invalid" unless macos.prerelease?
 
@@ -51,10 +47,6 @@ module OS
         when "12" then "13.1"
         when "11" then "12.2"
         when "10.15" then "11.0"
-        when "10.14" then "10.2"
-        when "10.13" then "9.0"
-        when "10.12" then "8.0"
-        when "10.11" then "7.3"
         else
           "#{macos}.0"
         end
@@ -76,11 +68,6 @@ module OS
       def self.needs_clt_installed?
         return false if latest_sdk_version?
 
-        # With fake El Capitan for Portable Ruby, we want the full 10.11 SDK so that we can link
-        # against the correct set of libraries in the SDK sysroot rather than the system's copies.
-        # We therefore do not use the CLT under this setup, which installs to /usr/include.
-        return false if ENV["HOMEBREW_FAKE_MACOS"]
-
         without_clt?
       end
 
@@ -98,7 +85,7 @@ module OS
 
       # Returns a Pathname object corresponding to Xcode.app's Developer
       # directory or nil if Xcode.app is not installed.
-      sig { returns(T.nilable(Pathname)) }
+      sig { returns(T.nilable(::Pathname)) }
       def self.prefix
         @prefix ||= T.let(begin
           dir = MacOS.active_developer_dir
@@ -108,17 +95,17 @@ module OS
             path/"Contents/Developer" if path
           else
             # Use cleanpath to avoid pathological trailing slash
-            Pathname.new(dir).cleanpath
+            ::Pathname.new(dir).cleanpath
           end
-        end, T.nilable(Pathname))
+        end, T.nilable(::Pathname))
       end
 
-      sig { returns(Pathname) }
+      sig { returns(::Pathname) }
       def self.toolchain_path
         Pathname("#{prefix}/Toolchains/XcodeDefault.xctoolchain")
       end
 
-      sig { returns(T.nilable(Pathname)) }
+      sig { returns(T.nilable(::Pathname)) }
       def self.bundle_path
         # Use the default location if it exists.
         return DEFAULT_BUNDLE_PATH if DEFAULT_BUNDLE_PATH.exist?
@@ -144,7 +131,7 @@ module OS
         sdk_locator.sdk_if_applicable(version)
       end
 
-      sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(Pathname)) }
+      sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(::Pathname)) }
       def self.sdk_path(version = nil)
         sdk(version)&.path
       end
@@ -218,12 +205,6 @@ module OS
 
             xcode_version = xcodebuild_output[/Xcode (\d+(\.\d+)*)/, 1]
             return xcode_version if xcode_version
-
-            # Xcode 2.x's xcodebuild has a different version string
-            case xcodebuild_output[/DevToolsCore-(\d+\.\d)/, 1]
-            when "798.0" then return "2.5"
-            when "515.0" then return "2.0"
-            end
           end
         end
 
@@ -239,17 +220,6 @@ module OS
         # simultaneously so workarounds need to apply to both based on their
         # comparable version.
         case version
-        when "6.0.0"  then "6.2"
-        when "6.1.0"  then "6.4"
-        when "7.0.0"  then "7.1"
-        when "7.0.2"  then "7.2.1"
-        when "7.3.0"  then "7.3.1"
-        when "8.0.0"  then "8.2.1"
-        when "8.1.0"  then "8.3.3"
-        when "9.0.0"  then "9.2"
-        when "9.1.0"  then "9.4.1"
-        when "10.0.0" then "10.1"
-        when "10.0.1" then "10.3"
         when "11.0.0" then "11.3.1"
         when "11.0.3" then "11.7"
         when "12.0.0" then "12.4"
@@ -272,6 +242,8 @@ module OS
 
     # Helper module for querying macOS Command Line Tools information.
     module CLT
+      extend Utils::Output::Mixin
+
       # The original Mavericks CLT package ID
       EXECUTABLE_PKG_ID = "com.apple.pkg.CLTools_Executables"
       MAVERICKS_NEW_PKG_ID = "com.apple.pkg.CLTools_Base" # obsolete
@@ -285,12 +257,8 @@ module OS
 
       sig { returns(T::Boolean) }
       def self.separate_header_package?
-        version >= "10" && MacOS.version >= "10.14"
-      end
-
-      sig { returns(T::Boolean) }
-      def self.provides_sdk?
-        version >= "8"
+        odeprecated "MacOS::CLT.separate_header_package?"
+        true
       end
 
       sig { returns(CLTSDKLocator) }
@@ -303,20 +271,14 @@ module OS
         sdk_locator.sdk_if_applicable(version)
       end
 
-      sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(Pathname)) }
+      sig { params(version: T.nilable(MacOSVersion)).returns(T.nilable(::Pathname)) }
       def self.sdk_path(version = nil)
         sdk(version)&.path
       end
 
       sig { returns(String) }
       def self.installation_instructions
-        if MacOS.version == "10.14"
-          # This is not available from `xcode-select`
-          <<~EOS
-            Install the Command Line Tools for Xcode 11.3.1 from:
-              #{Formatter.url(MacOS::Xcode::APPLE_DEVELOPER_DOWNLOAD_URL)}
-          EOS
-        elsif OS::Mac.version.prerelease?
+        if OS::Mac.version.prerelease?
           <<~EOS
             Install the Command Line Tools for Xcode #{minimum_version.split(".").first} from:
               #{Formatter.url(MacOS::Xcode::APPLE_DEVELOPER_DOWNLOAD_URL)}
@@ -348,10 +310,8 @@ module OS
 
         software_update_location = if MacOS.version >= "13"
           "System Settings"
-        elsif MacOS.version >= "10.14"
-          "System Preferences"
         else
-          "the App Store"
+          "System Preferences"
         end
 
         <<~EOS
@@ -380,11 +340,7 @@ module OS
         when "13" then "1500.1.0.2.5"
         when "12"    then "1400.0.29.202"
         when "11"    then "1300.0.29.30"
-        when "10.15" then "1200.0.32.29"
-        when "10.14" then "1100.0.33.17"
-        when "10.13" then "1000.10.44.2"
-        when "10.12" then "900.0.39.2"
-        else              "800.0.42.1"
+        else              "1200.0.32.29"
         end
       end
 
@@ -401,10 +357,6 @@ module OS
         when "12" then "13.0.0"
         when "11" then "12.5.0"
         when "10.15" then "11.0.0"
-        when "10.14" then "10.0.0"
-        when "10.13" then "9.0.0"
-        when "10.12" then "8.0.0"
-        when "10.11" then "7.3.0"
         else
           "#{macos}.0.0"
         end

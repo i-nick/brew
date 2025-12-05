@@ -58,17 +58,6 @@ RSpec.describe Tap do
       JSON
     end
 
-    (path/"pypi_formula_mappings.json").write <<~JSON
-      {
-        "formula1": "foo",
-        "formula2": {
-          "package_name": "foo",
-          "extra_packages": ["bar"],
-          "exclude_packages": ["baz"]
-        }
-      }
-    JSON
-
     [
       cmd_file,
       manpage_file,
@@ -619,22 +608,6 @@ RSpec.describe Tap do
       end
     end
 
-    describe "#pypi_formula_mappings" do
-      it "returns the pypi_formula_mappings hash" do
-        setup_tap_files
-
-        expected_result = {
-          "formula1" => "foo",
-          "formula2" => {
-            "package_name"     => "foo",
-            "extra_packages"   => ["bar"],
-            "exclude_packages" => ["baz"],
-          },
-        }
-        expect(homebrew_foo_tap.pypi_formula_mappings).to eq expected_result
-      end
-    end
-
     describe "#formula_file?" do
       it "matches files from Formula/" do
         tap = described_class.fetch("hard/core")
@@ -767,7 +740,6 @@ RSpec.describe Tap do
         tap_migrations.json
         audit_exceptions/formula_list.json
         style_exceptions/formula_hash.json
-        pypi_formula_mappings.json
       ].each do |file|
         (path/file).dirname.mkpath
         (path/file).write formula_list_file_json
@@ -788,7 +760,6 @@ RSpec.describe Tap do
       expect(core_tap.tap_migrations).to eq formula_list_file_contents
       expect(core_tap.audit_exceptions).to eq({ formula_list: formula_list_file_contents })
       expect(core_tap.style_exceptions).to eq({ formula_hash: formula_list_file_contents })
-      expect(core_tap.pypi_formula_mappings).to eq formula_list_file_contents
     end
   end
 
@@ -797,7 +768,7 @@ RSpec.describe Tap do
       expect(CoreTap.instance.repository_var_suffix).to eq "_HOMEBREW_HOMEBREW_CORE"
     end
 
-    it "converts non-alphanumeric characters to underscores" do
+    it "converts non-alphanumeric characters to underscores" do # rubocop:todo RSpec/AggregateExamples
       expect(described_class.fetch("my",
                                    "tap-with-dashes").repository_var_suffix).to eq "_MY_HOMEBREW_TAP_WITH_DASHES"
       expect(described_class.fetch("my",

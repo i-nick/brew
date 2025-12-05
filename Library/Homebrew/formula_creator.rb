@@ -267,10 +267,11 @@ module Homebrew
         <% elsif @mode == :python %>
             virtualenv_install_with_resources
         <% elsif @mode == :ruby %>
+            ENV["BUNDLE_FORCE_RUBY_PLATFORM"] = "1"
+            ENV["BUNDLE_WITHOUT"] = "development test"
             ENV["BUNDLE_VERSION"] = "system" # Avoid installing Bundler into the keg
             ENV["GEM_HOME"] = libexec
 
-            system "bundle", "config", "set", "without", "development", "test"
             system "bundle", "install"
             system "gem", "build", "\#{name}.gemspec"
             system "gem", "install", "\#{name}-\#{version}.gem"

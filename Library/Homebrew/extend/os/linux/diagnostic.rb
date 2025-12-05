@@ -82,11 +82,11 @@ module OS
         sig { returns(T.nilable(String)) }
         def check_supported_architecture
           return if ::Hardware::CPU.intel?
-          return if Homebrew::EnvConfig.developer? && ENV["HOMEBREW_ARM64_TESTING"].present? && ::Hardware::CPU.arm?
+          return if ::Hardware::CPU.arm64?
 
           <<~EOS
             Your CPU architecture (#{::Hardware::CPU.arch}) is not supported. We only support
-            x86_64 CPU architectures. You will be unable to use binary packages (bottles).
+            x86_64 or ARM64/AArch64 CPU architectures. You will be unable to use binary packages (bottles).
 
             #{support_tier_message(tier: 2)}
           EOS
@@ -208,7 +208,7 @@ module OS
             # There are other checks that test that, we can skip broken kegs.
             next if dependent_prefix.nil? || !dependent_prefix.exist? || !dependent_prefix.directory?
 
-            keg = Keg.new(dependent_prefix)
+            keg = ::Keg.new(dependent_prefix)
             keg.binary_executable_or_library_files.any? do |binary|
               paths = binary.rpaths
               versioned_linkage = paths.any? { |path| path.match?(%r{lib/gcc/\d+$}) }

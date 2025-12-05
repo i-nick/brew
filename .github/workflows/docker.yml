@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - main
-      - master
   merge_group:
   release:
     types:
@@ -19,8 +18,7 @@ defaults:
     shell: bash -xeuo pipefail {0}
 
 env:
-  # odeprecated: remove 20.04 image in Homebrew >=4.7
-  VERSIONS: '["20.04", "22.04", "24.04"]'
+  VERSIONS: '["22.04", "24.04"]'
 
 jobs:
   generate-tags:
@@ -34,7 +32,7 @@ jobs:
       merge: ${{ steps.attributes.outputs.merge }}
     steps:
       - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -72,29 +70,19 @@ jobs:
               tags+=(
                 "ghcr.io/homebrew/ubuntu${version}:${brew_version}"
                 "ghcr.io/homebrew/ubuntu${version}:latest"
-                "homebrew/ubuntu${version}:${brew_version}"
-                "homebrew/ubuntu${version}:latest"
               )
               if [[ "${version}" == "22.04" ]]; then
                 tags+=(
                   "ghcr.io/homebrew/brew:${brew_version}"
                   "ghcr.io/homebrew/brew:latest"
-                  "homebrew/brew:${brew_version}"
-                  "homebrew/brew:latest"
                 )
               fi
             elif [[ "${GITHUB_EVENT_NAME}" == "push" &&
-                    ("${GITHUB_REF}" == "refs/heads/master" || "${GITHUB_REF}" == "refs/heads/main") &&
+                    ("${GITHUB_REF}" == "refs/heads/main") &&
                     "${version}" == "22.04" ]]; then
               tags+=(
                 "ghcr.io/homebrew/brew:main"
-                "ghcr.io/homebrew/brew:master"
                 "ghcr.io/homebrew/ubuntu${version}:main"
-                "ghcr.io/homebrew/ubuntu${version}:master"
-                "homebrew/brew:main"
-                "homebrew/brew:master"
-                "homebrew/ubuntu${version}:main"
-                "homebrew/ubuntu${version}:master"
               )
             fi
 
@@ -151,16 +139,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # odeprecated: remove 20.04 image in Homebrew >=4.7
-        version: ["20.04", "22.04", "24.04"]
+        version: ["22.04", "24.04"]
         arch: ["x86_64", "arm64"]
-        exclude:
-          # odeprecated: remove 20.04 image in Homebrew >=4.7
-          - version: "20.04"
-            arch: "arm64"
+
     steps:
       - name: Checkout
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -179,11 +163,6 @@ jobs:
           VERSION: ${{ matrix.version }}
           PUSH: ${{ needs.generate-tags.outputs.push }}
         run: |
-          # odeprecated: remove 20.04 image in Homebrew >=4.7
-          if [[ "${VERSION}" == "20.04" ]]; then
-            echo "The homebrew/ubuntu20.04 image is deprecated and will soon be retired. Use homebrew/ubuntu24.04 or homebrew/brew." > .docker-deprecate
-          fi
-
           filter="$(printf '.["%s"]' "${VERSION}")"
           echo "push=$(jq --raw-output "${filter}" <<<"${PUSH}")" >>"${GITHUB_OUTPUT}"
 
@@ -204,22 +183,8 @@ jobs:
           build-args: version=${{ matrix.version }}
           labels: ${{ needs.generate-tags.outputs.labels }}
 
-      - name: Set environment variables
-        run: |
-          if [[ "${ARCH}" == "arm64" ]]; then
-            echo "HOMEBREW_ARM64_TESTING=1" >> "$GITHUB_ENV"
-          fi
-
-          # odeprecated: remove 20.04 in Homebrew >=4.7
-          if [[ "${VERSION}" == "20.04" ]]; then
-            echo "HOMEBREW_GLIBC_TESTING=1" >> "$GITHUB_ENV"
-          fi
-        env:
-          VERSION: ${{ matrix.version }}
-          ARCH: ${{ matrix.arch }}
-
       - name: Run brew test-bot --only-setup
-        run: docker run --env HOMEBREW_ARM64_TESTING --env HOMEBREW_GLIBC_TESTING --rm brew brew test-bot --only-setup
+        run: docker run --rm brew brew test-bot --only-setup
 
       - name: Log in to GitHub Packages (BrewTestBot)
         if: fromJSON(steps.attributes.outputs.push)
@@ -253,7 +218,7 @@ jobs:
 
       - name: Upload the Docker image digest
         if: fromJSON(steps.attributes.outputs.push)
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
         with:
           name: digest-${{ matrix.version }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
@@ -273,17 +238,11 @@ jobs:
           cache-binary: false
 
       - name: Download Docker image digests
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           path: ${{ runner.temp }}/digests
           pattern: digest-${{ matrix.version }}-*
           merge-multiple: true
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
-        with:
-          username: brewtestbot
-          password: ${{ secrets.HOMEBREW_BREW_DOCKER_TOKEN }}
 
       - name: Log in to GitHub Packages (BrewTestBot)
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
@@ -305,10 +264,7 @@ jobs:
           done <<<"$(jq --raw-output "${filter}" <<<"${TAGS}")"
 
           image_args=("ghcr.io/homebrew/ubuntu${VERSION}@sha256:$(<"${RUNNER_TEMP}/digests/${VERSION}-x86_64")")
-          # odeprecated: remove 20.04 image in Homebrew >=4.7
-          if [[ "${VERSION}" != 20.04 ]]; then
-            image_args+=("ghcr.io/homebrew/ubuntu${VERSION}@sha256:$(<"${RUNNER_TEMP}/digests/${VERSION}-arm64")")
-          fi
+          image_args+=("ghcr.io/homebrew/ubuntu${VERSION}@sha256:$(<"${RUNNER_TEMP}/digests/${VERSION}-arm64")")
 
           attempts=0
           until docker buildx imagetools create "${tag_args[@]}" "${image_args[@]}"; do

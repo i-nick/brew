@@ -71,6 +71,14 @@ class AbstractDownloadStrategy
   sig { overridable.params(timeout: T.nilable(T.any(Float, Integer))).void }
   def fetch(timeout: nil); end
 
+  # Total bytes downloaded if available.
+  sig { overridable.returns(T.nilable(Integer)) }
+  def fetched_size; end
+
+  # Total download size if available.
+  sig { overridable.returns(T.nilable(Integer)) }
+  def total_size; end
+
   # Location of the cached download.
   #
   # @api public
@@ -338,6 +346,11 @@ class AbstractFileDownloadStrategy < AbstractDownloadStrategy
     T.must(@cached_location)
   end
 
+  sig { override.returns(T.nilable(Integer)) }
+  def fetched_size
+    File.size?(temporary_path) || File.size?(cached_location)
+  end
+
   sig { returns(Pathname) }
   def basename
     cached_location.basename.sub(/^[\da-f]{64}--/, "")
@@ -423,6 +436,7 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
   def initialize(url, name, version, **meta)
     @try_partial = T.let(true, T::Boolean)
     @mirrors = T.let(meta.fetch(:mirrors, []), T::Array[String])
+    @file_size = T.let(nil, T.nilable(Integer))
 
     # Merge `:header` with `:headers`.
     if (header = meta.delete(:header))
@@ -458,7 +472,7 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
 
         cached_location_valid = cached_location.exist?
 
-        resolved_url, _, last_modified, file_size, content_type, is_redirection = begin
+        resolved_url, _, last_modified, @file_size, content_type, is_redirection = begin
           resolve_url_basename_time_file_size(url, timeout: Utils::Timer.remaining!(end_time))
         rescue ErrorDuringExecution
           raise unless cached_location_valid
@@ -477,10 +491,10 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
                  "Last-Modified header: #{last_modified.iso8601}"
             cached_location_valid = false
           end
-          if file_size&.nonzero? && file_size != cached_location.size
+          if @file_size&.nonzero? && @file_size != cached_location.size
             ohai "Ignoring #{cached_location}",
                  "Cached size #{cached_location.size} differs from " \
-                 "Content-Length header: #{file_size}"
+                 "Content-Length header: #{@file_size}"
             cached_location_valid = false
           end
         end
@@ -510,6 +524,11 @@ class CurlDownloadStrategy < AbstractFileDownloadStrategy
     ensure
       download_lock.unlock(unlink: true)
     end
+  end
+
+  sig { override.returns(T.nilable(Integer)) }
+  def total_size
+    @file_size
   end
 
   sig { override.void }
@@ -944,6 +963,8 @@ end
 #
 # @api public
 class GitDownloadStrategy < VCSDownloadStrategy
+  MINIMUM_COMMIT_HASH_LENGTH = 7
+
   sig { params(url: String, name: String, version: T.nilable(T.any(String, Version)), meta: T.untyped).void }
   def initialize(url, name, version, **meta)
     # Needs to be before the call to `super`, as the VCSDownloadStrategy's
@@ -969,12 +990,14 @@ class GitDownloadStrategy < VCSDownloadStrategy
     Time.parse(silent_command("git", args: ["--git-dir", git_dir, "show", "-s", "--format=%cD"]).stdout)
   end
 
-  # Return last commit's unique identifier for the repository.
+  # Return last commit's unique identifier for the repository if fetched locally.
   #
   # @api public
   sig { override.returns(String) }
   def last_commit
-    silent_command("git", args: ["--git-dir", git_dir, "rev-parse", "--short=7", "HEAD"]).stdout.chomp
+    args = ["--git-dir", git_dir, "rev-parse", "--short=#{MINIMUM_COMMIT_HASH_LENGTH}", "HEAD"]
+    @last_commit ||= silent_command("git", args:).stdout.chomp.presence
+    @last_commit || ""
   end
 
   private
@@ -1241,12 +1264,14 @@ class GitHubGitDownloadStrategy < GitDownloadStrategy
 
   sig { override.returns(String) }
   def last_commit
-    @last_commit ||= GitHub.last_commit(@user, @repo, @ref, version) || super
+    @last_commit ||= GitHub.last_commit(@user, @repo, @ref, version, length: MINIMUM_COMMIT_HASH_LENGTH)
+    @last_commit || super
   end
 
   sig { override.params(commit: T.nilable(String)).returns(T::Boolean) }
   def commit_outdated?(commit)
     return true unless commit
+    return super if last_commit.blank?
     return true unless last_commit.start_with?(commit)
 
     if GitHub.multiple_short_commits_exist?(@user, @repo, commit)

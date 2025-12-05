@@ -216,7 +216,7 @@ module Homebrew
       names_path = HOMEBREW_CACHE_API/"#{type}_names.txt"
       if !names_path.exist? || regenerate
         names_path.unlink if names_path.exist?
-        names_path.write(names.join("\n"))
+        names_path.write(names.sort.join("\n"))
         return true
       end
 
@@ -231,7 +231,7 @@ module Homebrew
           "#{alias_name}|#{real_name}"
         end
         aliases_path.unlink if aliases_path.exist?
-        aliases_path.write(aliases_text.join("\n"))
+        aliases_path.write(aliases_text.sort.join("\n"))
         return true
       end
 

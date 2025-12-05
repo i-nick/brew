@@ -32,6 +32,8 @@ end
 
 # An abstract class representing a patch embedded into a formula.
 class EmbeddedPatch
+  include Utils::Output::Mixin
+
   attr_writer :owner
   attr_reader :strip
 
@@ -49,8 +51,8 @@ class EmbeddedPatch
   def apply
     data = contents.gsub("@@HOMEBREW_PREFIX@@", HOMEBREW_PREFIX)
     if data.gsub!("HOMEBREW_PREFIX", HOMEBREW_PREFIX)
-      # Utils::Output.odeprecated "patch with HOMEBREW_PREFIX placeholder",
-      #                           "patch with @@HOMEBREW_PREFIX@@ placeholder"
+      odeprecated "patch with HOMEBREW_PREFIX placeholder",
+                  "patch with @@HOMEBREW_PREFIX@@ placeholder"
     end
     args = %W[-g 0 -f -#{strip}]
     Utils.safe_popen_write("patch", *args) { |p| p.write(data) }

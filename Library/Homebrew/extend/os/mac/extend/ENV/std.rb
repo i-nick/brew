@@ -9,9 +9,11 @@ module OS
       requires_ancestor { SharedEnvExtension }
       requires_ancestor { ::Stdenv }
 
-      sig { returns(T::Array[Pathname]) }
+      sig { returns(T::Array[::Pathname]) }
       def homebrew_extra_pkg_config_paths
-        [Pathname("#{HOMEBREW_LIBRARY}/Homebrew/os/mac/pkgconfig/#{MacOS.version}")]
+        %W[
+          #{HOMEBREW_LIBRARY}/Homebrew/os/mac/pkgconfig/#{MacOS.version}
+        ].map { |p| ::Pathname.new(p) }
       end
       private :homebrew_extra_pkg_config_paths
 
@@ -57,7 +59,7 @@ module OS
         delete("CPATH")
         remove "LDFLAGS", "-L#{HOMEBREW_PREFIX}/lib"
 
-        sdk = self["SDKROOT"] || MacOS.sdk_path_if_needed(version)
+        sdk = self["SDKROOT"] || MacOS.sdk_path(version)
         return unless sdk
 
         delete("SDKROOT")
@@ -86,7 +88,6 @@ module OS
         else
           MacOS.sdk(version)
         end
-        return if !MacOS.sdk_root_needed? && sdk&.source != :xcode
 
         Homebrew::Diagnostic.checks(:fatal_setup_build_environment_checks)
         sdk = T.must(sdk).path
@@ -108,13 +109,9 @@ module OS
       # Some configure scripts won't find libxml2 without help.
       # This is a no-op with macOS SDK 10.15.4 and later.
       def libxml2
-        sdk = self["SDKROOT"] || MacOS.sdk_path_if_needed
-        if !sdk
-          append "CPPFLAGS", "-I/usr/include/libxml2"
-        elsif !Pathname("#{sdk}/usr/include/libxml").directory?
-          # Use the includes form the sdk
-          append "CPPFLAGS", "-I#{sdk}/usr/include/libxml2"
-        end
+        sdk = self["SDKROOT"] || MacOS.sdk_path
+        # Use the includes from the sdk
+        append "CPPFLAGS", "-I#{sdk}/usr/include/libxml2" unless Pathname("#{sdk}/usr/include/libxml").directory?
       end
 
       def no_weak_imports

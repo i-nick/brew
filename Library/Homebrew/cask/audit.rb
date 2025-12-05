@@ -550,12 +550,19 @@ module Cask
           next true if cask.deprecated? && cask.deprecation_reason == :fails_gatekeeper_check
           next true if is_in_skiplist
 
-          add_error <<~EOS, location: url.location
+          signing_failure_message = <<~EOS
             Signature verification failed:
             #{result.merged_output}
-            macOS on ARM requires software to be signed.
-            Please contact the upstream developer to let them know they should sign and notarize their software.
           EOS
+
+          if cask.tap.official?
+            signing_failure_message += <<~EOS
+              The homebrew/cask tap requires all casks to be signed and notarized by Apple.
+              Please contact the upstream developer and ask them to sign and notarize their software.
+            EOS
+          end
+
+          add_error signing_failure_message
 
           true
         end
@@ -887,12 +894,24 @@ module Cask
                 macho[:LC_BUILD_VERSION].first&.minos_string,
               ]
             when MachO::FatFile
-              macho.machos.map do |slice|
-                [
+              # Collect requirements by architecture
+              arch_min_os = { arm: [], intel: [] }
+              macho.machos.each do |slice|
+                macos_reqs = [
                   slice[:LC_VERSION_MIN_MACOSX].first&.version_string,
                   slice[:LC_BUILD_VERSION].first&.minos_string,
                 ]
-              end.flatten
+
+                case slice.cputype
+                when *Hardware::CPU::ARM_ARCHS
+                  arch_min_os[:arm].concat(macos_reqs)
+                when *Hardware::CPU::INTEL_ARCHS
+                  arch_min_os[:intel].concat(macos_reqs)
+                end
+              end
+
+              # Only use the requirements for the current architecture
+              arch_min_os.fetch(Homebrew::SimulateSystem.current_arch, [])
             end.compact.max
             break if min_os
           end
@@ -1069,6 +1088,18 @@ module Cask
 
       error = SharedAudits.forgejo(user, repo)
       add_error error, location: url.location if error
+    end
+
+    sig { void }
+    def audit_conflicts_with
+      return if !cask.tap.official? || cask.conflicts_with.nil?
+
+      Homebrew.with_no_api_env do
+        nonexisting_conflicting_casks = cask.conflicts_with.fetch(:cask, Set.new) - core_cask_tokens
+        nonexisting_conflicting_casks.each do |c|
+          add_error("cask conflicts with non-existing cask `#{c}`")
+        end
+      end
     end
 
     sig { void }
@@ -1296,6 +1327,16 @@ module Cask
     sig { returns(T::Array[String]) }
     def core_formula_names
       core_tap.formula_names
+    end
+
+    sig { returns(Tap) }
+    def core_cask_tap
+      @core_cask_tap ||= T.let(CoreCaskTap.instance, T.nilable(Tap))
+    end
+
+    sig { returns(T::Array[String]) }
+    def core_cask_tokens
+      core_cask_tap.cask_tokens
     end
 
     sig { returns(String) }

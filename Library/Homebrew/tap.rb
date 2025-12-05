@@ -25,8 +25,6 @@ class Tap
   private_constant :HOMEBREW_TAP_MIGRATIONS_FILE
   HOMEBREW_TAP_AUTOBUMP_FILE = ".github/autobump.txt"
   private_constant :HOMEBREW_TAP_AUTOBUMP_FILE
-  HOMEBREW_TAP_PYPI_FORMULA_MAPPINGS_FILE = "pypi_formula_mappings.json"
-  private_constant :HOMEBREW_TAP_PYPI_FORMULA_MAPPINGS_FILE
   HOMEBREW_TAP_SYNCED_VERSIONS_FORMULAE_FILE = "synced_versions_formulae.json"
   private_constant :HOMEBREW_TAP_SYNCED_VERSIONS_FORMULAE_FILE
   HOMEBREW_TAP_DISABLED_NEW_USR_LOCAL_RELOCATION_FORMULAE_FILE = "disabled_new_usr_local_relocation_formulae.json"
@@ -40,7 +38,6 @@ class Tap
     #{HOMEBREW_TAP_FORMULA_RENAMES_FILE}
     #{HOMEBREW_TAP_CASK_RENAMES_FILE}
     #{HOMEBREW_TAP_MIGRATIONS_FILE}
-    #{HOMEBREW_TAP_PYPI_FORMULA_MAPPINGS_FILE}
     #{HOMEBREW_TAP_SYNCED_VERSIONS_FORMULAE_FILE}
     #{HOMEBREW_TAP_DISABLED_NEW_USR_LOCAL_RELOCATION_FORMULAE_FILE}
     #{HOMEBREW_TAP_AUDIT_EXCEPTIONS_DIR}/*.json
@@ -258,7 +255,6 @@ class Tap
 
     @audit_exceptions = nil
     @style_exceptions = nil
-    @pypi_formula_mappings = nil
     @synced_versions_formulae = nil
 
     @config = nil
@@ -1081,18 +1077,6 @@ class Tap
                                 T.nilable(T::Hash[Symbol, T.untyped]))
   end
 
-  # Hash with pypi formula mappings
-  sig { overridable.returns(T::Hash[String, T.untyped]) }
-  def pypi_formula_mappings
-    return @pypi_formula_mappings if @pypi_formula_mappings
-
-    @pypi_formula_mappings = T.let(
-      T.cast(read_formula_list(path/HOMEBREW_TAP_PYPI_FORMULA_MAPPINGS_FILE), T::Hash[String, T.untyped]),
-      T.nilable(T::Hash[String, T.untyped]),
-    )
-    T.must(@pypi_formula_mappings)
-  end
-
   # Array with synced versions formulae
   sig { overridable.returns(T::Array[T::Array[String]]) }
   def synced_versions_formulae
@@ -1439,14 +1423,6 @@ class CoreTap < AbstractCoreTap
       ensure_installed!
       super
     end, T.nilable(T::Hash[Symbol, T.untyped]))
-  end
-
-  sig { override.returns(T::Hash[String, T.untyped]) }
-  def pypi_formula_mappings
-    @pypi_formula_mappings ||= T.let(begin
-      ensure_installed!
-      super
-    end, T.nilable(T::Hash[String, T.untyped]))
   end
 
   sig { override.returns(T::Array[T::Array[String]]) }

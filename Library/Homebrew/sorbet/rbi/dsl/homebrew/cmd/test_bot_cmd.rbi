@@ -23,9 +23,6 @@ class Homebrew::Cmd::TestBotCmd::Args < Homebrew::CLI::Args
   sig { returns(T::Boolean) }
   def cleanup?; end
 
-  sig { returns(T::Boolean) }
-  def concurrent_downloads?; end
-
   sig { returns(T.nilable(T::Array[String])) }
   def deleted_formulae; end
 

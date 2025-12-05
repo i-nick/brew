@@ -17,6 +17,7 @@
 /Library/Homebrew/test/coverage
 /Library/Homebrew/test/junit
 /Library/Homebrew/test/fs_leak_log
+/Library/Homebrew/tmp/test_prof
 /Library/Homebrew/vendor/portable-ruby
 /Library/Taps
 /Library/PinnedTaps
@@ -141,6 +142,7 @@
 **/vendor/bundle/ruby/*/gems/strscan-*/
 **/vendor/bundle/ruby/*/gems/syntax_tree-*/
 **/vendor/bundle/ruby/*/gems/tapioca-*/
+**/vendor/bundle/ruby/*/gems/test-prof-*/
 **/vendor/bundle/ruby/*/gems/thor-*/
 **/vendor/bundle/ruby/*/gems/unicode-display_width-*/
 **/vendor/bundle/ruby/*/gems/unicode-emoji-*/

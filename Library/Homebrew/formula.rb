@@ -273,8 +273,7 @@ class Formula
       Tap.from_path(path)
     end
 
-    @pypi_packages_info = T.let(self.class.pypi_packages_info || PypiPackages.from_json_file(@tap, @name),
-                                PypiPackages)
+    @pypi_packages_info = T.let(self.class.pypi_packages_info || PypiPackages.new, PypiPackages)
 
     @full_name = T.let(T.must(full_name_with_optional_tap(name)), String)
     @full_alias_name = T.let(full_name_with_optional_tap(@alias_name), T.nilable(String))
@@ -1629,7 +1628,7 @@ class Formula
 
   sig { returns(T::Boolean) }
   def skip_cxxstdlib_check?
-    # odeprecated "`Formula#skip_cxxstdlib_check?`"
+    odeprecated "`Formula#skip_cxxstdlib_check?`"
     false
   end
 
@@ -1743,7 +1742,7 @@ class Formula
     Formula.cache[:outdated_kegs][cache_key] ||= begin
       all_kegs = []
       current_version = T.let(false, T::Boolean)
-      latest = if core_formula? && Homebrew::EnvConfig.use_internal_api?
+      latest = if core_formula? && Homebrew::EnvConfig.use_internal_api? && Homebrew::API.formula_names.include?(full_name)
         Homebrew::API::Internal.formula_stub(full_name)
       else
         latest_formula
@@ -1780,7 +1779,7 @@ class Formula
 
   sig { returns(T::Boolean) }
   def new_formula_available?
-    installed_alias_target_changed? && !latest_formula.latest_version_installed?
+    installed_alias_target_changed? && !latest_formula(prefer_stub: true).latest_version_installed?
   end
 
   sig { returns(T.nilable(Formula)) }
@@ -1810,10 +1809,18 @@ class Formula
   end
 
   # If the alias has changed value, return the new formula.
-  # Otherwise, return self.
-  sig { returns(Formula) }
-  def latest_formula
-    installed_alias_target_changed? ? T.must(current_installed_alias_target) : Formulary.factory(full_name)
+  # Otherwise, return the latest version of the current formula.
+  # Optionally, return only a formula stub to avoid fetching a new formula file.
+  sig { params(prefer_stub: T::Boolean).returns(Formula) }
+  def latest_formula(prefer_stub: false)
+    return T.must(current_installed_alias_target) if installed_alias_target_changed?
+    return self if !core_formula? || !Homebrew::EnvConfig.use_internal_api?
+
+    if prefer_stub
+      Formulary.factory_stub(full_name, active_spec_sym, force_bottle:, flags: self.class.build_flags)
+    else
+      Formulary.factory(full_name, active_spec_sym, force_bottle:, flags: self.class.build_flags)
+    end
   end
 
   sig { returns(T::Array[Formula]) }
@@ -1968,14 +1975,16 @@ class Formula
 
   # Standard parameters for npm builds.
   #
+  # @param prefix [String, Pathname, false] installation prefix (default: libexec)
+  # @param ignore_scripts [Boolean] whether to add --ignore-scripts flag (default: true)
   # @api public
-  sig { params(prefix: T.any(String, Pathname, FalseClass)).returns(T::Array[String]) }
-  def std_npm_args(prefix: libexec)
+  sig { params(prefix: T.any(String, Pathname, FalseClass), ignore_scripts: T::Boolean).returns(T::Array[String]) }
+  def std_npm_args(prefix: libexec, ignore_scripts: true)
     require "language/node"
 
-    return Language::Node.std_npm_install_args(Pathname(prefix)) if prefix
+    return Language::Node.std_npm_install_args(Pathname(prefix), ignore_scripts:) if prefix
 
-    Language::Node.local_npm_install_args
+    Language::Node.local_npm_install_args(ignore_scripts:)
   end
 
   # Standard parameters for pip builds.
@@ -2104,11 +2113,12 @@ class Formula
     raise "No universal binaries found to deuniversalize" if targets.blank?
 
     targets.compact.each do |target|
-      extract_macho_slice_from(Pathname(target), Hardware::CPU.arch)
+      target = MachOPathname.wrap(target)
+      extract_macho_slice_from(target, Hardware::CPU.arch)
     end
   end
 
-  sig { params(file: Pathname, arch: T.nilable(Symbol)).void }
+  sig { params(file: MachOShim, arch: T.nilable(Symbol)).void }
   def extract_macho_slice_from(file, arch = Hardware::CPU.arch)
     odebug "Extracting #{arch} slice from #{file}"
     file.ensure_writable do
@@ -3705,17 +3715,6 @@ class Formula
       @livecheck_defined == true
     end
 
-    # Checks whether a `livecheck` specification is defined or not. This is a
-    # legacy alias for `#livecheck_defined?`.
-    #
-    # It returns `true` when a `livecheck` block is present in the {Formula}
-    # and `false` otherwise.
-    sig { returns(T::Boolean) }
-    def livecheckable?
-      odisabled "`livecheckable?`", "`livecheck_defined?`"
-      @livecheck_defined == true
-    end
-
     # Checks whether a service specification is defined or not.
     #
     # It returns `true` when a service block is present in the {Formula}
@@ -3898,9 +3897,9 @@ class Formula
     #   root_url "https://example.com" # Optional root to calculate bottle URLs.
     #   rebuild 1 # Marks the old bottle as outdated without bumping the version/revision of the formula.
     #   # Optionally specify the HOMEBREW_CELLAR in which the bottles were built.
-    #   sha256 cellar: "/brew/Cellar", catalina:    "ef65c759c5097a36323fa9c77756468649e8d1980a3a4e05695c05e39568967c"
-    #   sha256 cellar: :any,           mojave:      "28f4090610946a4eb207df102d841de23ced0d06ba31cb79e040d883906dcd4f"
-    #   sha256                         high_sierra: "91dd0caca9bd3f38c439d5a7b6f68440c4274945615fae035ff0a369264b8a2f"
+    #   sha256 cellar: "/brew/Cellar", tahoe:    "ef65c759c5097a36323fa9c77756468649e8d1980a3a4e05695c05e39568967c"
+    #   sha256 cellar: :any,           sequoia:  "28f4090610946a4eb207df102d841de23ced0d06ba31cb79e040d883906dcd4f"
+    #   sha256                         sonoma:   "91dd0caca9bd3f38c439d5a7b6f68440c4274945615fae035ff0a369264b8a2f"
     # end
     # ```
     #
@@ -4003,25 +4002,18 @@ class Formula
     # ```
     sig {
       params(
-        package_name:        T.nilable(String),
-        extra_packages:      T.nilable(T.any(String, T::Array[String])),
-        exclude_packages:    T.nilable(T.any(String, T::Array[String])),
-        dependencies:        T.nilable(T.any(String, T::Array[String])),
-        needs_manual_update: T::Boolean,
+        package_name:     T.nilable(String),
+        extra_packages:   T.nilable(T.any(String, T::Array[String])),
+        exclude_packages: T.nilable(T.any(String, T::Array[String])),
+        dependencies:     T.nilable(T.any(String, T::Array[String])),
       ).void
     }
     def pypi_packages(
       package_name: nil,
       extra_packages: nil,
       exclude_packages: nil,
-      dependencies: nil,
-      needs_manual_update: false
+      dependencies: nil
     )
-      if needs_manual_update
-        @pypi_packages_info = PypiPackages.new needs_manual_update: true
-        return
-      end
-
       if [package_name, extra_packages, exclude_packages, dependencies].all?(&:nil?)
         raise ArgumentError, "must provide at least one argument"
       end
@@ -4106,9 +4098,11 @@ class Formula
     # If a dependency is only needed in certain cases:
     #
     # ```ruby
-    # depends_on "sqlite" if MacOS.version >= :catalina
     # depends_on xcode: :build # If the formula really needs full Xcode to compile.
-    # depends_on macos: :mojave # Needs at least macOS Mojave (10.14) to run.
+    # depends_on macos: :sequoia # Needs at least macOS Sequoia (15) to run.
+    # on_tahoe :or_newer do
+    #   depends_on "sqlite"
+    # end
     # ```
     #
     # It is possible to only depend on something if
@@ -4347,7 +4341,7 @@ class Formula
     # @api public
     sig { params(check_type: Symbol).void }
     def cxxstdlib_check(check_type)
-      # odeprecated "`cxxstdlib_check :skip`"
+      odeprecated "`cxxstdlib_check :skip`"
       define_method(:skip_cxxstdlib_check?) { true } if check_type == :skip
     end
 
@@ -4376,8 +4370,8 @@ class Formula
     # encountered on 7.2:
     #
     # ```ruby
-    # fails_with :gcc => '7' do
-    #   version '7.1'
+    # fails_with gcc: "7" do
+    #   version "7.1"
     # end
     # ```
     #
@@ -4387,20 +4381,20 @@ class Formula
       specs.each { |spec| spec.fails_with(compiler, &block) }
     end
 
-    # Marks the {Formula} as needing a certain standard, so Homebrew
-    # will fall back to other compilers if the default compiler
-    # does not implement that standard.
+    # Used to mark the {Formula} as needing a certain standard, so Homebrew
+    # would fall back to other compilers if the default compiler
+    # did not implement that standard.
     #
-    # We generally prefer to {.depends_on} a desired compiler and to
-    # explicitly use that compiler in a formula's {#install} block,
+    # This is now a no-op as we prefer to {.depends_on} a desired compiler
+    # and explicitly use that compiler in a formula's {#install} block,
     # rather than implicitly finding a suitable compiler with `needs`.
     #
     # @see .fails_with
     #
     # @api public
-    sig { params(standards: String).void }
-    def needs(*standards)
-      specs.each { |spec| spec.needs(*standards) }
+    sig { params(_standards: Symbol).void }
+    def needs(*_standards)
+      odeprecated "`needs :openmp`", '`depends_on "gcc"`'
     end
 
     # A test is required for new formulae and makes us happy.

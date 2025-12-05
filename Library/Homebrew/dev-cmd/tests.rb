@@ -30,15 +30,23 @@ module Homebrew
                description: "Exit early on the first failing test."
         switch "--no-parallel",
                description: "Run tests serially."
+        switch "--stackprof",
+               description: "Use `stackprof` to profile tests."
+        switch "--vernier",
+               description: "Use `vernier` to profile tests."
+        switch "--ruby-prof",
+               description: "Use `ruby-prof` to profile tests."
         flag   "--only=",
                description: "Run only `<test_script>_spec.rb`. Appending `:<line_number>` will start at a " \
                             "specific line."
         flag   "--profile=",
-               description: "Run the test suite serially to find the <n> slowest tests."
+               description: "Output the <n> slowest tests. When run without `--no-parallel` this will output " \
+                            "the slowest tests for each parallel test process."
         flag   "--seed=",
                description: "Randomise tests with the specified <value> instead of a random seed."
 
         conflicts "--changed", "--only"
+        conflicts "--stackprof", "--vernier", "--ruby-prof"
 
         named_args :none
       end
@@ -46,7 +54,9 @@ module Homebrew
       sig { override.void }
       def run
         # Given we might be testing various commands, we probably want everything (except sorbet-static)
-        Homebrew.install_bundler_gems!(groups: Homebrew.valid_gem_groups - ["sorbet"])
+        groups = Homebrew.valid_gem_groups - ["sorbet"]
+        groups << "prof" if args.stackprof? || args.vernier? || args.ruby_prof?
+        Homebrew.install_bundler_gems!(groups:)
 
         HOMEBREW_LIBRARY_PATH.cd do
           setup_environment!
@@ -60,13 +70,17 @@ module Homebrew
 
           only = args.only
           files = if only
-            test_name, line = only.split(":", 2)
+            only.split(",").flat_map do |test|
+              test_name, line = test.split(":", 2)
+              tests = if line.present?
+                parallel = false
+                ["test/#{test_name}_spec.rb:#{line}"]
+              else
+                Dir.glob("test/{#{test_name},#{test_name}/**/*}_spec.rb")
+              end
+              raise UsageError, "Invalid `--only` argument: #{test}" if tests.blank?
 
-            if line.nil?
-              Dir.glob("test/{#{test_name},#{test_name}/**/*}_spec.rb")
-            else
-              parallel = false
-              ["test/#{test_name}_spec.rb:#{line}"]
+              tests
             end
           elsif args.changed?
             changed_test_files
@@ -89,7 +103,7 @@ module Homebrew
           # than one but lower than the number of CPU cores in the execution
           # environment. Coverage information isn't saved in that scenario,
           # so we disable parallel testing as a workaround in this case.
-          parallel = false if args.profile || (args.coverage? && files.length < Hardware::CPU.cores)
+          parallel = false if args.coverage? && files.length < Hardware::CPU.cores
 
           parallel_rspec_log_name = "parallel_runtime_rspec"
           parallel_rspec_log_name = "#{parallel_rspec_log_name}.generic" if args.generic?
@@ -146,12 +160,28 @@ module Homebrew
           # ```
           Process::UID.change_privilege(Process.euid) if Process.euid != Process.uid
 
+          test_prof = "#{HOMEBREW_LIBRARY_PATH}/tmp/test_prof"
+          if args.stackprof?
+            ENV["TEST_STACK_PROF"] = "1"
+            prof_input_filename = "#{test_prof}/stack-prof-report-wall-raw-total.dump"
+            prof_filename = "#{test_prof}/stack-prof-report-wall-raw-total.html"
+          elsif args.vernier?
+            ENV["TEST_VERNIER"] = "1"
+          elsif args.ruby_prof?
+            ENV["TEST_RUBY_PROF"] = "call_stack"
+            prof_filename = "#{test_prof}/ruby-prof-report-call_stack-wall-total.html"
+          end
+
           if parallel
             system "bundle", "exec", "parallel_rspec", *parallel_args, "--", *bundle_args, "--", *files
           else
             system "bundle", "exec", "rspec", *bundle_args, "--", *files
           end
           success = $CHILD_STATUS.success?
+
+          safe_system "stackprof --d3-flamegraph #{prof_input_filename} > #{prof_filename}" if args.stackprof?
+
+          exec_browser prof_filename if prof_filename
 
           return if success
 

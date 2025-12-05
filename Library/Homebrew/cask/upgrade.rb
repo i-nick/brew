@@ -90,7 +90,7 @@ module Cask
     )
       quarantine = true if quarantine.nil?
 
-      outdated_casks = \
+      outdated_casks =
         self.outdated_casks(casks, args:, greedy:, greedy_latest:, greedy_auto_updates:, force:, quiet:)
 
       manual_installer_casks = outdated_casks.select do |cask|

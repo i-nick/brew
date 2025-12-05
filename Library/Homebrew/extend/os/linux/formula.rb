@@ -23,7 +23,7 @@ module OS
         "$ORIGIN"
       end
 
-      sig { params(targets: T.nilable(T.any(Pathname, String))).void }
+      sig { params(targets: T.nilable(T.any(::Pathname, String))).void }
       def deuniversalize_machos(*targets); end
 
       sig { params(spec: SoftwareSpec).void }

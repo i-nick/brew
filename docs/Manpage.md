@@ -137,7 +137,9 @@ and are now no longer needed.
 ### `bundle` \[*`subcommand`*\]
 
 Bundler for non-Ruby dependencies from Homebrew, Homebrew Cask, Mac App Store,
-Whalebrew, Visual Studio Code (and forks/variants) and Go packages.
+Visual Studio Code (and forks/variants), Go packages and Flatpak.
+
+Note: Flatpak support is only available on Linux.
 
 `brew bundle` \[`install`\]
 
@@ -149,8 +151,7 @@ You can specify the `Brewfile` location using `--file` or by setting the
 You can skip the installation of dependencies by adding space-separated values
 to one or more of the following environment variables:
 `$HOMEBREW_BUNDLE_BREW_SKIP`, `$HOMEBREW_BUNDLE_CASK_SKIP`,
-`$HOMEBREW_BUNDLE_MAS_SKIP`, `$HOMEBREW_BUNDLE_WHALEBREW_SKIP`,
-`$HOMEBREW_BUNDLE_TAP_SKIP`.
+`$HOMEBREW_BUNDLE_MAS_SKIP`, `$HOMEBREW_BUNDLE_TAP_SKIP`.
 
 `brew bundle upgrade`
 
@@ -191,16 +192,16 @@ By default, only Homebrew formula dependencies are listed.
 `brew bundle add` *`name`* \[...\]
 
 : Add entries to your `Brewfile`. Adds formulae by default. Use `--cask`,
-  `--tap`, `--whalebrew` or `--vscode` to add the corresponding entry instead.
+  `--tap` or `--vscode` to add the corresponding entry instead.
 
 `brew bundle remove` *`name`* \[...\]
 
 : Remove entries that match `name` from your `Brewfile`. Use `--formula`,
-  `--cask`, `--tap`, `--mas`, `--whalebrew` or `--vscode` to remove only entries
-  of the corresponding type. Passing `--formula` also removes matches against
-  formula aliases and old formula names.
+  `--cask`, `--tap`, `--mas` or `--vscode` to remove only entries of the
+  corresponding type. Passing `--formula` also removes matches against formula
+  aliases and old formula names.
 
-`brew bundle exec` \[`--check`\] *`command`*
+`brew bundle exec` \[`--check`\] \[`--no-secrets`\] *`command`*
 
 : Run an external command in an isolated build environment based on the
   `Brewfile` dependencies.
@@ -211,11 +212,11 @@ commands like `bundle install`, `npm install`, etc. It will also add compiler
 flags which will help with finding keg-only dependencies like `openssl`,
 `icu4c`, etc.
 
-`brew bundle sh` \[`--check`\]
+`brew bundle sh` \[`--check`\] \[`--no-secrets`\]
 
 : Run your shell in a `brew bundle exec` environment.
 
-`brew bundle env` \[`--check`\]
+`brew bundle env` \[`--check`\] \[`--no-secrets`\]
 
 : Print the environment variables that would be set in a `brew bundle exec`
   environment.
@@ -293,10 +294,6 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 : `list` or `dump` Mac App Store dependencies.
 
-`--whalebrew`
-
-: `list` or `dump` Whalebrew dependencies.
-
 `--vscode`
 
 : `list`, `dump` or `cleanup` VSCode (and forks/variants) extensions.
@@ -305,10 +302,24 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 : `list` or `dump` Go packages.
 
+`--flatpak`
+
+: `list` or `dump` Flatpak packages. Note: Linux only.
+
 `--no-vscode`
 
 : `dump` without VSCode (and forks/variants) extensions. Enabled by default if
   `$HOMEBREW_BUNDLE_DUMP_NO_VSCODE` is set.
+
+`--no-go`
+
+: `dump` without Go packages. Enabled by default if
+  `$HOMEBREW_BUNDLE_DUMP_NO_GO` is set.
+
+`--no-flatpak`
+
+: `dump` without Flatpak packages. Enabled by default if
+  `$HOMEBREW_BUNDLE_DUMP_NO_FLATPAK` is set.
 
 `--describe`
 
@@ -327,7 +338,12 @@ flags which will help with finding keg-only dependencies like `openssl`,
 `--check`
 
 : Check that all dependencies in the Brewfile are installed before running
-  `exec`, `sh`, or `env`.
+  `exec`, `sh`, or `env`. Enabled by default if `$HOMEBREW_BUNDLE_CHECK` is set.
+
+`--no-secrets`
+
+: Attempt to remove secrets from the environment before `exec`, `sh`, or `env`.
+  Enabled by default if `$HOMEBREW_BUNDLE_NO_SECRETS` is set.
 
 ### `casks`
 
@@ -1953,6 +1969,10 @@ Display where Homebrew's Git repository is located.
 If *`user`*`/`*`repo`* are provided, display where tap *`user`*`/`*`repo`*'s
 directory is located.
 
+### `--taps`
+
+Display the path to Homebrew’s Taps directory.
+
 ### `--version`, `-v`
 
 Print the version numbers of Homebrew, Homebrew/homebrew-core and
@@ -2005,6 +2025,10 @@ checks. Will exit with a non-zero status if any errors are found.
 `--[no-]signing`
 
 : Audit for app signatures, which are required by macOS on ARM.
+
+`--changed`
+
+: Check files that were changed from the `main` branch.
 
 `--tap`
 
@@ -2412,7 +2436,7 @@ Display the source of a *`formula`* or *`cask`*.
 
 : Treat all named arguments as casks.
 
-### `contributions` \[`--user=`\] \[`--repositories=`\] \[`--from=`\] \[`--to=`\] \[`--csv`\]
+### `contributions` \[`--user=`\] \[`--repositories=`\] \[`--quarter=`\] \[`--from=`\] \[`--to=`\] \[`--csv`\]
 
 Summarise contributions to Homebrew repositories.
 
@@ -2437,6 +2461,11 @@ Summarise contributions to Homebrew repositories.
 
 : Specify the team to populate users from. The first part of the team name will
   be used as the organisation.
+
+`--quarter`
+
+: Homebrew contributions quarter to search (1-4). Omitting this flag searches
+  the past year. If `--from` or `--to` are set, they take precedence.
 
 `--from`
 
@@ -2764,6 +2793,15 @@ Enter the interactive Homebrew Ruby shell.
 `--pry`
 
 : Use Pry instead of IRB. Enabled by default if `$HOMEBREW_PRY` is set.
+
+### `lgtm` \[`--online`\]
+
+Run `brew typecheck`, `brew style --changed` and `brew tests --changed` in one
+go.
+
+`--online`
+
+: Run additional, slower checks that require a network connection.
 
 ### `linkage` \[*`options`*\] \[*`installed_formula`* ...\]
 
@@ -3239,10 +3277,6 @@ and Linux workers.
 
 : Clean all state from the Homebrew directory. Use with care!
 
-`--concurrent-downloads`
-
-: Invoke `brew` with `HOMEBREW_DOWNLOAD_CONCURRENCY=auto`.
-
 `--skip-setup`
 
 : Don't check if the local system is set up correctly.
@@ -3352,7 +3386,7 @@ and Linux workers.
 
 `--only-cleanup-before`
 
-: Only run the pre-cleanup step. Needs `--cleanup`.
+: Only run the pre-cleanup step. Needs `--cleanup`, except in GitHub Actions.
 
 `--only-setup`
 
@@ -3387,7 +3421,7 @@ and Linux workers.
 
 `--only-cleanup-after`
 
-: Only run the post-cleanup step. Needs `--cleanup`.
+: Only run the post-cleanup step. Needs `--cleanup`, except in GitHub Actions.
 
 `--testing-formulae`
 
@@ -3443,6 +3477,18 @@ Run Homebrew's unit and integration tests.
 
 : Run tests serially.
 
+`--stackprof`
+
+: Use `stackprof` to profile tests.
+
+`--vernier`
+
+: Use `vernier` to profile tests.
+
+`--ruby-prof`
+
+: Use `ruby-prof` to profile tests.
+
 `--only`
 
 : Run only `<test_script>_spec.rb`. Appending `:<line_number>` will start at a
@@ -3450,7 +3496,8 @@ Run Homebrew's unit and integration tests.
 
 `--profile`
 
-: Run the test suite serially to find the *`n`* slowest tests.
+: Output the *`n`* slowest tests. When run without `--no-parallel` this will
+  output the slowest tests for each parallel test process.
 
 `--seed`
 
@@ -3960,10 +4007,6 @@ command execution (e.g. `$(cat file)`).
   
   *Default:* `https://github.com/Homebrew/brew`.
 
-`HOMEBREW_BREW_WRAPPER`
-
-: If set, use wrapper to call `brew` rather than auto-detecting it.
-
 `HOMEBREW_BROWSER`
 
 : Use this as the browser when opening project homepages.
@@ -4080,12 +4123,12 @@ command execution (e.g. `$(cat file)`).
 
 `HOMEBREW_DOWNLOAD_CONCURRENCY`
 
-: If set, Homebrew will download in parallel using this many concurrent
-  connections. Setting to `auto` will use twice the number of available CPU
-  cores (what our benchmarks showed to produce the best performance). If set to
-  `1` (the default), Homebrew will download in serial.
+: Homebrew will download in parallel using this many concurrent connections. The
+  default, `auto`, will use twice the number of available CPU cores (what our
+  benchmarks showed to produce the best performance). If set to `1`, Homebrew
+  will download in serial.
   
-  *Default:* `1`.
+  *Default:* `auto`.
 
 `HOMEBREW_EDITOR`
 
@@ -4345,7 +4388,8 @@ command execution (e.g. `$(cat file)`).
 
 `HOMEBREW_NO_FORCE_BREW_WRAPPER`
 
-: If set, disables `$HOMEBREW_FORCE_BREW_WRAPPER` behaviour, even if set.
+: `Deprecated:` If set, disables `$HOMEBREW_FORCE_BREW_WRAPPER` behaviour, even
+  if set.
 
 `HOMEBREW_NO_GITHUB_API`
 
@@ -4476,6 +4520,10 @@ command execution (e.g. `$(cat file)`).
 : A space-separated list of casks. Homebrew will act as if `--greedy` was passed
   when upgrading any cask on this list.
 
+`HOMEBREW_USE_INTERNAL_API`
+
+: If set, test the new beta internal API for fetching formula and cask data.
+
 `HOMEBREW_VERBOSE`
 
 : If set, always assume `--verbose` when running commands.
@@ -4547,20 +4595,16 @@ Homebrew API: <https://docs.brew.sh/rubydoc/>
 
 Homebrew's Project Leader is Mike McQuaid.
 
-Homebrew's Project Leadership Committee is Colin Dean, Michka Popoff, Mike
-McQuaid, Patrick Linnane and Vanessa Gennarelli.
+Homebrew's Lead Maintainers are Bevan Kay, Bo Anderson, Branch Vincent, Carlo
+Cabrera, Dustin Rodrigues, FX Coudert, Issy Long, Justin Krehel, Michael Cho,
+Michka Popoff, Mike McQuaid, Nanda H Krishna, Patrick Linnane, Rui Chen, Ruoyu
+Zhong, Sam Ford, Sean Molenaar and Thierry Moisan.
 
-Homebrew's Technical Steering Committee is Bo Anderson, Issy Long, Michael Cho,
-Mike McQuaid and Ruoyu Zhong.
+Homebrew's other Maintainers are Anton Melnikov, Caleb Xu, Daeho Ro, Douglas
+Eichelberger, Eric Knibbe, Klaus Hipp, Markus Reiter, Rylan Polster, Štefan
+Baebler and William Woodruff.
 
-Homebrew's maintainers are Anton Melnikov, Bevan Kay, Bo Anderson, Branch
-Vincent, Caleb Xu, Carlo Cabrera, Daeho Ro, Douglas Eichelberger, Dustin
-Rodrigues, Eric Knibbe, FX Coudert, Issy Long, Justin Krehel, Klaus Hipp, Markus
-Reiter, Michael Cho, Michka Popoff, Mike McQuaid, Nanda H Krishna, Patrick
-Linnane, Rui Chen, Ruoyu Zhong, Rylan Polster, Sam Ford, Sean Molenaar, Štefan
-Baebler, Thierry Moisan and William Woodruff.
-
-Former maintainers with significant contributions include Alexander Bayandin,
+Former Maintainers with significant contributions include Alexander Bayandin,
 Miccal Matthews, Misty De Méo, Shaun Jackman, Vítor Galvão, Claudia Pellegrino,
 Seeker, Jan Viljanen, JCount, commitay, Dominyk Tiller, Tim Smith, Baptiste
 Fontaine, Xu Cheng, Martin Afanasjew, Brett Koonce, Charlie Sharpsteen, Jack

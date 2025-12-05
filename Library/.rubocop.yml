@@ -11,6 +11,7 @@ plugins:
 
 require:
   - ./Homebrew/rubocops.rb
+  - test_prof/rubocop
 
 inherit_mode:
   merge:
@@ -18,10 +19,7 @@ inherit_mode:
     - Exclude
 
 AllCops:
-  # TODO: This is the default parser in Ruby >= 3.4
-  # https://github.com/rubocop/rubocop-ast/blob/6b9136235219e9448ee4f369e17cf69bcd9db621/lib/rubocop/ast/processed_source.rb#L385
-  ParserEngine: parser_prism
-  TargetRubyVersion: 3.3
+  TargetRubyVersion: 3.4
   NewCops: enable
   Include:
     - "**/*.rbi"
@@ -412,6 +410,10 @@ Style/InvertibleUnlessCondition:
     :zero?:
     :blank?: :present?
 
+# Reconsider once sorbet supports "it": https://github.com/sorbet/sorbet/issues/8375
+Style/ItBlockParameter:
+  Enabled: false
+
 Style/MutableConstant:
   # would rather freeze too much than too little
   EnforcedStyle: strict
@@ -435,11 +437,6 @@ Style/OptionalBooleanParameter:
     # see https://ruby-doc.org/3.3.4/Object.html#method-i-respond_to-3F
     - respond_to?
     - respond_to_missing?
-
-# Broken in RuboCop 1.68.0 so tries to fix line continuations in inline patch blocks:
-# https://github.com/Homebrew/brew/actions/runs/11653110391/job/32460881827?pr=18682
-Style/RedundantLineContinuation:
-  Enabled: false
 
 # Rescuing `StandardError` is an understood default.
 Style/RescueStandardError:

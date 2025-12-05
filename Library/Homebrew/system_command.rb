@@ -346,7 +346,7 @@ class SystemCommand
     thread_done_queue = Queue.new
     line_thread = Thread.new do
       # Ensure the new thread inherits the current context.
-      Context.current = thread_context
+      Thread.current[:context] = thread_context
 
       Thread.handle_interrupt(ProcessTerminatedInterrupt => :never) do
         thread_ready_queue << true

@@ -9,7 +9,7 @@ module OS
 
         requires_ancestor { ::DevelopmentTools }
 
-        sig { params(tool: T.any(String, Symbol)).returns(T.nilable(Pathname)) }
+        sig { params(tool: T.any(String, Symbol)).returns(T.nilable(::Pathname)) }
         def locate(tool)
           @locate ||= T.let({}, T.nilable(T::Hash[T.any(String, Symbol), Pathname]))
           @locate.fetch(tool) do |key|
@@ -22,7 +22,7 @@ module OS
             elsif (homebrew_path = HOMEBREW_PREFIX/"bin/#{tool}").executable?
               homebrew_path
             elsif File.executable?(system_path = "/usr/bin/#{tool}")
-              Pathname.new system_path
+              ::Pathname.new system_path
             end
           end
         end
@@ -42,10 +42,10 @@ module OS
           @needs_libc_formula ||= OS::Linux::Glibc.below_ci_version?
         end
 
-        sig { returns(Pathname) }
+        sig { returns(::Pathname) }
         def host_gcc_path
           # Prioritise versioned path if installed
-          path = Pathname.new("/usr/bin/#{OS::LINUX_PREFERRED_GCC_COMPILER_FORMULA.tr("@", "-")}")
+          path = ::Pathname.new("/usr/bin/#{OS::LINUX_PREFERRED_GCC_COMPILER_FORMULA.tr("@", "-")}")
           return path if path.exist?
 
           super

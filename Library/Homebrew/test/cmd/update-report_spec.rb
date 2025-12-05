@@ -152,6 +152,45 @@ RSpec.describe Homebrew::Cmd::UpdateReport do
         expect(tap.cask_tokens).to include("new-cask")
       end
     end
+
+    describe "#diff" do
+      context "when using the API" do
+        subject(:reporter) do
+          described_class.new(tap,
+                              api_names_txt:        Pathname("formula_names.txt"),
+                              api_names_before_txt: Pathname("formula_names_before.txt"),
+                              api_dir_prefix:       HOMEBREW_CACHE/"api")
+        end
+
+        it "ignore lines that haven't changed" do
+          expect(Utils).to receive(:popen_read).and_return(<<~DIFF)
+            foo
+            +bar
+            -baz
+          DIFF
+
+          expect(reporter.send(:diff)).to eq(<<~DIFF.strip)
+            A api/bar.rb
+            D api/baz.rb
+          DIFF
+        end
+
+        it "handles moved lines" do
+          expect(Utils).to receive(:popen_read).and_return(<<~DIFF)
+            +baz
+            foo
+            +bar
+            +baz
+            -bar
+            -baz
+          DIFF
+
+          expect(reporter.send(:diff)).to eq(<<~DIFF.strip)
+            A api/baz.rb
+          DIFF
+        end
+      end
+    end
   end
 
   describe ReporterHub do

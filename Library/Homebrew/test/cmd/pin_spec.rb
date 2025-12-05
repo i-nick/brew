@@ -7,7 +7,7 @@ RSpec.describe Homebrew::Cmd::Pin do
   it_behaves_like "parseable arguments"
 
   it "pins a Formula's version", :integration_test do
-    install_test_formula "testball"
+    setup_test_formula "testball", tab_attributes: { installed_on_request: true }
 
     expect { brew "pin", "testball" }.to be_a_success
   end

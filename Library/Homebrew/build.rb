@@ -198,7 +198,7 @@ class Build
             (formula.logs/"00.options.out").write \
               "#{formula.full_name} #{formula.build.used_options.sort.join(" ")}".strip
 
-            Pathname.prepend WriteMkpathExtension
+            Pathname.activate_extensions!
             formula.install
 
             stdlibs = detect_stdlibs
@@ -207,7 +207,11 @@ class Build
 
             # Find and link metafiles
             formula.prefix.install_metafiles T.must(formula.buildpath)
-            formula.prefix.install_metafiles formula.libexec if formula.libexec.exist?
+            if formula.libexec.exist?
+              require "metafiles"
+              no_metafiles = formula.prefix.children.none? { |p| p.file? && Metafiles.copy?(p.basename.to_s) }
+              formula.prefix.install_metafiles formula.libexec if no_metafiles
+            end
 
             normalize_pod2man_outputs!(formula)
           end

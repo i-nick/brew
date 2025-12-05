@@ -152,6 +152,10 @@ module Homebrew
           raise HomebrewCurlDownloadStrategyError, url if
             strategy <= HomebrewCurlDownloadStrategy && !Formula["curl"].any_version_installed?
 
+          # Skip ftp.gnu.org audit, upstream has asked us to reduce load.
+          # See issue: https://github.com/Homebrew/brew/issues/20456
+          next if url.match?(%r{^https?://ftp\.gnu\.org/.+})
+
           # Skip https audit for curl dependencies
           if !curl_dep && (http_content_problem = curl_check_http_content(
             url,
@@ -170,7 +174,6 @@ module Homebrew
           end
           problem "The URL #{url} is not a valid Git URL" unless remote_exists
         elsif strategy <= SubversionDownloadStrategy
-          next unless DevelopmentTools.subversion_handles_most_https_certificates?
           next unless Utils::Svn.available?
 
           problem "The URL #{url} is not a valid SVN URL" unless Utils::Svn.remote_exists? url

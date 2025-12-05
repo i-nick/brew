@@ -99,7 +99,9 @@ RSpec.describe Livecheck do
   end
 
   describe "#strategy" do
-    block = proc { |page, regex| page.scan(regex).map { |match| match[0].tr("_", ".") } }
+    let(:block) do
+      proc { |page, regex| page.scan(regex).map { |match| match[0].tr("_", ".") } }
+    end
 
     it "returns nil if not set" do
       expect(livecheck_f.strategy).to be_nil
@@ -200,10 +202,12 @@ RSpec.describe Livecheck do
       end
     end
 
-    [:needs_arm, :needs_intel].each do |needs_arch|
-      arch_value = needs_arch.to_s.delete_prefix("needs_")
-      it "delegates `arch` in `livecheck` block to `package_or_resource`", needs_arch do
-        expect(c_arch.livecheck.url).to eq("https://brew.sh/#{arch_value}")
+    {
+      needs_arm:   "arm",
+      needs_intel: "intel",
+    }.each do |metadata, expected_arch|
+      it "delegates `arch` in `livecheck` block to `package_or_resource`", metadata do
+        expect(c_arch.livecheck.url).to eq("https://brew.sh/#{expected_arch}")
       end
     end
   end
@@ -226,10 +230,12 @@ RSpec.describe Livecheck do
       end
     end
 
-    [:needs_macos, :needs_linux].each do |needs_os|
-      os_value = needs_os.to_s.delete_prefix("needs_")
-      it "delegates `os` in `livecheck` block to `package_or_resource`", needs_os do
-        expect(c_os.livecheck.url).to eq("https://brew.sh/#{os_value}")
+    {
+      needs_macos: "macos",
+      needs_linux: "linux",
+    }.each do |metadata, expected_os|
+      it "delegates `os` in `livecheck` block to `package_or_resource`", metadata do
+        expect(c_os.livecheck.url).to eq("https://brew.sh/#{expected_os}")
       end
     end
   end

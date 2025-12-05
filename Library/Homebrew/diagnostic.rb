@@ -535,7 +535,7 @@ module Homebrew
       def check_git_version
         minimum_version = ENV.fetch("HOMEBREW_MINIMUM_GIT_VERSION")
         return unless Utils::Git.available?
-        return if Version.new(Utils::Git.version) >= Version.new(minimum_version)
+        return if Utils::Git.version >= Version.new(minimum_version)
 
         git = Formula["git"]
         git_upgrade_cmd = git.any_version_installed? ? "upgrade" : "install"

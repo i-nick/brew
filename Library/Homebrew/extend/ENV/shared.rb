@@ -235,7 +235,12 @@ module SharedEnvExtension
 
   sig { returns(T.any(String, Pathname)) }
   def determine_cc
-    COMPILER_SYMBOL_MAP.invert.fetch(compiler, compiler)
+    case (cc = compiler)
+    when Symbol
+      COMPILER_SYMBOL_MAP.invert.fetch(cc)
+    else
+      cc
+    end
   end
   private :determine_cc
 

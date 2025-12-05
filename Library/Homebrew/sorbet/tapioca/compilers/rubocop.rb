@@ -10,8 +10,8 @@ module Tapioca
     class RuboCop < Tapioca::Dsl::Compiler
       # This should be a module whose singleton class contains RuboCop::AST::NodePattern::Macros,
       #   but I don't know how to express that in Sorbet.
-      ConstantType = type_member { { fixed: Module } }
-      sig { override.returns(T::Enumerable[Module]) }
+      ConstantType = type_member { { fixed: T::Module[T.anything] } }
+      sig { override.returns(T::Enumerable[T::Module[T.anything]]) }
       def self.gather_constants
         all_modules.select do |klass|
           next unless klass.singleton_class < ::RuboCop::AST::NodePattern::Macros

@@ -56,8 +56,8 @@ module Language
       end
     end
 
-    sig { params(libexec: Pathname).returns(T::Array[String]) }
-    def self.std_npm_install_args(libexec)
+    sig { params(libexec: Pathname, ignore_scripts: T::Boolean).returns(T::Array[String]) }
+    def self.std_npm_install_args(libexec, ignore_scripts: true)
       setup_npm_environment
 
       pack = pack_for_installation
@@ -67,7 +67,7 @@ module Language
 
       # npm install args for global style module format installed into libexec
       args = %W[
-        -ddd
+        --loglevel=silly
         --global
         --build-from-source
         --#{npm_cache_config}
@@ -75,20 +75,25 @@ module Language
         #{Dir.pwd}/#{pack}
       ]
 
+      args << "--ignore-scripts" if ignore_scripts
       args << "--unsafe-perm" if Process.uid.zero?
 
       args
     end
 
-    sig { returns(T::Array[String]) }
-    def self.local_npm_install_args
+    sig { params(ignore_scripts: T::Boolean).returns(T::Array[String]) }
+    def self.local_npm_install_args(ignore_scripts: true)
       setup_npm_environment
       # npm install args for local style module format
-      %W[
-        -ddd
+      args = %W[
+        --loglevel=silly
         --build-from-source
         --#{npm_cache_config}
       ]
+
+      args << "--ignore-scripts" if ignore_scripts
+
+      args
     end
 
     # Mixin module for {Formula} adding shebang rewrite features.

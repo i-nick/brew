@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "cask_dependent"
@@ -20,6 +20,9 @@ module InstalledDependents
   # parameter.
   #
   # For efficiency, we don't bother trying to get complete data.
+  sig {
+    params(kegs: T::Array[Keg], casks: T::Array[Cask::Cask]).returns(T.nilable([T::Array[Keg], T::Array[String]]))
+  }
   def find_some_installed_dependents(kegs, casks: [])
     keg_names = kegs.select(&:optlinked?).map(&:name)
     keg_formulae = []

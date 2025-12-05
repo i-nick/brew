@@ -195,7 +195,7 @@ rescue Exception => e # rubocop:disable Lint/RescueException
   elsif (issues_url = (method_deprecated_error && e.issues_url) || Utils::Backtrace.tap_error_url(e))
     $stderr.puts "If reporting this issue please do so at (not Homebrew/* repositories):"
     $stderr.puts "  #{Formatter.url(issues_url)}"
-  elsif internal_cmd
+  elsif internal_cmd && !method_deprecated_error
     $stderr.puts "#{Tty.bold}Please report this issue:#{Tty.reset}"
     $stderr.puts "  #{Formatter.url(OS::ISSUES_URL)}"
   end

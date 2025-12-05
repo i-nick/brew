@@ -364,8 +364,7 @@ module Homebrew
             begin
               case method
               when nil, :factory
-                Formulary.factory(name, *@override_spec,
-                                  warn:, force_bottle: @force_bottle, flags: @flags, prefer_stub: true)
+                Formulary.factory_stub(name, *@override_spec, warn:, force_bottle: @force_bottle, flags: @flags)
               when :resolve
                 resolve_formula(name)
               when :latest_kegs

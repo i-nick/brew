@@ -11,7 +11,7 @@ Some casks should not go in [homebrew/cask](https://github.com/Homebrew/homebrew
 
 ## Finding a Home For Your Cask
 
-We maintain separate taps for different types of binaries. Our nomenclature is:
+Our nomenclature is:
 
 * **Stable**: The latest version provided by the developer defined by them as such.
 * **Beta, Development, Unstable**: Subsequent versions to **stable**, yet incomplete and under development, aiming to eventually become the new **stable**. Also includes alternate versions specifically targeted at developers.
@@ -114,21 +114,16 @@ Common reasons to reject a cask entirely:
 * App installer is a `pkg` that requires [`allow_untrusted: true`](Cask-Cookbook.md#pkg-allow_untrusted).
 * App is a trial version, and the only way to acquire the full version is through the Mac App Store.
   * Similarly (and trickier to spot), the app has moved to the Mac App Store but still provides old versions via direct download. We reject these in all official repositories so users don’t get stuck using an old version, wrongly thinking they’re using the most up-to-date one (which, amongst other things, might be a security risk).
-* App is unmaintained, i.e. no releases in the last year, or [explicitly discontinued](https://github.com/Homebrew/homebrew-cask/pull/22699).
+* App is unmaintained, i.e. requires patching, has known and unpatched outstanding security vulnerabilities or [explicitly discontinued](https://github.com/Homebrew/homebrew-cask/pull/22699).
 * App has no information on its homepage (example: a GitHub repository without a README).
 * Cask has no public presence so `brew install` would be the only way to install the software, meaning users can’t easily verify its authenticity.
   * Or if the Cask has a download URL that is both behind a login/registration form and from a host that differs from the homepage.
 * Cask is unreasonably difficult to maintain. Examples have included [Audacity](https://github.com/Homebrew/homebrew-cask/pull/27517) and [older Java development casks](https://github.com/Homebrew/homebrew-cask/issues/57387).
 * Cask has been rejected before due to an issue we cannot fix, and the new submission doesn’t fix that. An example would be the [first submission of `soapui`](https://github.com/Homebrew/homebrew-cask/pull/4939), whose installation problems were not fixed in the two [subsequent](https://github.com/Homebrew/homebrew-cask/pull/9969) [submissions](https://github.com/Homebrew/homebrew-cask/pull/10606).
 * Cask is a duplicate. These submissions mostly occur when the [token reference](Cask-Cookbook.md#token-reference) was not followed.
-* The author has [specifically asked us not to include it](https://github.com/Homebrew/homebrew-cask/pull/5342).
 * App is both open-source and CLI-only (i.e. it only uses the `binary` artifact). In that case, and [in the spirit of deduplication](https://github.com/Homebrew/homebrew-cask/issues/15603), submit it first to [homebrew/core](https://github.com/Homebrew/homebrew-core) as a formula that builds from source. If it is rejected, you may then try again as a cask (link to the issue from your pull request so we can see the discussion and reasoning for rejection).
 * App is open-source and has a GUI but no compiled versions (or only old ones) are provided. It’s better to have them in [homebrew/core](https://github.com/Homebrew/homebrew-core) so users don’t get perpetually outdated versions. See [`gedit`](https://github.com/Homebrew/homebrew-cask/pull/23360) for example.
 * We have strong reasons to believe including the cask can put the whole project at risk. Happened only once so far, [with Popcorn Time](https://github.com/Homebrew/homebrew-cask/pull/3954).
-
-Common reasons to reject a cask from the main `homebrew/cask` repository:
-
-* Cask was submitted to the wrong repository. When drafting a cask, consult [Finding a Home For Your Cask](#finding-a-home-for-your-cask) to see where it belongs.
 
 ### Adult Content
 

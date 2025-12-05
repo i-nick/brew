@@ -92,14 +92,14 @@ RSpec.describe GitHubRunnerMatrix, :no_api do
       end
 
       context "when testing formulae require Linux" do
-        it "activates only the Linux runner" do
+        it "activates only the Linux runners" do
           runner_matrix = described_class.new([testball_depender_linux], [],
                                               all_supported:    false,
                                               dependent_matrix: false)
 
           expect(runner_matrix.runners.all?(&:active)).to be(false)
           expect(runner_matrix.runners.any?(&:active)).to be(true)
-          expect(get_runner_names(runner_matrix)).to eq(["Linux x86_64"])
+          expect(get_runner_names(runner_matrix)).to eq(["Linux x86_64", "Linux arm64"])
         end
       end
 
@@ -140,7 +140,7 @@ RSpec.describe GitHubRunnerMatrix, :no_api do
       end
 
       context "when testing formulae require a macOS version" do
-        it "activates the Linux runner and suitable macOS runners" do
+        it "activates the Linux runners and suitable macOS runners" do
           _, v = newest_supported_macos
           runner_matrix = described_class.new([testball_depender_newest], [],
                                               all_supported:    false,
@@ -148,7 +148,7 @@ RSpec.describe GitHubRunnerMatrix, :no_api do
 
           expect(runner_matrix.runners.all?(&:active)).to be(false)
           expect(runner_matrix.runners.any?(&:active)).to be(true)
-          expect(get_runner_names(runner_matrix).sort).to eq(["Linux x86_64", "macOS #{v}-arm64"])
+          expect(get_runner_names(runner_matrix).sort).to eq(["Linux arm64", "Linux x86_64", "macOS #{v}-arm64"])
         end
       end
     end
@@ -284,6 +284,10 @@ RSpec.describe GitHubRunnerMatrix, :no_api do
               allow(Homebrew::EnvConfig).to receive(:eval_all?).and_return(true)
               allow(Formula).to receive(:all).and_return([testball, testball_depender_linux].map(&:formula))
 
+              matrix = described_class.new([testball], ["deleted"], all_supported: false, dependent_matrix: true)
+              expect(get_runner_names(matrix)).to eq(["Linux x86_64", "Linux arm64"])
+
+              allow(ENV).to receive(:[]).with("HOMEBREW_LINUX_RUNNER").and_return("linux-self-hosted-1")
               matrix = described_class.new([testball], ["deleted"], all_supported: false, dependent_matrix: true)
               expect(get_runner_names(matrix)).to eq(["Linux x86_64"])
             end

@@ -304,7 +304,7 @@ RSpec.describe Cask::Cask, :cask do
 
     context "when loaded from cask file" do
       it "returns expected hash" do
-        allow(MacOS).to receive(:version).and_return(MacOSVersion.new("13"))
+        allow(MacOS).to receive(:version).and_return(MacOSVersion.new("14"))
 
         cask = Cask::CaskLoader.load("everything")
 

@@ -23,6 +23,7 @@ module Homebrew
     PROCESS_TYPE_ADAPTIVE = :adaptive
 
     KEEP_ALIVE_KEYS = [:always, :successful_exit, :crashed, :path].freeze
+    NICE_RANGE = T.let(-20..19, T::Range[Integer])
     SOCKET_STRING_REGEX = %r{^(?<type>[a-z]+)://(?<host>.+):(?<port>[0-9]+)$}i
 
     RunParam = T.type_alias { T.nilable(T.any(T::Array[T.any(String, Pathname)], String, Pathname)) }
@@ -43,10 +44,12 @@ module Homebrew
       @launch_only_once = T.let(false, T::Boolean)
       @log_path = T.let(nil, T.nilable(String))
       @macos_legacy_timers = T.let(false, T::Boolean)
+      @nice = T.let(nil, T.nilable(Integer))
       @plist_name = T.let(default_plist_name, String)
       @process_type = T.let(nil, T.nilable(Symbol))
       @require_root = T.let(false, T::Boolean)
       @restart_delay = T.let(nil, T.nilable(Integer))
+      @throttle_interval = T.let(nil, T.nilable(Integer))
       @root_dir = T.let(nil, T.nilable(String))
       @run = T.let([], T::Array[String])
       @run_at_load = T.let(true, T::Boolean)
@@ -56,6 +59,13 @@ module Homebrew
       @sockets = T.let({}, Sockets)
       @working_dir = T.let(nil, T.nilable(String))
       instance_eval(&block) if block
+
+      raise TypeError, "Service#nice: require_root true is required for negative nice values" if nice_requires_root?
+    end
+
+    sig { returns(T::Boolean) }
+    def nice_requires_root?
+      @nice&.negative? == true && !requires_root?
     end
 
     sig { returns(Formula) }
@@ -247,6 +257,13 @@ module Homebrew
       end
     end
 
+    sig { params(value: Integer).returns(T.nilable(Integer)) }
+    def throttle_interval(value = T.unsafe(nil))
+      return @throttle_interval if value.nil?
+
+      @throttle_interval = value
+    end
+
     sig { params(value: Symbol).returns(T.nilable(Symbol)) }
     def process_type(value = T.unsafe(nil))
       case value
@@ -351,6 +368,15 @@ module Homebrew
       end
     end
 
+    sig { params(value: Integer).returns(T.nilable(Integer)) }
+    def nice(value = T.unsafe(nil))
+      return @nice if value.nil?
+
+      raise TypeError, "Service#nice value should be in #{NICE_RANGE}" unless NICE_RANGE.cover?(value)
+
+      @nice = value
+    end
+
     delegate [:bin, :etc, :libexec, :opt_bin, :opt_libexec, :opt_pkgshare, :opt_prefix, :opt_sbin, :var] => :@formula
 
     sig { returns(String) }
@@ -397,7 +423,9 @@ module Homebrew
       base[:LaunchOnlyOnce] = @launch_only_once if @launch_only_once == true
       base[:LegacyTimers] = @macos_legacy_timers if @macos_legacy_timers == true
       base[:TimeOut] = @restart_delay if @restart_delay.present?
+      base[:ThrottleInterval] = @throttle_interval if @throttle_interval.present?
       base[:ProcessType] = @process_type.to_s.capitalize if @process_type.present?
+      base[:Nice] = @nice if @nice.present?
       base[:StartInterval] = @interval if @interval.present? && @run_type == RUN_TYPE_INTERVAL
       base[:WorkingDirectory] = File.expand_path(@working_dir) if @working_dir.present?
       base[:RootDirectory] = File.expand_path(@root_dir) if @root_dir.present?
@@ -464,6 +492,7 @@ module Homebrew
         end
       end
       options << "RestartSec=#{restart_delay}" if @restart_delay.present?
+      options << "Nice=#{@nice}" if @nice.present?
       options << "WorkingDirectory=#{File.expand_path(@working_dir)}" if @working_dir.present?
       options << "RootDirectory=#{File.expand_path(@root_dir)}" if @root_dir.present?
       options << "StandardInput=file:#{File.expand_path(@input_path)}" if @input_path.present?
@@ -556,6 +585,8 @@ module Homebrew
         log_path:              @log_path,
         error_log_path:        @error_log_path,
         restart_delay:         @restart_delay,
+        throttle_interval:     @throttle_interval,
+        nice:                  @nice,
         process_type:          @process_type,
         macos_legacy_timers:   @macos_legacy_timers,
         sockets:               sockets_var,
@@ -610,7 +641,8 @@ module Homebrew
         hash[key.to_sym] = replace_placeholders(value)
       end
 
-      %w[interval cron launch_only_once require_root restart_delay macos_legacy_timers].each do |key|
+      %w[interval cron launch_only_once require_root restart_delay throttle_interval nice
+         macos_legacy_timers].each do |key|
         next if (value = api_hash[key]).nil?
 
         hash[key.to_sym] = value

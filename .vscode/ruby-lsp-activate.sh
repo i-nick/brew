@@ -8,7 +8,14 @@ else
 fi
 HOMEBREW_PREFIX="$(cd "$(dirname "${SCRIPT_PATH}")"/../ && pwd)"
 
-"${HOMEBREW_PREFIX}/bin/brew" install-bundler-gems --add-groups=style,typecheck,vscode >/dev/null 2>&1
-
-export PATH="${HOMEBREW_PREFIX}/Library/Homebrew/vendor/portable-ruby/current/bin:${PATH}"
+# These are used by the functions needed from utils/ruby.sh
+export HOMEBREW_BREW_FILE="${HOMEBREW_PREFIX}/bin/brew"
+export HOMEBREW_LIBRARY="${HOMEBREW_PREFIX}/Library"
 export BUNDLE_WITH="style:typecheck:vscode"
+
+# shellcheck disable=SC1091
+source "${HOMEBREW_PREFIX}/Library/Homebrew/utils/ruby.sh"
+
+setup-ruby-path
+setup-gem-home-bundle-gemfile
+ensure-bundle-dependencies

@@ -153,13 +153,13 @@ RSpec.describe Utils::Git do
   end
 
   describe "::version" do
-    it "returns nil when git is not available" do
+    it "returns null when git is not available" do
       stub_const("HOMEBREW_SHIMS_PATH", HOMEBREW_PREFIX/"bin/shim")
-      expect(described_class.version).to be_nil
+      expect(described_class.version).to be Version::NULL
     end
 
     it "returns version of git when git is available" do
-      expect(described_class.version).not_to be_nil
+      expect(described_class.version).to be > Version::NULL
     end
   end
 

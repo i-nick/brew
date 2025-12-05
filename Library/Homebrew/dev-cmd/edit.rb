@@ -30,6 +30,11 @@ module Homebrew
         # Recover $TMPDIR for emacsclient
         ENV["TMPDIR"] = ENV.fetch("HOMEBREW_TMPDIR", nil)
 
+        # VS Code remote development relies on this env var to work
+        if which_editor(silent: true) == "code" && ENV.include?("HOMEBREW_VSCODE_IPC_HOOK_CLI")
+          ENV["VSCODE_IPC_HOOK_CLI"] = ENV.fetch("HOMEBREW_VSCODE_IPC_HOOK_CLI", nil)
+        end
+
         unless (HOMEBREW_REPOSITORY/".git").directory?
           odie <<~EOS
             Changes will be lost!

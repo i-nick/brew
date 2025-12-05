@@ -6,6 +6,7 @@
 --prefix
 --repo
 --repository
+--taps
 --version
 -S
 -v
@@ -62,6 +63,7 @@ install-bundler-gems
 irb
 lc
 leaves
+lgtm
 link
 linkage
 list

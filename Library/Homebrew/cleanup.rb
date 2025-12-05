@@ -328,6 +328,7 @@ module Homebrew
         cleanup_empty_api_source_directories
         cleanup_bootsnap
         cleanup_logs
+        cleanup_temp_cellar
         cleanup_lockfiles
         cleanup_python_site_packages
         prune_prefix_symlinks_and_directories
@@ -404,6 +405,14 @@ module Homebrew
 
       HOMEBREW_LOGS.subdirs.each do |dir|
         cleanup_path(dir) { FileUtils.rm_r(dir) } if self.class.prune?(dir, logs_days)
+      end
+    end
+
+    def cleanup_temp_cellar
+      return unless HOMEBREW_TEMP_CELLAR.directory?
+
+      HOMEBREW_TEMP_CELLAR.each_child do |child|
+        cleanup_path(child) { FileUtils.rm_r(child) }
       end
     end
 

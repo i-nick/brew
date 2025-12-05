@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "system_command"
@@ -12,14 +12,16 @@ module Utils
 
     sig { returns(T::Boolean) }
     def self.available?
-      version.present?
+      !version.null?
     end
 
+    sig { returns(Version) }
     def self.version
-      return @version if defined?(@version)
-
-      stdout, _, status = system_command(git, args: ["--version"], verbose: false, print_stderr: false).to_a
-      @version = status.success? ? stdout.chomp[/git version (\d+(?:\.\d+)*)/, 1] : nil
+      @version ||= T.let(begin
+        stdout, _, status = system_command(git, args: ["--version"], verbose: false, print_stderr: false).to_a
+        version_str = status.success? ? stdout.chomp[/git version (\d+(?:\.\d+)*)/, 1] : nil
+        version_str.nil? ? Version::NULL : Version.new(version_str)
+      end, T.nilable(Version))
     end
 
     sig { returns(T.nilable(String)) }
@@ -27,14 +29,12 @@ module Utils
       return unless available?
       return @path if defined?(@path)
 
-      @path = Utils.popen_read(git, "--homebrew=print-path").chomp.presence
+      @path = T.let(Utils.popen_read(git, "--homebrew=print-path").chomp.presence, T.nilable(String))
     end
 
     sig { returns(Pathname) }
     def self.git
-      return @git if defined?(@git)
-
-      @git = HOMEBREW_SHIMS_PATH/"shared/git"
+      @git ||= T.let(HOMEBREW_SHIMS_PATH/"shared/git", T.nilable(Pathname))
     end
 
     sig { params(url: String).returns(T::Boolean) }
@@ -65,6 +65,13 @@ module Utils
       Utils.popen_read(git, "-C", repo, "log", "--format=%h", "--abbrev=7", "--max-count=1", *args, "--", file).chomp
     end
 
+    sig {
+      params(
+        repo:          T.any(Pathname, String),
+        files:         T::Array[T.any(Pathname, String)],
+        before_commit: T.nilable(String),
+      ).returns([T.nilable(String), T::Array[String]])
+    }
     def self.last_revision_commit_of_files(repo, files, before_commit: nil)
       args = if before_commit.nil?
         ["--skip=1"]
@@ -125,6 +132,7 @@ module Utils
       raise "Git is unavailable" unless available?
     end
 
+    sig { params(author: T::Boolean, committer: T::Boolean).void }
     def self.set_name_email!(author: true, committer: true)
       if Homebrew::EnvConfig.git_name
         ENV["GIT_AUTHOR_NAME"] = Homebrew::EnvConfig.git_name if author
@@ -156,6 +164,7 @@ module Utils
 
     # Special case of `git cherry-pick` that permits non-verbose output and
     # optional resolution on merge conflict.
+    sig { params(repo: T.any(Pathname, String), args: String, resolve: T::Boolean, verbose: T::Boolean).returns(String) }
     def self.cherry_pick!(repo, *args, resolve: false, verbose: false)
       cmd = [git.to_s, "-C", repo, "cherry-pick"] + args
       output = Utils.popen_read(*cmd, err: :out)
@@ -163,7 +172,7 @@ module Utils
         puts output if verbose
         output
       else
-        system git.to_s, "-C", repo, "cherry-pick", "--abort" unless resolve
+        system git.to_s, "-C", repo.to_s, "cherry-pick", "--abort" unless resolve
         raise ErrorDuringExecution.new(cmd, status: $CHILD_STATUS, output: [[:stdout, output]])
       end
     end
@@ -172,7 +181,7 @@ module Utils
     def self.supports_partial_clone_sparse_checkout?
       # There is some support for partial clones prior to 2.20, but we avoid using it
       # due to performance issues
-      Version.new(version) >= Version.new("2.20.0")
+      version >= Version.new("2.20.0")
     end
 
     sig {

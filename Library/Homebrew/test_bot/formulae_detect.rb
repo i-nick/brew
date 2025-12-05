@@ -18,7 +18,7 @@ module Homebrew
       def run!(args:)
         detect_formulae!(args:)
 
-        return unless ENV["GITHUB_ACTIONS"]
+        return unless GitHub::Actions.env_set?
 
         File.open(ENV.fetch("GITHUB_OUTPUT"), "a") do |f|
           f.puts "testing_formulae=#{@testing_formulae.join(",")}"
@@ -60,7 +60,7 @@ module Homebrew
 
         github_sha = ENV.fetch("GITHUB_SHA", nil)
         if github_repository.blank? || github_sha.blank? || github_ref.blank?
-          if ENV["GITHUB_ACTIONS"]
+          if GitHub::Actions.env_set?
             odie <<~EOS
               We cannot find the needed GitHub Actions environment variables! Check you have e.g. exported them to a Docker container.
             EOS

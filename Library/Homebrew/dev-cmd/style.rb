@@ -87,9 +87,6 @@ module Homebrew
       sig { returns(T::Array[String]) }
       def changed_ruby_or_shell_files
         changed_files = Utils.popen_read("git", "diff", "--name-only", "main")
-
-        raise UsageError, "No files have been changed from the `main` branch!" if changed_files.blank?
-
         changed_files.split("\n").filter_map do |file|
           next if !file.end_with?(".rb", ".sh", ".yml", ".rbi") && file != "bin/brew"
 

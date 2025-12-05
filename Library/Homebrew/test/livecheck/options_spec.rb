@@ -131,7 +131,7 @@ RSpec.describe Homebrew::Livecheck::Options do
       expect(options.new.empty?).to be true
     end
 
-    it "returns false if object has any non-default values" do
+    it "returns false if object has any non-default values" do # rubocop:todo RSpec/AggregateExamples
       expect(options.new(**args).empty?).to be false
     end
   end
@@ -141,7 +141,7 @@ RSpec.describe Homebrew::Livecheck::Options do
       expect(options.new.present?).to be false
     end
 
-    it "returns true if object has any non-default values" do
+    it "returns true if object has any non-default values" do # rubocop:todo RSpec/AggregateExamples
       expect(options.new(**args).present?).to be true
     end
   end

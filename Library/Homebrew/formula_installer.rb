@@ -593,17 +593,7 @@ on_request: installed_on_request?, options:)
         pour
       # Catch any other types of exceptions as they leave us with nothing installed.
       rescue Exception # rubocop:disable Lint/RescueException
-        ignore_interrupts do
-          begin
-            FileUtils.rm_r(formula.prefix) if formula.prefix.directory?
-          rescue Errno::EACCES, Errno::ENOTEMPTY
-            odie <<~EOS
-              Could not remove #{formula.prefix.basename} keg! Do so manually:
-                sudo rm -rf #{formula.prefix}
-            EOS
-          end
-          formula.rack.rmdir_if_possible
-        end
+        Keg.new(formula.prefix).ignore_interrupts_and_uninstall! if formula.prefix.exist?
         raise
       else
         @poured_bottle = true
@@ -1167,7 +1157,8 @@ on_request: installed_on_request?, options:)
     Formula.clear_cache
 
     cask_installed_with_formula_name = begin
-      Cask::CaskLoader.load(formula.name, warn: false).installed?
+      (Cask::Caskroom.path/formula.name).exist? &&
+        Cask::CaskLoader.load(formula.name, warn: false).installed?
     rescue Cask::CaskUnavailableError, Cask::CaskInvalidError
       false
     end
@@ -1323,6 +1314,7 @@ on_request: installed_on_request?, options:)
     # Use the formula from the keg when any of the following is true:
     # * We're installing from the JSON API
     # * We're installing a local bottle file
+    # * We're building from source
     # * The formula doesn't exist in the tap (or the tap isn't installed)
     # * The formula in the tap has a different `pkg_version``.
     #
@@ -1333,6 +1325,7 @@ on_request: installed_on_request?, options:)
     keg_formula_path = formula.opt_prefix/".brew/#{formula.name}.rb"
     return keg_formula_path if formula.loaded_from_api?
     return keg_formula_path if formula.local_bottle_path.present?
+    return keg_formula_path if build_from_source?
 
     tap_formula_path = T.must(formula.specified_path)
     return keg_formula_path unless tap_formula_path.exist?
@@ -1517,10 +1510,22 @@ on_request: installed_on_request?, options:)
   sig { void }
   def pour
     HOMEBREW_CELLAR.cd do
-      # download queue has already done the actual staging but we'll lie about
-      # pouring now for nicer output
       ohai "Pouring #{downloadable.downloader.basename}"
-      downloadable.downloader.stage if download_queue.nil? || !formula.prefix.exist?
+
+      formula.rack.mkpath
+
+      # Download queue has already extracted the bottle to a temporary directory.
+      bottle_tmp_keg = if download_queue
+        formula_prefix_relative_to_cellar = formula.prefix.relative_path_from(HOMEBREW_CELLAR)
+        HOMEBREW_TEMP_CELLAR/formula_prefix_relative_to_cellar
+      end
+
+      if bottle_tmp_keg&.exist?
+        FileUtils.mv(bottle_tmp_keg, formula.prefix)
+        bottle_tmp_keg.parent.rmdir_if_possible
+      else
+        downloadable.downloader.stage
+      end
     end
 
     Tab.clear_cache

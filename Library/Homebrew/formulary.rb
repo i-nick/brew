@@ -559,7 +559,7 @@ module Formulary
       end
     else
       rack = to_rack(name)
-      alias_path = factory(name, force_bottle:, flags:, prefer_stub: true).alias_path
+      alias_path = factory_stub(name, force_bottle:, flags:).alias_path
       f = from_rack(rack, *spec, alias_path:, force_bottle:, flags:)
     end
 
@@ -1172,6 +1172,48 @@ module Formulary
     formula
   end
 
+  # A shortcut for calling `factory` with `prefer_stub: true`.
+  #
+  # Note: this method returns a stubbed formula which will include only:
+  #
+  # * name
+  # * version
+  # * revision
+  # * version_scheme
+  # * bottle information (for the current OS's bottle, only)
+  # * aliases
+  # * oldnames
+  # * any other data that can be computed using only this information
+  #
+  # Only use the output for operations that do not require full formula data.
+  #
+  # @see .factory
+  # @api internal
+  sig {
+    params(
+      ref:           T.any(Pathname, String),
+      spec:          Symbol,
+      alias_path:    T.nilable(T.any(Pathname, String)),
+      from:          T.nilable(Symbol),
+      warn:          T::Boolean,
+      force_bottle:  T::Boolean,
+      flags:         T::Array[String],
+      ignore_errors: T::Boolean,
+    ).returns(Formula)
+  }
+  def self.factory_stub(
+    ref,
+    spec = :stable,
+    alias_path: nil,
+    from: nil,
+    warn: false,
+    force_bottle: false,
+    flags: [],
+    ignore_errors: false
+  )
+    factory(ref, spec, alias_path:, from:, warn:, force_bottle:, flags:, ignore_errors:, prefer_stub: true)
+  end
+
   # Return a {Formula} instance for the given rack.
   #
   # @param spec when nil, will auto resolve the formula's spec.
@@ -1247,7 +1289,7 @@ module Formulary
 
     f = if Homebrew::EnvConfig.use_internal_api? && (loader = FromKegLoader.try_new(keg.name, warn: false))
       begin
-        loader.get_formula(spec, alias_path:, force_bottle:, flags:, ignore_errors: true)
+        loader.get_formula(spec, alias_path:, force_bottle:, flags:)
       rescue FormulaUnreadableError
         nil
       end

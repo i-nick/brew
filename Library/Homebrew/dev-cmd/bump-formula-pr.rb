@@ -5,7 +5,6 @@ require "abstract_command"
 require "fileutils"
 require "formula"
 require "utils/inreplace"
-require "utils/pypi"
 require "utils/tar"
 
 module Homebrew
@@ -94,6 +93,9 @@ module Homebrew
 
       sig { override.void }
       def run
+        Homebrew.install_bundler_gems!(groups: ["ast"])
+        require "utils/pypi"
+
         if args.revision.present? && args.tag.nil? && args.version.nil?
           raise UsageError, "`--revision` must be passed with either `--tag` or `--version`!"
         end
@@ -665,7 +667,7 @@ module Homebrew
         end
 
         check_throttle(formula, version)
-        check_pull_requests(formula, tap_remote_repo, version:)
+        check_pull_requests(formula, tap_remote_repo, version:) unless args.write_only?
       end
 
       sig { params(formula: Formula, new_version: String).void }

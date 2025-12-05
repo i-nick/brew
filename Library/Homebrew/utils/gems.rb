@@ -8,10 +8,6 @@
 Homebrew::FastBootRequire.from_rubylibdir("English")
 
 module Homebrew
-  # Keep in sync with the `Gemfile.lock`'s BUNDLED WITH.
-  # After updating this, run `brew vendor-gems --update=--bundler`.
-  HOMEBREW_BUNDLER_VERSION = "2.6.8" # Pinned to <2.6.9 until Ruby 3.5.
-
   # Bump this whenever a committed vendored gem is later added to or exclusion removed from gitignore.
   # This will trigger it to reinstall properly if `brew install-bundler-gems` needs it.
   VENDOR_VERSION = 7
@@ -41,7 +37,6 @@ module Homebrew
   private_class_method :bundler_definition
 
   def self.valid_gem_groups
-    install_bundler!
     require "bundler"
 
     Bundler.with_unbundled_env do
@@ -161,22 +156,6 @@ module Homebrew
   end
   private_class_method :find_in_path
 
-  def self.install_bundler!
-    old_bundler_version = ENV.fetch("BUNDLER_VERSION", nil)
-
-    setup_gem_environment!
-
-    ENV["BUNDLER_VERSION"] = HOMEBREW_BUNDLER_VERSION # Set so it correctly finds existing installs
-    install_gem_setup_path!(
-      "bundler",
-      version:               HOMEBREW_BUNDLER_VERSION,
-      executable:            "bundle",
-      setup_gem_environment: false,
-    )
-  ensure
-    ENV["BUNDLER_VERSION"] = old_bundler_version
-  end
-
   def self.user_gem_groups
     @user_gem_groups ||= if GEM_GROUPS_FILE.exist?
       GEM_GROUPS_FILE.readlines(chomp: true)
@@ -235,13 +214,9 @@ module Homebrew
     invalid_groups = groups - valid_gem_groups
     raise ArgumentError, "Invalid gem groups: #{invalid_groups.join(", ")}" unless invalid_groups.empty?
 
+    setup_gem_environment!
     # Tests should not modify the state of the repository.
-    if ENV["HOMEBREW_TESTS"]
-      setup_gem_environment!
-      return
-    end
-
-    install_bundler!
+    return if ENV["HOMEBREW_TESTS"]
 
     # Combine the passed groups with the ones stored in settings.
     groups |= (user_gem_groups & valid_gem_groups)

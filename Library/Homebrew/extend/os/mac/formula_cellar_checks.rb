@@ -54,10 +54,11 @@ module OS
         EOS
       end
 
-      sig { params(lib: Pathname).returns(T.nilable(String)) }
+      sig { params(lib: ::Pathname).returns(T.nilable(String)) }
       def check_python_framework_links(lib)
-        python_modules = Pathname.glob lib/"python*/site-packages/**/*.so"
+        python_modules = ::Pathname.glob lib/"python*/site-packages/**/*.so"
         framework_links = python_modules.select do |obj|
+          obj = MachOPathname.wrap(obj)
           dlls = obj.dynamically_linked_libraries
           dlls.any? { |dll| dll.include?("Python.framework") }
         end
@@ -137,7 +138,7 @@ module OS
 
       MACOS_LIB_EXTENSIONS = %w[.dylib .framework].freeze
 
-      sig { params(filename: Pathname).returns(T::Boolean) }
+      sig { params(filename: ::Pathname).returns(T::Boolean) }
       def valid_library_extension?(filename)
         super || MACOS_LIB_EXTENSIONS.include?(filename.extname)
       end

@@ -48,19 +48,13 @@ module Homebrew
                description: "Run various additional style checks to determine if a new formula or cask is eligible " \
                             "for Homebrew. This should be used when creating new formulae or casks and implies " \
                             "`--strict` and `--online`."
-        switch "--new-formula",
-               replacement: "--new",
-               disable:     true,
-               hidden:      true
-        switch "--new-cask",
-               replacement: "--new",
-               disable:     true,
-               hidden:      true
         switch "--[no-]signing",
                description: "Audit for app signatures, which are required by macOS on ARM."
         switch "--token-conflicts",
                description: "Audit for token conflicts.",
                hidden:      true
+        switch "--changed",
+               description: "Check files that were changed from the `main` branch."
         flag   "--tap=",
                description: "Check formulae and casks within the given tap, specified as <user>`/`<repo>."
         switch "--fix",
@@ -93,7 +87,7 @@ module Homebrew
         switch "--cask", "--casks",
                description: "Treat all named arguments as casks."
 
-        conflicts "--installed", "--eval-all"
+        conflicts "--installed", "--eval-all", "--changed", "--tap"
         conflicts "--only", "--except"
         conflicts "--only-cops", "--except-cops", "--strict"
         conflicts "--only-cops", "--except-cops", "--only"
@@ -104,7 +98,7 @@ module Homebrew
 
       sig { override.void }
       def run
-        odeprecated "`brew audit --token-conflicts`" if args.token_conflicts?
+        odisabled "`brew audit --token-conflicts`" if args.token_conflicts?
 
         Formulary.enable_factory_cache!
 
@@ -127,7 +121,32 @@ module Homebrew
         ENV.setup_build_environment
 
         audit_formulae, audit_casks = Homebrew.with_no_api_env do # audit requires full Ruby source
-          if args.tap
+          if args.changed?
+            pwd = Dir.pwd
+            tap = Tap.from_path(pwd)
+            odie "`brew audit --changed` must be run inside a tap!" if tap.blank?
+
+            no_named_args = true
+
+            audit_formulae = []
+            audit_casks = []
+
+            changed_files = Utils.popen_read("git", "diff", "--name-only", "main")
+            changed_files.split("\n").each do |file|
+              next unless file.end_with?(".rb")
+
+              absolute_file = "#{pwd}/#{file}"
+              next unless File.exist?(absolute_file)
+
+              if tap.formula_file?(file)
+                audit_formulae << Formulary.factory(absolute_file)
+              elsif tap.cask_file?(file)
+                audit_casks << Cask::CaskLoader.load(absolute_file)
+              end
+            end
+
+            [audit_formulae, audit_casks]
+          elsif args.tap
             Tap.fetch(args.tap).then do |tap|
               [
                 tap.formula_files.map { |path| Formulary.factory(path) },

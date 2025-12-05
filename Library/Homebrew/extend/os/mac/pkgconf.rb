@@ -11,7 +11,7 @@ module Homebrew
       return if OS::Mac.version.prerelease? || OS::Mac.version.outdated_release?
 
       pkgconf = begin
-        ::Formula["pkgconf"]
+        ::Formulary.factory_stub("pkgconf")
       rescue FormulaUnavailableError
         nil
       end

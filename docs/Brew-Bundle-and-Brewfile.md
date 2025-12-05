@@ -56,7 +56,7 @@ brew bundle check || brew bundle install
 
 ### Types
 
-As well as supporting formulae (`brew "..."`), you can also use `brew bundle` with casks, taps, Mac App Store apps, VSCode extensions, Go packages and to start background services with `brew services`.
+As well as supporting formulae (`brew "..."`), you can also use `brew bundle` with casks, taps, Mac App Store apps, VSCode extensions, Go  and Flatpak packages and to start background services with `brew services`.
 
 ```ruby
 tap "apple/apple"
@@ -66,6 +66,9 @@ cask "firefox"
 mas "Refined GitHub", id: 1519867270
 vscode "editorconfig.editorconfig"
 go "github.com/charmbracelet/crush"
+flatpak "com.visualstudio.code"
+flatpak "org.godotengine.Godot", remote: "flathub-beta", url: "https://dl.flathub.org/beta-repo/"
+flatpak "io.github.dvlv.boxbuddyrs", remote: "flathub-beta"
 ```
 
 Run `brew bundle` again and this outputs:
@@ -321,7 +324,7 @@ This must be done with solutions outside or built on top of `brew bundle` instea
 
 ## Adding New Packages Support
 
-`brew bundle` currently supports Homebrew, Homebrew Cask, Mac App Store, Visual Studio Code (and forks/variants) and Go packages.
+`brew bundle` currently supports Homebrew, Homebrew Cask, Mac App Store, Visual Studio Code (and forks/variants), Go and Flatpak packages.
 
 We are interested in contributions for other packages' installers/checkers/dumpers but they must:
 
@@ -330,5 +333,3 @@ We are interested in contributions for other packages' installers/checkers/dumpe
 - be able to dump the installed software to a format that can be stored in a `Brewfile`
 - not require `sudo` to install (casks are an exception here)
 - be extremely widely used
-
-Note: based on these criteria, we would not accept e.g. Whalebrew today.

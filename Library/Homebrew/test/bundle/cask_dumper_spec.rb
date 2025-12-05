@@ -17,7 +17,7 @@ RSpec.describe Homebrew::Bundle::CaskDumper do
       expect(dumper.cask_names).to be_empty
     end
 
-    it "dumps as empty string" do
+    it "dumps as empty string" do # rubocop:todo RSpec/AggregateExamples
       expect(dumper.dump).to eql("")
     end
   end
@@ -33,7 +33,7 @@ RSpec.describe Homebrew::Bundle::CaskDumper do
       expect(dumper.cask_names).to be_empty
     end
 
-    it "dumps as empty string" do
+    it "dumps as empty string" do # rubocop:todo RSpec/AggregateExamples
       expect(dumper.dump).to eql("")
     end
 

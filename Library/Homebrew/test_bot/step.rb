@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require "system_command"
+require "utils/github/actions"
 
 module Homebrew
   module TestBot
@@ -75,12 +76,8 @@ module Homebrew
         puts Formatter.headline(Formatter.error("FAILED"), color: :red) unless passed?
       end
 
-      def in_github_actions?
-        ENV["GITHUB_ACTIONS"].present?
-      end
-
       def puts_github_actions_annotation(message, title, file, line)
-        return unless in_github_actions?
+        return unless GitHub::Actions.env_set?
 
         type = if passed?
           :notice
@@ -95,9 +92,9 @@ module Homebrew
       end
 
       def puts_in_github_actions_group(title)
-        puts "::group::#{title}" if in_github_actions?
+        puts "::group::#{title}" if GitHub::Actions.env_set?
         yield
-        puts "::endgroup::" if in_github_actions?
+        puts "::endgroup::" if GitHub::Actions.env_set?
       end
 
       def output?
@@ -211,7 +208,7 @@ module Homebrew
 
         puts_full_output
 
-        unless in_github_actions?
+        unless GitHub::Actions.env_set?
           puts
           exit 1 if fail_fast && failed?
           return

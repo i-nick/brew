@@ -9,49 +9,51 @@ RSpec.describe Homebrew::Cmd::UpgradeCmd do
 
   it_behaves_like "parseable arguments"
 
-  it "upgrades a Formula and cleans up old versions", :integration_test do
+  it "upgrades a Formula", :integration_test do
     setup_test_formula "testball"
-    (HOMEBREW_CELLAR/"testball/0.0.1/foo").mkpath
+
+    testball_rack = HOMEBREW_CELLAR/"testball"
+
+    (testball_rack/"0.0.1/foo").mkpath
 
     expect { brew "upgrade" }.to be_a_success
 
-    expect(HOMEBREW_CELLAR/"testball/0.1").to be_a_directory
-    expect(HOMEBREW_CELLAR/"testball/0.0.1").not_to exist
-  end
+    expect(testball_rack/"0.1").to be_a_directory
+    expect(testball_rack/"0.0.1").not_to exist
 
-  it "links newer version when upgrade was interrupted", :integration_test do
-    setup_test_formula "testball"
+    uninstall_test_formula "testball"
 
-    (HOMEBREW_CELLAR/"testball/0.1/foo").mkpath
+    # links newer version when upgrade was interrupted
+    (testball_rack/"0.1/foo").mkpath
 
     expect { brew "upgrade" }.to be_a_success
 
-    expect(HOMEBREW_CELLAR/"testball/0.1").to be_a_directory
+    expect(testball_rack/"0.1").to be_a_directory
     expect(HOMEBREW_PREFIX/"opt/testball").to be_a_symlink
     expect(HOMEBREW_PREFIX/"var/homebrew/linked/testball").to be_a_symlink
-  end
 
-  it "upgrades with asking for user prompts", :integration_test do
-    setup_test_formula "testball"
-    (HOMEBREW_CELLAR/"testball/0.0.1/foo").mkpath
+    uninstall_test_formula "testball"
 
-    expect do
-      brew "upgrade", "--ask"
-    end.to output(/.*Formula\s*\(1\):\s*testball.*/).to_stdout.and not_to_output.to_stderr
+    # upgrades with asking for user prompts
+    (testball_rack/"0.0.1/foo").mkpath
 
-    expect(HOMEBREW_CELLAR/"testball/0.1").to be_a_directory
-    expect(HOMEBREW_CELLAR/"testball/0.0.1").not_to exist
-  end
+    expect { brew "upgrade", "--ask" }
+      .to output(/.*Formula\s*\(1\):\s*testball.*/).to_stdout
+      .and output(/✔︎.*/m).to_stderr
 
-  it "refuses to upgrades a forbidden formula", :integration_test do
-    setup_test_formula "testball"
-    (HOMEBREW_CELLAR/"testball/0.0.1/foo").mkpath
+    expect(testball_rack/"0.1").to be_a_directory
+    expect(testball_rack/"0.0.1").not_to exist
+
+    uninstall_test_formula "testball"
+
+    # refuses to upgrade a forbidden formula
+    (testball_rack/"0.0.1/foo").mkpath
 
     expect { brew "upgrade", "testball", { "HOMEBREW_FORBIDDEN_FORMULAE" => "testball" } }
       .to not_to_output(%r{#{HOMEBREW_CELLAR}/testball/0\.1}o).to_stdout
       .and output(/testball was forbidden/).to_stderr
       .and be_a_failure
-    expect(HOMEBREW_CELLAR/"testball/0.1").not_to exist
+    expect(testball_rack/"0.1").not_to exist
   end
 
   it_behaves_like "reinstall_pkgconf_if_needed"

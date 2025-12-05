@@ -21,6 +21,11 @@ module Homebrew
         cached_location
       end
 
+      sig { override.returns(T.nilable(Integer)) }
+      def fetched_size
+        File.size?(cached_location)
+      end
+
       sig { override.returns(Pathname) }
       def cached_location
         meta.fetch(:target)

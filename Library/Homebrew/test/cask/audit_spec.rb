@@ -67,7 +67,7 @@ RSpec.describe Cask::Audit, :cask do
         expect(audit).to be_online
       end
 
-      it "implies `strict`" do
+      it "implies `strict`" do # rubocop:todo RSpec/AggregateExamples
         expect(audit).to be_strict
       end
     end
@@ -854,6 +854,59 @@ RSpec.describe Cask::Audit, :cask do
       end
     end
 
+    describe "conflicts with" do
+      let(:only) { ["conflicts_with"] }
+      let(:tap) { CoreCaskTap.instance }
+
+      context "when the Cask has no conflicts" do
+        let(:cask_token) { "basic-cask" }
+
+        it { is_expected.to pass }
+      end
+
+      context "when all conflicting casks exist" do
+        let(:cask) do
+          tmp_cask "test-conflicts-cask", <<~RUBY
+            cask 'test-conflicts-cask' do
+              version '1.0'
+              url "https://brew.sh/index.html"
+              artifact "example.pdf", target: "/Library/Application Support/example"
+
+              conflicts_with cask: ["foo", "bar"]
+            end
+          RUBY
+        end
+
+        before do
+          allow(audit).to receive(:core_cask_tokens).and_return(%w[foo bar baz qux])
+          allow(cask).to receive(:tap).and_return(tap)
+        end
+
+        it { is_expected.to pass }
+      end
+
+      context "when conflicting casks are missing" do
+        let(:cask) do
+          tmp_cask "test-conflicts-cask", <<~RUBY
+            cask 'test-conflicts-cask' do
+              version '1.0'
+              url "https://brew.sh/index.html"
+              artifact "example.pdf", target: "/Library/Application Support/example"
+
+              conflicts_with cask: ["foo", "foo@1", "bar", "baz"]
+            end
+          RUBY
+        end
+
+        before do
+          allow(audit).to receive(:core_cask_tokens).and_return(["foo", "baz"])
+          allow(cask).to receive(:tap).and_return(tap)
+        end
+
+        it { is_expected.to error_with(/cask conflicts with non-existing cask/) }
+      end
+    end
+
     describe "denylist checks" do
       let(:only) { ["denylist"] }
 
@@ -998,7 +1051,7 @@ RSpec.describe Cask::Audit, :cask do
         expect(run).to pass
       end
 
-      it "when download fails it fails" do
+      it "when download fails it fails" do # rubocop:todo RSpec/AggregateExamples
         expect(download_double).to receive(:fetch).and_raise(StandardError.new(message))
         expect(run).to error_with(/#{message}/)
       end

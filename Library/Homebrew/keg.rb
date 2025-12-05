@@ -164,7 +164,11 @@ class Keg
   ).sort.uniq.freeze
   end
 
-  attr_reader :path, :name, :linked_keg_record, :opt_record
+  sig { returns(String) }
+  attr_reader :name
+
+  sig { returns(Pathname) }
+  attr_reader :path, :linked_keg_record, :opt_record
 
   protected :path
 
@@ -188,6 +192,7 @@ class Keg
     @require_relocation = false
   end
 
+  sig { returns(Pathname) }
   def rack
     path.parent
   end
@@ -279,6 +284,7 @@ class Keg
     opt_record.parent.rmdir_if_possible
   end
 
+  sig { params(raise_failures: T::Boolean).void }
   def uninstall(raise_failures: false)
     CacheStoreDatabase.use(:linkage) do |db|
       break unless db.created?
@@ -299,6 +305,13 @@ class Keg
       Could not remove #{name} keg! Do so manually:
         sudo rm -rf #{path}
     EOS
+  end
+
+  sig { void }
+  def ignore_interrupts_and_uninstall!
+    ignore_interrupts do
+      uninstall
+    end
   end
 
   def unlink(verbose: false, dry_run: false)
@@ -621,6 +634,7 @@ class Keg
     keepme.readlines.select { |ref| File.exist?(ref.strip) }
   end
 
+  sig { returns(T::Array[Pathname]) }
   def binary_executable_or_library_files
     []
   end

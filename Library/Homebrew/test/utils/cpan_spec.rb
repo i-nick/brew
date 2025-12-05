@@ -23,11 +23,11 @@ RSpec.describe CPAN do
         expect(package_from_cpan_url.name).to eq "Scalar::Util"
       end
 
-      it "extracts version from CPAN url" do
+      it "extracts version from CPAN url" do # rubocop:todo RSpec/AggregateExamples
         expect(package_from_cpan_url.current_version).to eq "1.68"
       end
 
-      it "handles .tgz extensions" do
+      it "handles .tgz extensions" do # rubocop:todo RSpec/AggregateExamples
         expect(package_from_tgz_url.current_version).to eq "1.23"
       end
     end
@@ -37,7 +37,7 @@ RSpec.describe CPAN do
         expect(package_from_cpan_url.valid_cpan_package?).to be true
       end
 
-      it "is false for non-CPAN URLs" do
+      it "is false for non-CPAN URLs" do # rubocop:todo RSpec/AggregateExamples
         expect(package_from_non_cpan_url.valid_cpan_package?).to be false
       end
     end

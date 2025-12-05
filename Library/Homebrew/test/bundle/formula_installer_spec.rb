@@ -484,19 +484,19 @@ RSpec.describe Homebrew::Bundle::FormulaInstaller do
         expect(described_class.new(formula_name).start_service_needed?).to be(false)
       end
 
-      it "is false with {start_service: true}" do
+      it "is false with {start_service: true}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, start_service: true).start_service_needed?).to be(false)
       end
 
-      it "is false with {restart_service: true}" do
+      it "is false with {restart_service: true}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: true).start_service_needed?).to be(false)
       end
 
-      it "is false with {restart_service: :changed}" do
+      it "is false with {restart_service: :changed}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: :changed).start_service_needed?).to be(false)
       end
 
-      it "is false with {restart_service: :always}" do
+      it "is false with {restart_service: :always}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: :always).start_service_needed?).to be(false)
       end
     end
@@ -510,19 +510,19 @@ RSpec.describe Homebrew::Bundle::FormulaInstaller do
         expect(described_class.new(formula_name).start_service_needed?).to be(false)
       end
 
-      it "is true if {start_service: true}" do
+      it "is true if {start_service: true}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, start_service: true).start_service_needed?).to be(true)
       end
 
-      it "is true if {restart_service: true}" do
+      it "is true if {restart_service: true}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: true).start_service_needed?).to be(true)
       end
 
-      it "is true if {restart_service: :changed}" do
+      it "is true if {restart_service: :changed}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: :changed).start_service_needed?).to be(true)
       end
 
-      it "is true if {restart_service: :always}" do
+      it "is true if {restart_service: :always}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: :always).start_service_needed?).to be(true)
       end
     end
@@ -566,11 +566,11 @@ RSpec.describe Homebrew::Bundle::FormulaInstaller do
         expect(described_class.new(formula_name, restart_service: true).restart_service_needed?).to be(false)
       end
 
-      it "is true with {restart_service: :always}" do
+      it "is true with {restart_service: :always}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: :always).restart_service_needed?).to be(true)
       end
 
-      it "is false if {restart_service: :changed}" do
+      it "is false if {restart_service: :changed}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: :changed).restart_service_needed?).to be(false)
       end
     end
@@ -584,11 +584,11 @@ RSpec.describe Homebrew::Bundle::FormulaInstaller do
         expect(described_class.new(formula_name, restart_service: true).restart_service_needed?).to be(true)
       end
 
-      it "is true with {restart_service: :always}" do
+      it "is true with {restart_service: :always}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: :always).restart_service_needed?).to be(true)
       end
 
-      it "is true if {restart_service: :changed}" do
+      it "is true if {restart_service: :changed}" do # rubocop:todo RSpec/AggregateExamples
         expect(described_class.new(formula_name, restart_service: :changed).restart_service_needed?).to be(true)
       end
     end

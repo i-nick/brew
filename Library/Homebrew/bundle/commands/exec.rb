@@ -24,9 +24,18 @@ module Homebrew
             subcommand: String,
             services:   T::Boolean,
             check:      T::Boolean,
+            no_secrets: T::Boolean,
           ).void
         }
-        def self.run(*args, global: false, file: nil, subcommand: "", services: false, check: false)
+        def self.run(
+          *args,
+          global: false,
+          file: nil,
+          subcommand: "",
+          services: false,
+          check: false,
+          no_secrets: false
+        )
           if check
             require "bundle/commands/check"
             Homebrew::Bundle::Commands::Check.run(global:, file:, quiet: true)
@@ -35,6 +44,7 @@ module Homebrew
           # Store the old environment so we can check if things were already set
           # before we start mutating it.
           old_env = ENV.to_h
+          ENV.clear_sensitive_environment! if no_secrets
 
           # Setup Homebrew's ENV extensions
           ENV.activate_extensions!

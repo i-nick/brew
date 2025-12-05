@@ -21,7 +21,7 @@ module Homebrew
       MAX_PR_SEARCH = T.let(100, Integer)
 
       cmd_args do
-        usage_banner "`contributions` [`--user=`] [`--repositories=`] [`--from=`] [`--to=`] [`--csv`]"
+        usage_banner "`contributions` [`--user=`] [`--repositories=`] [`--quarter=`] [`--from=`] [`--to=`] [`--csv`]"
         description <<~EOS
           Summarise contributions to Homebrew repositories.
         EOS
@@ -40,6 +40,10 @@ module Homebrew
         flag   "--team=",
                description: "Specify the team to populate users from. " \
                             "The first part of the team name will be used as the organisation."
+        flag   "--quarter=",
+               description: "Homebrew contributions quarter to search (1-4). " \
+                            "Omitting this flag searches the past year. " \
+                            "If `--from` or `--to` are set, they take precedence."
         flag   "--from=",
                description: "Date (ISO 8601 format) to start searching contributions. " \
                             "Omitting this flag searches the past year."
@@ -62,8 +66,13 @@ module Homebrew
 
         results = {}
         grand_totals = {}
-        from = args.from.presence || Date.today.prev_year.iso8601
-        to = args.to.presence || (Date.today + 1).iso8601
+
+        quarter = args.quarter.presence.to_i
+        odie "Value for `--quarter` must be between 1 and 4." if args.quarter.present? && !quarter.between?(1, 4)
+        from = args.from.presence || quarter_dates[quarter]&.first || Date.today.prev_year.iso8601
+        to = args.to.presence || quarter_dates[quarter]&.last || (Date.today + 1).iso8601
+        puts "Date range is #{time_period(from:, to:)}." if args.verbose?
+
         organisation = nil
 
         users = if (team = args.team.presence)
@@ -136,7 +145,7 @@ module Homebrew
           contributions_string = [
             "#{username} contributed",
             *contributions.to_sentence,
-            "#{time_period(from:, to: args.to)}.",
+            "#{time_period(from:, to:)}.",
           ].join(" ")
           if args.csv?
             $stderr.puts contributions_string
@@ -216,9 +225,9 @@ module Homebrew
         verbose = args.verbose?
 
         puts "Querying pull requests for #{person} in #{organisation}..." if args.verbose?
-        organisation_merged_prs = \
+        organisation_merged_prs =
           GitHub.search_merged_pull_requests_in_user_or_organisation(organisation, person, from:, to:)
-        organisation_approved_reviews = \
+        organisation_approved_reviews =
           GitHub.search_approved_pull_requests_in_user_or_organisation(organisation, person, from:, to:)
 
         require "utils/git"
@@ -269,6 +278,21 @@ module Homebrew
         end
 
         totals
+      end
+
+      sig { returns(T::Hash[Integer, T::Array[String]]) }
+      def quarter_dates
+        # These aren't standard quarterly dates. We've chosen our own so that we
+        # can use recent maintainer activity stats as part of checking
+        # eligibility for expensed attendance at the AGM in February each year.
+        current_year = Date.today.year
+        last_year = current_year - 1
+        {
+          1 => [Date.new(last_year, 12, 1).iso8601, Date.new(current_year, 3, 1).iso8601],
+          2 => [Date.new(current_year, 3, 1).iso8601, Date.new(current_year,  6, 1).iso8601],
+          3 => [Date.new(current_year, 6, 1).iso8601, Date.new(current_year,  9, 1).iso8601],
+          4 => [Date.new(current_year, 9, 1).iso8601, Date.new(current_year, 12, 1).iso8601],
+        }
       end
     end
   end
