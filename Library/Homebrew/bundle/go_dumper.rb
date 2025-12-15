@@ -22,7 +22,9 @@ module Homebrew
 
           return [] unless File.directory?(bin_dir)
 
-          binaries = Dir.glob("#{bin_dir}/*").select { |f| File.executable?(f) && !File.directory?(f) }
+          binaries = Dir.glob("#{bin_dir}/*").select do |f|
+            File.executable?(f) && !File.directory?(f) && !File.symlink?(f)
+          end
 
           binaries.filter_map do |binary|
             output = `#{go} version -m "#{binary}" 2>/dev/null`

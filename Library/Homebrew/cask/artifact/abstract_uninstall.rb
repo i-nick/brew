@@ -29,6 +29,10 @@ module Cask
         :rmdir,
       ].freeze
 
+      METADATA_KEYS = [
+        :on_upgrade,
+      ].freeze
+
       def self.from_args(cask, **directives)
         new(cask, **directives)
       end
@@ -36,7 +40,7 @@ module Cask
       attr_reader :directives
 
       def initialize(cask, **directives)
-        directives.assert_valid_keys(*ORDERED_DIRECTIVES)
+        directives.assert_valid_keys(*ORDERED_DIRECTIVES, *METADATA_KEYS)
 
         super
         directives[:signal] = Array(directives[:signal]).flatten.each_slice(2).to_a
@@ -471,7 +475,7 @@ module Cask
         untrashable = untrashable.split(":")
 
         trashed_with_permissions, untrashable = untrashable.partition do |path|
-          Utils.gain_permissions(path, ["-R"], SystemCommand) do
+          Utils.gain_permissions(Pathname(path), ["-R"], SystemCommand) do
             system_command! HOMEBREW_LIBRARY_PATH/"cask/utils/trash.swift",
                             args:         [path],
                             print_stderr: Homebrew::EnvConfig.developer?

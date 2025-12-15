@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "utils/bottles"
@@ -13,7 +13,7 @@ module Homebrew
     extend Utils::Output::Mixin
     include Utils::Output::Mixin
 
-    CLEANUP_DEFAULT_DAYS = Homebrew::EnvConfig.cleanup_periodic_full_days.to_i.freeze
+    CLEANUP_DEFAULT_DAYS = T.let(Homebrew::EnvConfig.cleanup_periodic_full_days.to_i.freeze, Integer)
     GH_ACTIONS_ARTIFACT_CLEANUP_DAYS = 3
     private_constant :CLEANUP_DEFAULT_DAYS, :GH_ACTIONS_ARTIFACT_CLEANUP_DAYS
 
@@ -105,7 +105,7 @@ module Homebrew
 
       sig { params(formula: Formula).returns(T::Set[String]) }
       def excluded_versions_from_cleanup(formula)
-        @excluded_versions_from_cleanup ||= {}
+        @excluded_versions_from_cleanup ||= T.let({}, T.nilable(T::Hash[String, T::Set[String]]))
         @excluded_versions_from_cleanup[formula.name] ||= begin
           eligible_kegs_for_cleanup = formula.eligible_kegs_for_cleanup(quiet: true)
           Set.new((formula.installed_kegs - eligible_kegs_for_cleanup).map { |keg| keg.version.to_s })
@@ -217,19 +217,32 @@ module Homebrew
       end
     end
 
-    PERIODIC_CLEAN_FILE = (HOMEBREW_CACHE/".cleaned").freeze
+    PERIODIC_CLEAN_FILE = T.let((HOMEBREW_CACHE/".cleaned").freeze, Pathname)
 
-    attr_reader :args, :days, :cache, :disk_cleanup_size
+    sig { returns(T::Array[String]) }
+    attr_reader :args
 
+    sig { returns(Integer) }
+    attr_reader :days
+
+    sig { returns(Pathname) }
+    attr_reader :cache
+
+    sig { returns(Integer) }
+    attr_reader :disk_cleanup_size
+
+    sig {
+      params(args: String, dry_run: T::Boolean, scrub: T::Boolean, days: T.nilable(Integer), cache: Pathname).void
+    }
     def initialize(*args, dry_run: false, scrub: false, days: nil, cache: HOMEBREW_CACHE)
-      @disk_cleanup_size = 0
+      @disk_cleanup_size = T.let(0, Integer)
       @args = args
       @dry_run = dry_run
       @scrub = scrub
-      @prune = days.present?
-      @days = days || Homebrew::EnvConfig.cleanup_max_age_days.to_i
+      @prune = T.let(days.present?, T::Boolean)
+      @days = T.let(days || Homebrew::EnvConfig.cleanup_max_age_days.to_i, Integer)
       @cache = cache
-      @cleaned_up_paths = Set.new
+      @cleaned_up_paths = T.let(Set.new, T::Set[Pathname])
     end
 
     sig { returns(T::Boolean) }
@@ -241,6 +254,7 @@ module Homebrew
     sig { returns(T::Boolean) }
     def scrub? = @scrub
 
+    sig { params(formula: Formula, dry_run: T::Boolean).void }
     def self.install_formula_clean!(formula, dry_run: false)
       return if Homebrew::EnvConfig.no_install_cleanup?
       return unless formula.latest_version_installed?
@@ -258,6 +272,7 @@ module Homebrew
       Cleanup.new.cleanup_formula(formula)
     end
 
+    sig { void }
     def self.puts_no_install_cleanup_disable_message
       return if Homebrew::EnvConfig.no_env_hints?
       return if Homebrew::EnvConfig.no_install_cleanup?
@@ -266,21 +281,24 @@ module Homebrew
       puts "Hide these hints with `HOMEBREW_NO_ENV_HINTS=1` (see `man brew`)."
     end
 
+    sig { void }
     def self.puts_no_install_cleanup_disable_message_if_not_already!
       return if @puts_no_install_cleanup_disable_message_if_not_already
 
       puts_no_install_cleanup_disable_message
-      @puts_no_install_cleanup_disable_message_if_not_already = true
+      @puts_no_install_cleanup_disable_message_if_not_already = T.let(true, T.nilable(TrueClass))
     end
 
+    sig { params(formula: Formula).returns(T::Boolean) }
     def self.skip_clean_formula?(formula)
       no_cleanup_formula = Homebrew::EnvConfig.no_cleanup_formulae
       return false if no_cleanup_formula.blank?
 
-      @skip_clean_formulae ||= no_cleanup_formula.split(",")
+      @skip_clean_formulae ||= T.let(no_cleanup_formula.split(","), T.nilable(T::Array[String]))
       @skip_clean_formulae.include?(formula.name) || @skip_clean_formulae.intersect?(formula.aliases)
     end
 
+    sig { returns(T::Boolean) }
     def self.periodic_clean_due?
       return false if Homebrew::EnvConfig.no_install_cleanup?
 
@@ -293,6 +311,7 @@ module Homebrew
       PERIODIC_CLEAN_FILE.mtime < (DateTime.now - CLEANUP_DEFAULT_DAYS).to_time
     end
 
+    sig { params(dry_run: T::Boolean).void }
     def self.periodic_clean!(dry_run: false)
       return if Homebrew::EnvConfig.no_install_cleanup?
       return unless periodic_clean_due?
@@ -309,6 +328,7 @@ module Homebrew
       Cleanup.new.clean!(quiet: true, periodic: true)
     end
 
+    sig { params(quiet: T::Boolean, periodic: T::Boolean).void }
     def clean!(quiet: false, periodic: false)
       if args.empty?
         Formula.installed
@@ -372,10 +392,12 @@ module Homebrew
       end
     end
 
+    sig { returns(T::Array[Keg]) }
     def unremovable_kegs
-      @unremovable_kegs ||= []
+      @unremovable_kegs ||= T.let([], T.nilable(T::Array[Keg]))
     end
 
+    sig { params(formula: Formula, quiet: T::Boolean, ds_store: T::Boolean, cache_db: T::Boolean).void }
     def cleanup_formula(formula, quiet: false, ds_store: true, cache_db: true)
       formula.eligible_kegs_for_cleanup(quiet:)
              .each { |keg| cleanup_keg(keg) }
@@ -385,19 +407,22 @@ module Homebrew
       cleanup_lockfiles(FormulaLock.new(formula.name).path)
     end
 
+    sig { params(cask: Cask::Cask, ds_store: T::Boolean).void }
     def cleanup_cask(cask, ds_store: true)
       cleanup_cache(Pathname.glob(cache/"Cask/#{cask.token}--*").map { |path| { path:, type: :cask } })
       rm_ds_store([cask.caskroom_path]) if ds_store
       cleanup_lockfiles(CaskLock.new(cask.token).path)
     end
 
+    sig { params(keg: Keg).void }
     def cleanup_keg(keg)
-      cleanup_path(keg) { keg.uninstall(raise_failures: true) }
+      cleanup_path(Pathname.new(keg)) { keg.uninstall(raise_failures: true) }
     rescue Errno::EACCES, Errno::ENOTEMPTY => e
       opoo e.message
       unremovable_kegs << keg
     end
 
+    sig { void }
     def cleanup_logs
       return unless HOMEBREW_LOGS.directory?
 
@@ -408,6 +433,7 @@ module Homebrew
       end
     end
 
+    sig { void }
     def cleanup_temp_cellar
       return unless HOMEBREW_TEMP_CELLAR.directory?
 
@@ -416,6 +442,7 @@ module Homebrew
       end
     end
 
+    sig { returns(T::Array[{ path: Pathname, type: T.nilable(Symbol) }]) }
     def cache_files
       files = cache.directory? ? cache.children : []
       cask_files = (cache/"Cask").directory? ? (cache/"Cask").children : []
@@ -428,6 +455,7 @@ module Homebrew
         gh_actions_artifacts.map { |path| { path:, type: :gh_actions_artifact } }
     end
 
+    sig { params(directory: Pathname).void }
     def cleanup_empty_api_source_directories(directory = cache/"api-source")
       return if dry_run?
       return unless directory.directory?
@@ -440,6 +468,7 @@ module Homebrew
       end
     end
 
+    sig { void }
     def cleanup_unreferenced_downloads
       return if dry_run?
       return unless (cache/"downloads").directory?
@@ -466,6 +495,7 @@ module Homebrew
       end
     end
 
+    sig { params(entries: T.nilable(T::Array[{ path: Pathname, type: T.nilable(Symbol) }])).void }
     def cleanup_cache(entries = nil)
       entries ||= cache_files
 
@@ -493,7 +523,8 @@ module Homebrew
       cleanup_unreferenced_downloads
     end
 
-    def cleanup_path(path)
+    sig { params(path: Pathname, _block: T.proc.void).void }
+    def cleanup_path(path, &_block)
       return unless path.exist?
       return unless @cleaned_up_paths.add?(path)
 
@@ -507,6 +538,7 @@ module Homebrew
       end
     end
 
+    sig { params(lockfiles: Pathname).void }
     def cleanup_lockfiles(*lockfiles)
       return if dry_run?
 
@@ -524,6 +556,7 @@ module Homebrew
       end
     end
 
+    sig { void }
     def cleanup_portable_ruby
       vendor_dir = HOMEBREW_LIBRARY/"Homebrew/vendor"
       portable_ruby_latest_version = (vendor_dir/"portable-ruby-version").read.chomp
@@ -562,10 +595,12 @@ module Homebrew
       end
     end
 
+    sig { returns(T::Boolean) }
     def use_system_ruby?
       false
     end
 
+    sig { void }
     def cleanup_bootsnap
       bootsnap = cache/"bootsnap"
       return unless bootsnap.directory?
@@ -575,6 +610,7 @@ module Homebrew
       end
     end
 
+    sig { params(rack: T.nilable(Pathname)).void }
     def cleanup_cache_db(rack = nil)
       FileUtils.rm_rf [
         cache/"desc_cache.json",
@@ -594,6 +630,7 @@ module Homebrew
       end
     end
 
+    sig { params(dirs: T.nilable(T::Array[Pathname])).void }
     def rm_ds_store(dirs = nil)
       dirs ||= Keg.must_exist_directories + [
         HOMEBREW_PREFIX/"Caskroom",
@@ -608,6 +645,7 @@ module Homebrew
           end
     end
 
+    sig { void }
     def cleanup_python_site_packages
       pyc_files = Hash.new { |h, k| h[k] = [] }
       seen_non_pyc_file = Hash.new { |h, k| h[k] = false }
@@ -657,6 +695,7 @@ module Homebrew
       end
     end
 
+    sig { void }
     def prune_prefix_symlinks_and_directories
       ObserverPathnameExtension.reset_counts!
 
@@ -719,6 +758,7 @@ module Homebrew
       puts "from #{HOMEBREW_PREFIX}"
     end
 
+    sig { params(dry_run: T::Boolean).void }
     def self.autoremove(dry_run: false)
       require "utils/autoremove"
       require "cask/caskroom"

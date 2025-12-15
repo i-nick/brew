@@ -867,7 +867,7 @@ _brew_deps() {
     '--include-implicit[Include implicit dependencies used to download and unpack source files]' \
     '--include-optional[Include `:optional` dependencies for formula]' \
     '--include-requirements[Include requirements in addition to dependencies for formula]' \
-    '--include-test[Include `:test` dependencies for formula (non-recursive)]' \
+    '--include-test[Include `:test` dependencies for formula (non-recursive unless `--graph` or `--tree`)]' \
     '(--missing --eval-all)--installed[List dependencies for formulae that are currently installed. If formula is specified, list only its dependencies that are currently installed]' \
     '(--installed)--missing[Show only missing dependencies]' \
     '--os[Show dependencies for the given operating system]' \
@@ -1978,9 +1978,10 @@ _brew_sh() {
   _arguments \
     '--cmd[Execute commands in a non-interactive shell]' \
     '--debug[Display any debugging information]' \
-    '--env[Use the standard `$PATH` instead of superenv'\''s when `std` is passed]' \
+    '(--ruby)--env[Use the standard `$PATH` instead of superenv'\''s when `std` is passed]' \
     '--help[Show this message]' \
     '--quiet[Make some output more quiet]' \
+    '(--env)--ruby[Set up Homebrew'\''s Ruby environment]' \
     '--verbose[Make some output more verbose]' \
     - file \
     '*:file:__brew_formulae_or_ruby_files'

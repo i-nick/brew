@@ -28,7 +28,7 @@ defaults:
 
 jobs:
   updates:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     if: github.repository == 'Homebrew/brew'
     steps:
       - name: Setup Homebrew
@@ -141,7 +141,7 @@ jobs:
   issue:
     needs: updates
     if: always() && github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     env:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     permissions:

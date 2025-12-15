@@ -84,13 +84,16 @@ module Homebrew
         Homebrew.failed = !Style.check_style_and_print(target, **options)
       end
 
-      sig { returns(T::Array[String]) }
+      sig { returns(T::Array[Pathname]) }
       def changed_ruby_or_shell_files
-        changed_files = Utils.popen_read("git", "diff", "--name-only", "main")
+        repo = Utils.popen_read("git", "rev-parse", "--show-toplevel").chomp
+        odie "`brew style --changed` must be run inside a git repository!" unless $CHILD_STATUS.success?
+
+        changed_files = Utils.popen_read("git", "diff", "--name-only", "--no-relative", "main")
         changed_files.split("\n").filter_map do |file|
           next if !file.end_with?(".rb", ".sh", ".yml", ".rbi") && file != "bin/brew"
 
-          Pathname(file)
+          Pathname(file).expand_path(repo)
         end.select(&:exist?)
       end
     end

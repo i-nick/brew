@@ -27,6 +27,7 @@ RSpec.describe Homebrew::Bundle::FormulaInstaller do
       before do
         allow_any_instance_of(described_class).to receive(:install_change_state!).and_return(true)
         allow_any_instance_of(described_class).to receive(:installed?).and_return(true)
+        allow(Homebrew::Bundle).to receive(:brew).with("link", formula_name, verbose: false).and_return(true)
       end
 
       context "when service is already running" do
@@ -78,6 +79,7 @@ RSpec.describe Homebrew::Bundle::FormulaInstaller do
       before do
         allow_any_instance_of(described_class).to receive(:install_change_state!).and_return(true)
         allow_any_instance_of(described_class).to receive(:installed?).and_return(true)
+        allow(Homebrew::Bundle).to receive(:brew).with("link", formula_name, verbose: false).and_return(true)
       end
 
       context "with a successful installation" do
@@ -230,6 +232,7 @@ RSpec.describe Homebrew::Bundle::FormulaInstaller do
       before do
         allow_any_instance_of(described_class).to receive(:install_change_state!).and_return(true)
         allow_any_instance_of(described_class).to receive(:installed?).and_return(true)
+        allow(Homebrew::Bundle).to receive(:brew).with("link", formula_name, verbose: false).and_return(true)
       end
 
       context "when formula has changed" do

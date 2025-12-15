@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "compilers"
@@ -36,6 +36,12 @@ module SharedEnvExtension
   ].freeze
   private_constant :SANITIZED_VARS
 
+  sig { returns(T.nilable(T::Boolean)) }
+  attr_reader :build_bottle
+
+  sig { returns(T.nilable(String)) }
+  attr_reader :bottle_arch
+
   sig {
     params(
       formula:         T.nilable(Formula),
@@ -48,12 +54,12 @@ module SharedEnvExtension
   }
   def setup_build_environment(formula: nil, cc: nil, build_bottle: false, bottle_arch: nil, testing_formula: false,
                               debug_symbols: false)
-    @formula = formula
-    @cc = cc
-    @build_bottle = build_bottle
-    @bottle_arch = bottle_arch
-    @debug_symbols = debug_symbols
-    @testing_formula = testing_formula
+    @formula = T.let(formula, T.nilable(Formula))
+    @cc = T.let(cc, T.nilable(String))
+    @build_bottle = T.let(build_bottle, T.nilable(T::Boolean))
+    @bottle_arch = T.let(bottle_arch, T.nilable(String))
+    @debug_symbols = T.let(debug_symbols, T.nilable(T::Boolean))
+    @testing_formula = T.let(testing_formula, T.nilable(T::Boolean))
     reset
   end
 
@@ -211,6 +217,7 @@ module SharedEnvExtension
   # end</pre>
   sig { returns(T.any(Symbol, String)) }
   def compiler
+    @compiler ||= T.let(nil, T.nilable(T.any(Symbol, String)))
     @compiler ||= if (cc = @cc)
       warn_about_non_apple_gcc(cc) if cc.match?(GNU_GCC_REGEXP)
 
@@ -222,12 +229,12 @@ module SharedEnvExtension
 
       if @formula
         compilers = [compiler] + CompilerSelector.compilers
-        compiler = CompilerSelector.select_for(@formula, compilers, testing_formula: @testing_formula)
+        compiler = CompilerSelector.select_for(@formula, compilers, testing_formula: @testing_formula == true)
       end
 
       compiler
     elsif @formula
-      CompilerSelector.select_for(@formula, testing_formula: @testing_formula)
+      CompilerSelector.select_for(@formula, testing_formula: @testing_formula == true)
     else
       DevelopmentTools.default_compiler
     end
@@ -246,7 +253,7 @@ module SharedEnvExtension
 
   COMPILERS.each do |compiler|
     define_method(compiler) do
-      @compiler = compiler
+      @compiler = T.let(compiler, T.nilable(T.any(Symbol, String)))
 
       send(:cc=, send(:determine_cc))
       send(:cxx=, send(:determine_cxx))
@@ -260,7 +267,7 @@ module SharedEnvExtension
     # despite it often being the Homebrew-provided one set up in the first call.
     return if @fortran_setup_done
 
-    @fortran_setup_done = true
+    @fortran_setup_done = T.let(true, T.nilable(TrueClass))
 
     flags = []
 

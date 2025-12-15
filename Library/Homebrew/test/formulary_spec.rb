@@ -362,6 +362,7 @@ RSpec.describe Formulary do
                 "download" => nil,
                 "version"  => "1.0",
                 "contexts" => ["build"],
+                "specs"    => ["stable"],
               },
             ],
             "conflicts_with"           => ["conflicting_formula"],
@@ -377,21 +378,30 @@ RSpec.describe Formulary do
             },
             "ruby_source_path"         => "Formula/#{formula_name}.rb",
             "ruby_source_checksum"     => { "sha256" => "ABCDEFGHIJKLMNOPQRSTUVWXYZ" },
+            "tap_git_head"             => "0000000000000000000000000000000000000000",
           }.merge(extra_items),
         }
       end
 
       let(:deprecate_json) do
         {
-          "deprecation_date"   => "2022-06-15",
-          "deprecation_reason" => "repo_archived",
+          "deprecated"                      => true,
+          "deprecation_date"                => "2022-06-15",
+          "deprecation_reason"              => "repo_archived",
+          "deprecation_replacement_formula" => nil,
+          "deprecation_replacement_cask"    => nil,
+          "deprecate_args"                  => { date: "2022-06-15", because: :repo_archived },
         }
       end
 
       let(:disable_json) do
         {
-          "disable_date"   => "2022-06-15",
-          "disable_reason" => "requires something else",
+          "disabled"                    => true,
+          "disable_date"                => "2022-06-15",
+          "disable_reason"              => "requires something else",
+          "disable_replacement_formula" => nil,
+          "disable_replacement_cask"    => nil,
+          "disable_args"                => { date: "2022-06-15", because: "requires something else" },
         }
       end
 
@@ -419,7 +429,7 @@ RSpec.describe Formulary do
         {
           "variations" => {
             "x86_64_linux" => {
-              "dependencies" => ["dep", "uses_from_macos_dep"],
+              "dependencies" => ["dep"],
             },
           },
         }
@@ -492,6 +502,8 @@ RSpec.describe Formulary do
         formula = described_class.factory(formula_name)
         expect(formula).to be_a(Formula)
         expect(formula.deprecated?).to be true
+        expect(formula.deprecation_date).to eq(Date.parse("2022-06-15"))
+        expect(formula.deprecation_reason).to eq :repo_archived
         expect do
           formula.install
         end.to raise_error("Cannot build from source from abstract formula.")
@@ -503,6 +515,8 @@ RSpec.describe Formulary do
         formula = described_class.factory(formula_name)
         expect(formula).to be_a(Formula)
         expect(formula.disabled?).to be true
+        expect(formula.disable_date).to eq(Date.parse("2022-06-15"))
+        expect(formula.disable_reason).to eq("requires something else")
         expect do
           formula.install
         end.to raise_error("Cannot build from source from abstract formula.")

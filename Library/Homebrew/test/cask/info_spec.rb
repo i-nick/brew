@@ -41,7 +41,7 @@ RSpec.describe Cask::Info, :cask do
       ==> Description
       None
       ==> Dependencies
-      local-caffeine (cask), local-transmission (cask)
+      local-caffeine (cask), local-transmission-zip (cask)
       ==> Artifacts
       Caffeine.app (App)
     EOS

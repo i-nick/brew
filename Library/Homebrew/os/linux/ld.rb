@@ -31,7 +31,7 @@ module OS
 
       sig { params(brewed: T::Boolean).returns(String) }
       def self.ld_so_diagnostics(brewed: true)
-        @ld_so_diagnostics ||= T.let({}, T.nilable(T::Hash[Pathname, String]))
+        @ld_so_diagnostics ||= T.let({}, T.nilable(T::Hash[Pathname, T.nilable(String)]))
 
         ld_so_target = if brewed
           ld_so = HOMEBREW_PREFIX/"lib/ld.so"

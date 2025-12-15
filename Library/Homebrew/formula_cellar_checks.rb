@@ -451,7 +451,7 @@ module FormulaCellarChecks
   sig { params(file: T.any(Pathname, String), objdump: Pathname).returns(T::Boolean) }
   def cpuid_instruction?(file, objdump)
     @instruction_column_index ||= T.let({}, T.nilable(T::Hash[Pathname, Integer]))
-    @instruction_column_index[objdump] ||= begin
+    instruction_column_index_objdump = @instruction_column_index[objdump] ||= begin
       objdump_version = Utils.popen_read(objdump, "--version")
 
       if objdump_version.include?("LLVM")
@@ -464,7 +464,7 @@ module FormulaCellarChecks
     has_cpuid_instruction = T.let(false, T::Boolean)
     Utils.popen_read(objdump, "--disassemble", file) do |io|
       until io.eof?
-        instruction = io.readline.split("\t")[@instruction_column_index[objdump]]&.strip
+        instruction = io.readline.split("\t")[instruction_column_index_objdump]&.strip
         has_cpuid_instruction = instruction == "cpuid" if instruction.present?
         break if has_cpuid_instruction
       end

@@ -685,7 +685,7 @@ __fish_brew_complete_arg 'deps' -l include-build -d 'Include `:build` dependenci
 __fish_brew_complete_arg 'deps' -l include-implicit -d 'Include implicit dependencies used to download and unpack source files'
 __fish_brew_complete_arg 'deps' -l include-optional -d 'Include `:optional` dependencies for formula'
 __fish_brew_complete_arg 'deps' -l include-requirements -d 'Include requirements in addition to dependencies for formula'
-__fish_brew_complete_arg 'deps' -l include-test -d 'Include `:test` dependencies for formula (non-recursive)'
+__fish_brew_complete_arg 'deps' -l include-test -d 'Include `:test` dependencies for formula (non-recursive unless `--graph` or `--tree`)'
 __fish_brew_complete_arg 'deps' -l installed -d 'List dependencies for formulae that are currently installed. If formula is specified, list only its dependencies that are currently installed'
 __fish_brew_complete_arg 'deps' -l missing -d 'Show only missing dependencies'
 __fish_brew_complete_arg 'deps' -l os -d 'Show dependencies for the given operating system'
@@ -1612,6 +1612,7 @@ __fish_brew_complete_arg 'sh' -l debug -d 'Display any debugging information'
 __fish_brew_complete_arg 'sh' -l env -d 'Use the standard `$PATH` instead of superenv\'s when `std` is passed'
 __fish_brew_complete_arg 'sh' -l help -d 'Show this message'
 __fish_brew_complete_arg 'sh' -l quiet -d 'Make some output more quiet'
+__fish_brew_complete_arg 'sh' -l ruby -d 'Set up Homebrew\'s Ruby environment'
 __fish_brew_complete_arg 'sh' -l verbose -d 'Make some output more verbose'
 
 

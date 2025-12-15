@@ -1,4 +1,4 @@
-# typed: true # rubocop:disable Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 module OS
@@ -38,7 +38,7 @@ module OS
         self["LC_CTYPE"] = "C"
 
         # Add `lib` and `include` etc. from the current `macosxsdk` to compiler flags:
-        macosxsdk(formula: @formula, testing_formula:)
+        macosxsdk(formula:, testing_formula:)
 
         return unless MacOS::Xcode.without_clt?
 
@@ -52,6 +52,7 @@ module OS
         append "CPLUS_INCLUDE_PATH", "#{HOMEBREW_SHIMS_PATH}/mac/shared/include/llvm"
       end
 
+      sig { params(version: T.nilable(MacOSVersion)).void }
       def remove_macosxsdk(version = nil)
         # Clear all `lib` and `include` dirs from `CFLAGS`, `CPPFLAGS`, `LDFLAGS` that were
         # previously added by `macosxsdk`.
@@ -75,6 +76,7 @@ module OS
         remove "CMAKE_FRAMEWORK_PATH", "#{sdk}/System/Library/Frameworks"
       end
 
+      sig { params(version: T.nilable(MacOSVersion), formula: T.nilable(Formula), testing_formula: T::Boolean).void }
       def macosxsdk(version = nil, formula: nil, testing_formula: false)
         # Sets all needed `lib` and `include` dirs to `CFLAGS`, `CPPFLAGS`, `LDFLAGS`.
         remove_macosxsdk
@@ -108,16 +110,19 @@ module OS
 
       # Some configure scripts won't find libxml2 without help.
       # This is a no-op with macOS SDK 10.15.4 and later.
+      sig { void }
       def libxml2
         sdk = self["SDKROOT"] || MacOS.sdk_path
         # Use the includes from the sdk
         append "CPPFLAGS", "-I#{sdk}/usr/include/libxml2" unless Pathname("#{sdk}/usr/include/libxml").directory?
       end
 
+      sig { void }
       def no_weak_imports
         append "LDFLAGS", "-Wl,-no_weak_imports" if no_weak_imports_support?
       end
 
+      sig { void }
       def no_fixup_chains
         append "LDFLAGS", "-Wl,-no_fixup_chains" if no_fixup_chains_support?
       end

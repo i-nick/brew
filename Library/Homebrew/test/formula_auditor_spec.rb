@@ -1334,7 +1334,7 @@ RSpec.describe Homebrew::FormulaAuditor do
       instance_double(
         Tap,
         git?:             true,
-        core_tap?:        false,
+        core_tap?:        true,
         git_repository:   instance_double(GitRepository, origin_branch_name: "main"),
         audit_exceptions: {},
         formula_renames:  {},

@@ -149,9 +149,12 @@ module OS
         @sdk_prefix ||= begin
           # Xcode.prefix is pretty smart, so let's look inside to find the sdk
           sdk_prefix = "#{Xcode.prefix}/Platforms/MacOSX.platform/Developer/SDKs"
+
           # Finally query Xcode itself (this is slow, so check it last)
-          sdk_platform_path = Utils.popen_read(::DevelopmentTools.locate("xcrun"), "--show-sdk-platform-path").chomp
-          sdk_prefix = File.join(sdk_platform_path, "Developer", "SDKs") unless File.directory? sdk_prefix
+          if !File.directory?(sdk_prefix) && (xcrun = ::DevelopmentTools.locate("xcrun"))
+            sdk_platform_path = Utils.popen_read(xcrun, "--show-sdk-platform-path").chomp
+            sdk_prefix = File.join(sdk_platform_path, "Developer", "SDKs")
+          end
 
           sdk_prefix
         end

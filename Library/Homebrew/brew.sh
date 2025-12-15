@@ -723,14 +723,6 @@ Minimum required version: ${HOMEBREW_MINIMUM_GIT_VERSION}
   fi
 
   HOMEBREW_LINUX_MINIMUM_GLIBC_VERSION="2.13"
-
-  HOMEBREW_CORE_REPOSITORY_ORIGIN="$("${HOMEBREW_GIT}" -C "${HOMEBREW_CORE_REPOSITORY}" remote get-url origin 2>/dev/null)"
-  if [[ "${HOMEBREW_CORE_REPOSITORY_ORIGIN}" =~ (/linuxbrew|Linuxbrew/homebrew)-core(\.git)?$ ]]
-  then
-    # triggers migration code in update.sh
-    # shellcheck disable=SC2034
-    HOMEBREW_LINUXBREW_CORE_MIGRATION=1
-  fi
 fi
 
 setup_ca_certificates() {

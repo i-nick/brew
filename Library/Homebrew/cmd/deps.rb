@@ -38,7 +38,7 @@ module Homebrew
         switch "--include-optional",
                description: "Include `:optional` dependencies for <formula>."
         switch "--include-test",
-               description: "Include `:test` dependencies for <formula> (non-recursive)."
+               description: "Include `:test` dependencies for <formula> (non-recursive unless `--graph` or `--tree`)."
         switch "--skip-recommended",
                description: "Skip `:recommended` dependencies for <formula>."
         switch "--include-requirements",

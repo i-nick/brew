@@ -84,7 +84,7 @@ module OS
         # User settings don't exist so check the system-wide one.
         os_langs = Utils.popen_read("defaults", "read", "/Library/Preferences/.GlobalPreferences", "AppleLanguages")
       end
-      os_langs = os_langs.scan(/[^ \n"(),]+/)
+      os_langs = T.cast(os_langs.scan(/[^ \n"(),]+/), T::Array[String])
 
       @languages = os_langs
     end
@@ -225,7 +225,7 @@ module OS
 
     sig { params(ids: String).returns(T::Array[String]) }
     def self.mdfind(*ids)
-      @mdfind ||= T.let(nil, T.nilable(T::Hash[T::Array[String], String]))
+      @mdfind ||= T.let(nil, T.nilable(T::Hash[T::Array[String], T::Array[String]]))
       (@mdfind ||= {}).fetch(ids) do
         @mdfind[ids] = Utils.popen_read("/usr/bin/mdfind", mdfind_query(*ids)).split("\n")
       end

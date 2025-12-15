@@ -18,7 +18,7 @@ module OS
             @locate[key] = if (located_tool = super(tool))
               located_tool
             else
-              path = Utils.popen_read("/usr/bin/xcrun", "-no-cache", "-find", tool, err: :close).chomp
+              path = Utils.popen_read("/usr/bin/xcrun", "-no-cache", "-find", tool.to_s, err: :close).chomp
               ::Pathname.new(path) if File.executable?(path)
             end
           end

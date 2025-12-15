@@ -122,8 +122,7 @@ module Homebrew
 
         audit_formulae, audit_casks = Homebrew.with_no_api_env do # audit requires full Ruby source
           if args.changed?
-            pwd = Dir.pwd
-            tap = Tap.from_path(pwd)
+            tap = Tap.from_path(Dir.pwd)
             odie "`brew audit --changed` must be run inside a tap!" if tap.blank?
 
             no_named_args = true
@@ -131,11 +130,11 @@ module Homebrew
             audit_formulae = []
             audit_casks = []
 
-            changed_files = Utils.popen_read("git", "diff", "--name-only", "main")
+            changed_files = Utils.popen_read("git", "diff", "--name-only", "--no-relative", "main")
             changed_files.split("\n").each do |file|
               next unless file.end_with?(".rb")
 
-              absolute_file = "#{pwd}/#{file}"
+              absolute_file = File.expand_path(file, tap.path)
               next unless File.exist?(absolute_file)
 
               if tap.formula_file?(file)

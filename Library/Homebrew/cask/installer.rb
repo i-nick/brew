@@ -21,7 +21,7 @@ module Cask
 
     sig {
       params(
-        cask: ::Cask::Cask, command: T::Class[SystemCommand], force: T::Boolean, adopt: T::Boolean,
+        cask: ::Cask::Cask, command: T.class_of(SystemCommand), force: T::Boolean, adopt: T::Boolean,
         skip_cask_deps: T::Boolean, binaries: T::Boolean, verbose: T::Boolean, zap: T::Boolean,
         require_sha: T::Boolean, upgrade: T::Boolean, reinstall: T::Boolean, installed_as_dependency: T::Boolean,
         installed_on_request: T::Boolean, quarantine: T::Boolean, verify_download_integrity: T::Boolean,
@@ -855,7 +855,15 @@ on_request: true)
       download_queue = @download_queue
       return if download_queue.nil?
 
-      Homebrew::API::Cask.source_download(@cask, download_queue:) if cask_from_source_api?
+      # FIXME: We need to load Cask source before enqueuing to support
+      # language-specific URLs, but this will block the main process.
+      if cask_from_source_api?
+        if @cask.languages.any?
+          load_cask_from_source_api!
+        else
+          Homebrew::API::Cask.source_download(@cask, download_queue:)
+        end
+      end
 
       download_queue.enqueue(downloader)
     end

@@ -42,7 +42,7 @@ jobs:
       - name: Install tools
         run: brew install actionlint shellcheck zizmor
 
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
 
@@ -80,7 +80,7 @@ jobs:
       !contains(fromJSON('["cancelled", "skipped"]'), needs.workflow_syntax.result) &&
       !github.event.repository.private &&
       github.event_name != 'merge_group'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     permissions:
       contents: read
       security-events: write

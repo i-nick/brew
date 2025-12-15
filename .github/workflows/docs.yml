@@ -23,7 +23,7 @@ defaults:
 
 jobs:
   docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -33,7 +33,7 @@ jobs:
           cask: false
 
       - name: Checkout repository
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
 
@@ -103,7 +103,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     outputs:
       deploy_url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 10
     steps:
       - name: Deploy to GitHub Pages
@@ -116,7 +116,7 @@ jobs:
     if: ${{ github.repository == 'Homebrew/brew' && always() && github.ref_name == 'main' }}
     env:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     timeout-minutes: 5
     permissions:
       issues: write # for Homebrew/actions/create-or-update-issue

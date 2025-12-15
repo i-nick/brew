@@ -91,9 +91,21 @@ module Homebrew
 
         bottle_filename = T.cast(downloadable, Bottle).filename
         bottle_tmp_keg = HOMEBREW_TEMP_CELLAR/bottle_filename.name/bottle_filename.version.to_s
+        bottle_poured_file = Pathname("#{bottle_tmp_keg}.poured")
 
-        UnpackStrategy.detect(download, prioritize_extension: true)
-                      .extract_nestedly(to: HOMEBREW_TEMP_CELLAR)
+        unless bottle_poured_file.exist?
+          FileUtils.rm(bottle_poured_file) if bottle_poured_file.symlink?
+          FileUtils.rm_r(bottle_tmp_keg) if bottle_tmp_keg.directory?
+
+          UnpackStrategy.detect(download, prioritize_extension: true)
+                        .extract_nestedly(to: HOMEBREW_TEMP_CELLAR)
+
+          # Create a separate file to mark a completed extraction. This avoids
+          # a potential race condition if a user interrupts the install.
+          # We use a symlink to easily check that both this extra status file
+          # and the real extracted directory exist via `Pathname#exist?`.
+          FileUtils.ln_s(bottle_tmp_keg, bottle_poured_file)
+        end
 
         downloadable.downloaded!
       elsif json_download

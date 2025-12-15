@@ -8,7 +8,7 @@
 # HOMEBREW_AUTO_UPDATE_SECS, HOMEBREW_BREW_DEFAULT_GIT_REMOTE, HOMEBREW_BREW_GIT_REMOTE, HOMEBREW_CACHE,
 # HOMEBREW_CASK_REPOSITORY, HOMEBREW_CELLAR, HOMEBREW_CORE_DEFAULT_GIT_REMOTE, HOMEBREW_CORE_GIT_REMOTE,
 # HOMEBREW_CORE_REPOSITORY, HOMEBREW_CURL, HOMEBREW_DEV_CMD_RUN, HOMEBREW_FORCE_BREWED_CA_CERTIFICATES,
-# HOMEBREW_FORCE_BREWED_CURL, HOMEBREW_FORCE_BREWED_GIT, HOMEBREW_LINUXBREW_CORE_MIGRATION,
+# HOMEBREW_FORCE_BREWED_CURL, HOMEBREW_FORCE_BREWED_GIT,
 # HOMEBREW_SYSTEM_CURL_TOO_OLD, HOMEBREW_USER_AGENT_CURL are set by brew.sh
 # shellcheck disable=SC2154
 source "${HOMEBREW_LIBRARY}/Homebrew/utils/lock.sh"
@@ -331,13 +331,7 @@ EOS
   # make sure symlinks are saved as-is
   git config --bool core.symlinks true
 
-  if [[ "${DIR}" == "${HOMEBREW_CORE_REPOSITORY}" && -n "${HOMEBREW_LINUXBREW_CORE_MIGRATION}" ]]
-  then
-    # Don't even try to rebase/merge on linuxbrew-core migration but rely on
-    # stashing etc. above.
-    git reset --hard "${QUIET_ARGS[@]}" "${REMOTE_REF}"
-    unset HOMEBREW_LINUXBREW_CORE_MIGRATION
-  elif [[ -z "${HOMEBREW_MERGE}" ]]
+  if [[ -z "${HOMEBREW_MERGE}" ]]
   then
     # Work around bug where git rebase --quiet is not quiet
     if [[ -z "${HOMEBREW_VERBOSE}" ]]
@@ -671,16 +665,8 @@ EOS
   fi
 
   if [[ -d "${HOMEBREW_CORE_REPOSITORY}" ]] &&
-     [[ "${HOMEBREW_CORE_DEFAULT_GIT_REMOTE}" != "${HOMEBREW_CORE_GIT_REMOTE}" ||
-        -n "${HOMEBREW_LINUXBREW_CORE_MIGRATION}" ]]
+     [[ "${HOMEBREW_CORE_DEFAULT_GIT_REMOTE}" != "${HOMEBREW_CORE_GIT_REMOTE}" ]]
   then
-    if [[ -n "${HOMEBREW_LINUXBREW_CORE_MIGRATION}" ]]
-    then
-      # This means a migration is needed (in case it isn't run this time)
-      safe_cd "${HOMEBREW_REPOSITORY}"
-      git config --bool homebrew.linuxbrewmigrated false
-    fi
-
     safe_cd "${HOMEBREW_CORE_REPOSITORY}"
     echo "HOMEBREW_CORE_GIT_REMOTE set: using ${HOMEBREW_CORE_GIT_REMOTE} as the Homebrew/homebrew-core Git remote."
     git remote set-url origin "${HOMEBREW_CORE_GIT_REMOTE}"
@@ -691,12 +677,6 @@ EOS
   fi
 
   safe_cd "${HOMEBREW_REPOSITORY}"
-
-  # This means a migration is needed but hasn't completed (yet).
-  if [[ "$(git config get --type=bool homebrew.linuxbrewmigrated 2>/dev/null)" == "false" ]]
-  then
-    export HOMEBREW_MIGRATE_LINUXBREW_FORMULAE=1
-  fi
 
   # This means the user has run `brew which-formula` before and we should fetch executables.txt
   if [[ "$(git config get --type=bool homebrew.commandnotfound 2>/dev/null)" == "true" ]]
@@ -1056,7 +1036,6 @@ EOS
      [[ -n "${HOMEBREW_UPDATE_FAILED}" ]] ||
      [[ -n "${HOMEBREW_MISSING_REMOTE_REF_DIRS}" ]] ||
      [[ -n "${HOMEBREW_UPDATE_FORCE}" ]] ||
-     [[ -n "${HOMEBREW_MIGRATE_LINUXBREW_FORMULAE}" ]] ||
      [[ -d "${HOMEBREW_LIBRARY}/LinkedKegs" ]] ||
      [[ ! -f "${HOMEBREW_CACHE}/all_commands_list.txt" ]] ||
      [[ -n "${HOMEBREW_DEVELOPER}" && -z "${HOMEBREW_UPDATE_AUTO}" ]]

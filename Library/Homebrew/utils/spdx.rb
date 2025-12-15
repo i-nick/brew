@@ -154,19 +154,15 @@ module SPDX
     end
   end
 
-  sig {
-    params(
-      string: T.nilable(String),
-    ).returns(
-      T.nilable(
-        T.any(
-          String,
-          Symbol,
-          T::Hash[T.any(String, Symbol), T.untyped],
-        ),
-      ),
+  LicenseExpression = T.type_alias do
+    T.any(
+      String,
+      Symbol,
+      T::Hash[T.any(String, Symbol), T.anything],
     )
-  }
+  end
+
+  sig { params(string: T.nilable(String)).returns(T.nilable(LicenseExpression)) }
   def string_to_license_expression(string)
     return if string.blank?
 

@@ -154,26 +154,26 @@ RSpec.describe Cask::Uninstall, :cask do
   describe ".check_dependent_casks" do
     it "shows error message when trying to uninstall a cask with dependents" do
       depends_on_cask = Cask::CaskLoader.load(cask_path("with-depends-on-cask"))
-      local_transmission = Cask::CaskLoader.load(cask_path("local-transmission"))
+      local_transmission = Cask::CaskLoader.load(cask_path("local-transmission-zip"))
 
       allow(Cask::Caskroom).to receive(:casks).and_return([depends_on_cask, local_transmission])
 
       output = <<~EOS
-        Error: Refusing to uninstall local-transmission
+        Error: Refusing to uninstall local-transmission-zip
         because it is required by with-depends-on-cask, which is currently installed.
         You can override this and force removal with:
-          brew uninstall --ignore-dependencies local-transmission
+          brew uninstall --ignore-dependencies local-transmission-zip
       EOS
 
       expect do
-        described_class.check_dependent_casks(local_transmission, named_args: ["local-transmission"])
+        described_class.check_dependent_casks(local_transmission, named_args: ["local-transmission-zip"])
       end.to output(output).to_stderr
     end
 
     it "shows error message when trying to uninstall a cask with multiple dependents" do
       depends_on_cask = Cask::CaskLoader.load(cask_path("with-depends-on-cask"))
       depends_on_cask_multiple = Cask::CaskLoader.load(cask_path("with-depends-on-cask-multiple"))
-      local_transmission = Cask::CaskLoader.load(cask_path("local-transmission"))
+      local_transmission = Cask::CaskLoader.load(cask_path("local-transmission-zip"))
 
       allow(Cask::Caskroom).to receive(:casks).and_return([
         depends_on_cask,
@@ -182,14 +182,14 @@ RSpec.describe Cask::Uninstall, :cask do
       ])
 
       output = <<~EOS
-        Error: Refusing to uninstall local-transmission
+        Error: Refusing to uninstall local-transmission-zip
         because it is required by with-depends-on-cask and with-depends-on-cask-multiple, which are currently installed.
         You can override this and force removal with:
-          brew uninstall --ignore-dependencies local-transmission
+          brew uninstall --ignore-dependencies local-transmission-zip
       EOS
 
       expect do
-        described_class.check_dependent_casks(local_transmission, named_args: ["local-transmission"])
+        described_class.check_dependent_casks(local_transmission, named_args: ["local-transmission-zip"])
       end.to output(output).to_stderr
     end
 
@@ -197,8 +197,8 @@ RSpec.describe Cask::Uninstall, :cask do
       depends_on_cask = Cask::CaskLoader.load(cask_path("with-depends-on-cask"))
       depends_on_everything = Cask::CaskLoader.load(cask_path("with-depends-on-everything"))
       local_caffeine = Cask::CaskLoader.load(cask_path("local-caffeine"))
-      local_transmission = Cask::CaskLoader.load(cask_path("local-transmission"))
-      named_args = %w[local-transmission local-caffeine]
+      local_transmission = Cask::CaskLoader.load(cask_path("local-transmission-zip"))
+      named_args = %w[local-transmission-zip local-caffeine]
 
       allow(Cask::Caskroom).to receive(:casks).and_return([
         depends_on_cask,
@@ -208,10 +208,10 @@ RSpec.describe Cask::Uninstall, :cask do
       ])
 
       output = <<~EOS
-        Error: Refusing to uninstall local-transmission and local-caffeine
+        Error: Refusing to uninstall local-transmission-zip and local-caffeine
         because they are required by with-depends-on-cask and with-depends-on-everything, which are currently installed.
         You can override this and force removal with:
-          brew uninstall --ignore-dependencies local-transmission local-caffeine
+          brew uninstall --ignore-dependencies local-transmission-zip local-caffeine
       EOS
 
       expect do
@@ -232,16 +232,16 @@ RSpec.describe Cask::Uninstall, :cask do
 
     it "lists other named args when showing the error message" do
       depends_on_cask = Cask::CaskLoader.load(cask_path("with-depends-on-cask"))
-      local_transmission = Cask::CaskLoader.load(cask_path("local-transmission"))
-      named_args = %w[local-transmission foo bar baz qux]
+      local_transmission = Cask::CaskLoader.load(cask_path("local-transmission-zip"))
+      named_args = %w[local-transmission-zip foo bar baz qux]
 
       allow(Cask::Caskroom).to receive(:casks).and_return([depends_on_cask, local_transmission])
 
       output = <<~EOS
-        Error: Refusing to uninstall local-transmission
+        Error: Refusing to uninstall local-transmission-zip
         because it is required by with-depends-on-cask, which is currently installed.
         You can override this and force removal with:
-          brew uninstall --ignore-dependencies local-transmission foo bar baz qux
+          brew uninstall --ignore-dependencies local-transmission-zip foo bar baz qux
       EOS
 
       expect do

@@ -179,7 +179,7 @@ module Hardware
         [1].pack("I") == [1].pack("N")
       end
 
-      sig { returns(FalseClass) }
+      sig { returns(T::Boolean) }
       def virtualized?
         false
       end

@@ -5,6 +5,7 @@ require "cachable"
 require "api"
 require "api/source_download"
 require "download_queue"
+require "autobump_constants"
 
 module Homebrew
   module API
@@ -156,6 +157,142 @@ module Homebrew
 
         Homebrew::API.write_names_file!(all_formulae.keys, "formula", regenerate:)
         Homebrew::API.write_aliases_file!(all_aliases, "formula", regenerate:)
+      end
+
+      sig { params(hash: T::Hash[String, T.untyped]).returns(FormulaStruct) }
+      def self.generate_formula_struct_hash(hash)
+        hash = Homebrew::API.merge_variations(hash).dup
+
+        if (caveats = hash["caveats"])
+          hash["caveats"] = Formulary.replace_placeholders(caveats)
+        end
+
+        hash["bottle_checksums"] = begin
+          files = hash.dig("bottle", "stable", "files") || {}
+          files.map do |tag, bottle_spec|
+            {
+              cellar: Formulary.convert_to_string_or_symbol(bottle_spec.fetch("cellar")),
+              tag.to_sym => bottle_spec.fetch("sha256"),
+            }
+          end
+        end
+
+        hash["bottle_rebuild"] = hash.dig("bottle", "stable", "rebuild")
+
+        conflicts_with = hash["conflicts_with"] || []
+        conflicts_with_reasons = hash["conflicts_with_reasons"] || []
+        hash["conflicts"] = conflicts_with.zip(conflicts_with_reasons).map do |name, reason|
+          if reason.present?
+            [name, { because: reason }]
+          else
+            [name, {}]
+          end
+        end
+
+        if (deprecate_args = hash["deprecate_args"])
+          deprecate_args = deprecate_args.dup.transform_keys(&:to_sym)
+          deprecate_args[:because] =
+            DeprecateDisable.to_reason_string_or_symbol(deprecate_args[:because], type: :formula)
+          hash["deprecate_args"] = deprecate_args
+        end
+
+        if (disable_args = hash["disable_args"])
+          disable_args = disable_args.dup.transform_keys(&:to_sym)
+          disable_args[:because] = DeprecateDisable.to_reason_string_or_symbol(disable_args[:because], type: :formula)
+          hash["disable_args"] = disable_args
+        end
+
+        hash["head_dependency_hash"] = hash["head_dependencies"]
+
+        hash["head_url_args"] = begin
+          url = hash.dig("urls", "head", "url")
+          specs = {
+            branch: hash.dig("urls", "head", "branch"),
+            using:  hash.dig("urls", "head", "using")&.to_sym,
+          }.compact_blank
+          [url, specs]
+        end
+
+        if (keg_only_hash = hash["keg_only_reason"])
+          reason = Formulary.convert_to_string_or_symbol(keg_only_hash.fetch("reason"))
+          explanation = keg_only_hash["explanation"]
+          hash["keg_only_args"] = [reason, explanation].compact
+        end
+
+        hash["license"] = SPDX.string_to_license_expression(hash["license"])
+
+        hash["link_overwrite_paths"] = hash["link_overwrite"]
+
+        if (reason = hash["no_autobump_message"])
+          reason = reason.to_sym if NO_AUTOBUMP_REASONS_LIST.key?(reason.to_sym)
+          hash["no_autobump_args"] = { because: reason }
+        end
+
+        if (condition = hash["pour_bottle_only_if"])
+          hash["pour_bottle_args"] = { only_if: condition.to_sym }
+        end
+
+        hash["requirements_array"] = hash["requirements"]
+
+        hash["ruby_source_checksum"] = hash.dig("ruby_source_checksum", "sha256")
+
+        if (service_hash = hash["service"])
+          service_hash = Homebrew::Service.from_hash(service_hash)
+
+          hash["service_run_args"], hash["service_run_kwargs"] = case (run = service_hash[:run])
+          when Hash
+            [[], run]
+          when Array, String
+            [[run], {}]
+          else
+            [[], {}]
+          end
+
+          hash["service_name_args"] = service_hash[:name]
+
+          hash["service_args"] = service_hash.filter_map do |key, arg|
+            [key.to_sym, arg] if key != :name && key != :run
+          end
+        end
+
+        hash["stable_checksum"] = hash.dig("urls", "stable", "checksum")
+
+        hash["stable_dependency_hash"] = {
+          "dependencies"             => hash["dependencies"] || [],
+          "build_dependencies"       => hash["build_dependencies"] || [],
+          "test_dependencies"        => hash["test_dependencies"] || [],
+          "recommended_dependencies" => hash["recommended_dependencies"] || [],
+          "optional_dependencies"    => hash["optional_dependencies"] || [],
+          "uses_from_macos"          => hash["uses_from_macos"] || [],
+          "uses_from_macos_bounds"   => hash["uses_from_macos_bounds"] || [],
+        }
+
+        hash["stable_url_args"] = begin
+          url = hash.dig("urls", "stable", "url")
+          specs = {
+            tag:      hash.dig("urls", "stable", "tag"),
+            revision: hash.dig("urls", "stable", "revision"),
+            using:    hash.dig("urls", "stable", "using")&.to_sym,
+          }.compact_blank
+          [url, specs]
+        end
+
+        hash["stable_version"] = hash.dig("versions", "stable")
+
+        # Should match FormulaStruct::PREDICATES
+        hash["bottle_present"] = hash["bottle"].present?
+        hash["deprecated_present"] = hash["deprecation_date"].present?
+        hash["disabled_present"] = hash["disable_date"].present?
+        hash["head_present"] = hash.dig("urls", "head").present?
+        hash["keg_only_present"] = hash["keg_only_reason"].present?
+        hash["no_autobump_message_present"] = hash["no_autobump_message"].present?
+        hash["pour_bottle_present"] = hash["pour_bottle_only_if"].present?
+        hash["service_present"] = hash["service"].present?
+        hash["service_run_present"] = hash.dig("service", "run").present?
+        hash["service_name_present"] = hash.dig("service", "name").present?
+        hash["stable_present"] = hash.dig("urls", "stable").present?
+
+        FormulaStruct.from_hash(hash)
       end
     end
   end

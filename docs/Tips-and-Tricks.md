@@ -197,19 +197,31 @@ If you're using Homebrew on macOS Intel, you should also fix permissions afterwa
 sudo chown -R "${USER}" /usr/local/etc
 ```
 
-## Use a caching proxy or mirror for Homebrew bottles
+## Use a caching proxy or mirror for Homebrew and data
 
-You can configure Homebrew to retrieve bottles from a caching proxy or mirror.
+You can configure Homebrew to retrieve bottles and the JSON API from a caching proxy or mirror.
 
-For example, in JFrog's Artifactory, accessible at `https://artifacts.example.com`,
-configure a new "remote" repository with `homebrew` as the "repository key" and `https://ghcr.io` as the URL.
+For example, in JFrog's Artifactory, accessible at `https://artifacts.example.com`:
+
+- For the bottles, configure a new "remote" repository with `homebrew` as the "repository key" and `https://ghcr.io` (GitHub Packages) as the URL.
+  Set the cache expiry to a reasonable length relative to available storage capacity.
+- For the JSON API, configure a new "remote" repository with `homebrew-json-api` as the "repository key" and `https://formulae.brew.sh/api` as the URL.
+  Set the cache expiry to 15 minutes.
 
 Then, set these environment variables for Homebrew to retrieve from the caching proxy.
 
 ```sh
-export HOMEBREW_ARTIFACT_DOMAIN=https://artifacts.example.com/artifactory/homebrew/
+export HOMEBREW_API_DOMAIN=https://artifacts.example.com/artifactory/homebrew-formulae-api
+export HOMEBREW_ARTIFACT_DOMAIN=https://artifacts.example.com/artifactory/homebrew
 export HOMEBREW_ARTIFACT_DOMAIN_NO_FALLBACK=1
 export HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN="$(printf 'anonymous:' | base64)"
+```
+
+It's also possible to use an internal mirror of `Homebrew/brew`
+by setting an environment variable before running the Homebrew installer:
+
+```sh
+export HOMEBREW_BREW_GIT_REMOTE=https://git.example.com/Homebrew-mirrors/brew-mirror
 ```
 
 ## Load Homebrew from the same dotfiles on different operating systems

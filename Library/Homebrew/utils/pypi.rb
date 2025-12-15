@@ -355,6 +355,8 @@ module PyPI
     exclude_packages.delete_if { |package| found_packages.exclude? package }
     ohai "Retrieving PyPI dependencies for excluded \"#{exclude_packages.join(" ")}\"..." if show_info
     exclude_packages = pip_report(exclude_packages, python_name:, print_stderr:)
+    # Keep extra_packages even if they are dependencies of exclude_packages
+    exclude_packages.delete_if { |package| extra_packages.include? package }
     if (main_package_name = main_package&.name)
       exclude_packages += [Package.new(main_package_name)]
     end

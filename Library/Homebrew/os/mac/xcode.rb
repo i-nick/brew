@@ -244,9 +244,7 @@ module OS
     module CLT
       extend Utils::Output::Mixin
 
-      # The original Mavericks CLT package ID
       EXECUTABLE_PKG_ID = "com.apple.pkg.CLTools_Executables"
-      MAVERICKS_NEW_PKG_ID = "com.apple.pkg.CLTools_Base" # obsolete
       PKG_PATH = "/Library/Developer/CommandLineTools"
 
       # Returns true even if outdated tools are installed.
@@ -408,10 +406,8 @@ module OS
       sig { returns(T.nilable(String)) }
       def self.detect_version
         version = T.let(nil, T.nilable(String))
-        [EXECUTABLE_PKG_ID, MAVERICKS_NEW_PKG_ID].each do |id|
-          next unless File.exist?("#{PKG_PATH}/usr/bin/clang")
-
-          version = MacOS.pkgutil_info(id)[/version: (.+)$/, 1]
+        if File.exist?("#{PKG_PATH}/usr/bin/clang")
+          version = MacOS.pkgutil_info(EXECUTABLE_PKG_ID)[/version: (.+)$/, 1]
           return version if version
         end
 

@@ -42,6 +42,9 @@ class Formula
   sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
   def deny_network_access!(*args, &block); end
 
+  sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
+  def deprecate_args(*args, &block); end
+
   sig { params(args: T.untyped, block: T.untyped).returns(T::Boolean) }
   def deprecated?(*args, &block); end
 
@@ -68,6 +71,9 @@ class Formula
 
   sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
   def desc(*args, &block); end
+
+  sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
+  def disable_args(*args, &block); end
 
   sig { params(args: T.untyped, block: T.untyped).returns(T.untyped) }
   def disable_date(*args, &block); end

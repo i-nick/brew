@@ -460,7 +460,8 @@ passed, this command displays their actual runtime dependencies (similar to
 
 `--include-test`
 
-: Include `:test` dependencies for *`formula`* (non-recursive).
+: Include `:test` dependencies for *`formula`* (non-recursive unless `--graph`
+  or `--tree`).
 
 `--skip-recommended`
 
@@ -3157,13 +3158,22 @@ Generate Homebrew's RubyDoc documentation.
 
 : Open generated documentation in a browser.
 
-### `sh` \[`--env=`\] \[`--cmd=`\] \[*`file`*\]
+### `sh` \[*`options`*\] \[*`file`*\]
 
 Enter an interactive shell for Homebrew's build environment. Use
 years-battle-hardened build logic to help your `./configure && make && make
 install` and even your `gem install` succeed. Especially handy if you run
 Homebrew in an Xcode-only configuration since it adds tools like `make` to your
 `$PATH` which build systems would not find otherwise.
+
+With `--ruby`, enter an interactive shell for Homebrew's Ruby environment. This
+sets up the correct Ruby paths, `$GEM_HOME` and bundle configuration used by
+Homebrew's development tools. The environment includes gems from the installed
+groups, making tools like RuboCop, Sorbet and RSpec available via `bundle exec`.
+
+`-r`, `--ruby`
+
+: Set up Homebrew's Ruby environment.
 
 `--env`
 

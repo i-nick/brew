@@ -20,7 +20,7 @@ defaults:
 jobs:
   sbom:
     if: github.repository == 'Homebrew/brew'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -97,7 +97,7 @@ jobs:
   issue:
     needs: sbom
     if: always() && github.event_name == 'schedule'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-slim
     env:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
     permissions:
