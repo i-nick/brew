@@ -4,6 +4,7 @@
 require "abstract_command"
 require "utils/git"
 require "fileutils"
+require "utils/github"
 
 module Homebrew
   module DevCmd

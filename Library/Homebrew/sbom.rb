@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "cxxstdlib"
@@ -15,6 +15,18 @@ class SBOM
   FILENAME = "sbom.spdx.json"
   SCHEMA_FILE = T.let((HOMEBREW_LIBRARY_PATH/"data/schemas/sbom.json").freeze, Pathname)
 
+  class Source < T::Struct
+    const :path, String
+    const :tap_name, T.nilable(String)
+    const :tap_git_head, T.nilable(String)
+    const :spec, Symbol
+    const :patches, T::Array[T.any(EmbeddedPatch, ExternalPatch)]
+    const :bottle, T::Hash[String, T.untyped]
+    const :version, T.nilable(Version)
+    const :url, T.nilable(String)
+    const :checksum, T.nilable(Checksum)
+  end
+
   # Instantiates a {SBOM} for a new installation of a formula.
   sig { params(formula: Formula, tab: Tab).returns(T.attached_class) }
   def self.create(formula, tab)
@@ -25,7 +37,7 @@ class SBOM
     end
     active_spec_sym = formula.active_spec_sym
 
-    attributes = {
+    new(
       name:                 formula.name,
       homebrew_version:     HOMEBREW_VERSION,
       spdxfile:             SBOM.spdxfile(formula),
@@ -36,25 +48,19 @@ class SBOM
       runtime_dependencies: SBOM.runtime_deps_hash(Array(tab.runtime_dependencies)),
       license:              SPDX.license_expression_to_string(formula.license),
       built_on:             DevelopmentTools.build_system_info,
-      source:               {
+      source:               Source.new(
         path:         formula.specified_path.to_s,
-        tap:          formula.tap&.name,
-        tap_git_head: nil, # Filled in later if possible
-        spec:         active_spec_sym.to_s,
+        tap_name:     formula.tap&.name,
+        # We can only get `tap_git_head` if the tap is installed locally
+        tap_git_head: (T.must(formula.tap).git_head if formula.tap&.installed?),
+        spec:         active_spec_sym,
         patches:      active_spec.patches,
         bottle:       formula.bottle_hash,
-        active_spec_sym =>       {
-          version:  active_spec.version,
-          url:      active_spec.url,
-          checksum: active_spec.checksum,
-        },
-      },
-    }
-
-    # We can only get `tap_git_head` if the tap is installed locally
-    attributes[:source][:tap_git_head] = T.must(formula.tap).git_head if formula.tap&.installed?
-
-    new(attributes)
+        version:      active_spec.version,
+        url:          active_spec.url,
+        checksum:     active_spec.checksum,
+      ),
+    )
   end
 
   sig { params(formula: Formula).returns(Pathname) }
@@ -131,12 +137,55 @@ class SBOM
 
   private
 
-  attr_reader :name, :homebrew_version, :time, :stdlib, :source, :built_on, :license
+  sig { returns(String) }
+  attr_reader :name, :homebrew_version
+
+  sig { returns(T.any(Integer, Time)) }
+  attr_reader :time
+
+  sig { returns(T.nilable(T.any(String, Symbol))) }
+  attr_reader :stdlib
+
+  sig { returns(Source) }
+  attr_reader :source
+
+  sig { returns(T::Hash[String, T.nilable(String)]) }
+  attr_reader :built_on
+
+  sig { returns(T.nilable(String)) }
+  attr_reader :license
+
+  sig { returns(Pathname) }
   attr_accessor :spdxfile
 
-  sig { params(attributes: T::Hash[Symbol, T.untyped]).void }
-  def initialize(attributes = {})
-    attributes.each { |key, value| instance_variable_set(:"@#{key}", value) }
+  sig {
+    params(
+      name:                 String,
+      homebrew_version:     String,
+      spdxfile:             Pathname,
+      time:                 T.any(Integer, Time),
+      source_modified_time: Integer,
+      compiler:             T.any(String, Symbol),
+      stdlib:               T.nilable(T.any(String, Symbol)),
+      runtime_dependencies: T::Array[T::Hash[String, T.untyped]],
+      license:              T.nilable(String),
+      built_on:             T::Hash[String, T.nilable(String)],
+      source:               Source,
+    ).void
+  }
+  def initialize(name:, homebrew_version:, spdxfile:, time:, source_modified_time:,
+                 compiler:, stdlib:, runtime_dependencies:, license:, built_on:, source:)
+    @name = name
+    @homebrew_version = homebrew_version
+    @spdxfile = spdxfile
+    @time = time
+    @source_modified_time = source_modified_time
+    @compiler = compiler
+    @stdlib = stdlib
+    @runtime_dependencies = runtime_dependencies
+    @license = license
+    @built_on = built_on
+    @source = source
   end
 
   sig {
@@ -155,7 +204,7 @@ class SBOM
       }
     end
 
-    patches = source[:patches].each_with_index.map do |_patch, index|
+    patches = source.patches.each_with_index.map do |_patch, index|
       {
         spdxElementId:      "SPDXRef-Patch-#{name}-#{index}",
         relationshipType:   "PATCH_APPLIED",
@@ -197,8 +246,8 @@ class SBOM
   }
   def generate_packages_json(runtime_dependency_declaration, compiler_declaration, bottling:)
     bottle = []
-    if !bottling && (bottle_info = get_bottle_info(source[:bottle])) &&
-       (stable_version = source.dig(:stable, :version))
+    if !bottling && (bottle_info = get_bottle_info(source.bottle)) &&
+       spec_symbol == :stable && (stable_version = source.version)
       bottle << {
         SPDXID:           "SPDXRef-Bottle-#{name}",
         name:             name.to_s,
@@ -240,13 +289,13 @@ class SBOM
         licenseDeclared:  assert_value(nil),
         builtDate:        source_modified_time.to_s,
         licenseConcluded: assert_value(license),
-        downloadLocation: source[spec_symbol][:url],
+        downloadLocation: source.url,
         copyrightText:    assert_value(nil),
         externalRefs:     [],
         checksums:        [
           {
             algorithm:     "SHA256",
-            checksumValue: source[spec_symbol][:checksum].to_s,
+            checksumValue: source.checksum.to_s,
           },
         ],
       },
@@ -371,18 +420,18 @@ class SBOM
 
   sig { returns(T.nilable(Tap)) }
   def tap
-    tap_name = source[:tap]
+    tap_name = source.tap_name
     Tap.fetch(tap_name) if tap_name
   end
 
   sig { returns(Symbol) }
   def spec_symbol
-    source.fetch(:spec).to_sym
+    source.spec
   end
 
   sig { returns(T.nilable(Version)) }
   def spec_version
-    source.fetch(spec_symbol)[:version]
+    source.version
   end
 
   sig { returns(Time) }

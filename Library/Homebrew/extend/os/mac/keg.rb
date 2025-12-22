@@ -1,4 +1,4 @@
-# typed: true # rubocop:disable Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "system_command"
@@ -9,29 +9,33 @@ module OS
       include SystemCommand::Mixin
 
       module ClassMethods
+        sig { returns(T::Array[String]) }
         def keg_link_directories
-          @keg_link_directories ||= (super + ["Frameworks"]).freeze
+          @keg_link_directories ||= T.let((super + ["Frameworks"]).freeze, T.nilable(T::Array[String]))
         end
 
+        sig { returns(T::Array[::Pathname]) }
         def must_exist_subdirectories
-          @must_exist_subdirectories ||= (
+          @must_exist_subdirectories ||= T.let((
             super +
             [HOMEBREW_PREFIX/"Frameworks"]
-          ).sort.uniq.freeze
+          ).sort.uniq.freeze, T.nilable(T::Array[::Pathname]))
         end
 
+        sig { returns(T::Array[::Pathname]) }
         def must_exist_directories
-          @must_exist_directories = (
+          @must_exist_directories ||= T.let((
             super +
             [HOMEBREW_PREFIX/"Frameworks"]
-          ).sort.uniq.freeze
+          ).sort.uniq.freeze, T.nilable(T::Array[::Pathname]))
         end
 
+        sig { returns(T::Array[::Pathname]) }
         def must_be_writable_directories
-          @must_be_writable_directories ||= (
+          @must_be_writable_directories ||= T.let((
             super +
             [HOMEBREW_PREFIX/"Frameworks"]
-          ).sort.uniq.freeze
+          ).sort.uniq.freeze, T.nilable(T::Array[::Pathname]))
         end
       end
 
@@ -108,6 +112,7 @@ module OS
       sig { returns(T::Array[MachOShim]) }
       def binary_executable_or_library_files = mach_o_files
 
+      sig { params(file: String).void }
       def codesign_patched_binary(file)
         return if MacOS.version < :big_sur
 
@@ -151,7 +156,8 @@ module OS
         end
       end
 
-      def prepare_codesign_writable_files(file)
+      sig { params(file: String, _block: T.proc.void).void }
+      def prepare_codesign_writable_files(file, &_block)
         result = system_command("codesign", args: [
           "--display", "--file-list", "-", file
         ], print_stderr: false)
@@ -172,6 +178,7 @@ module OS
         end
       end
 
+      sig { void }
       def prepare_debug_symbols
         binary_executable_or_library_files.each do |file|
           file = file.to_s
@@ -190,6 +197,7 @@ module OS
 
       # Needed to make symlink permissions consistent on macOS and Linux for
       # reproducible bottles.
+      sig { void }
       def consistent_reproducible_symlink_permissions!
         path.find do |file|
           file.lchmod 0777 if file.symlink?

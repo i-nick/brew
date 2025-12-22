@@ -56,7 +56,7 @@ brew bundle check || brew bundle install
 
 ### Types
 
-As well as supporting formulae (`brew "..."`), you can also use `brew bundle` with casks, taps, Mac App Store apps, VSCode extensions, Go  and Flatpak packages and to start background services with `brew services`.
+As well as supporting formulae (`brew "..."`), you can also use `brew bundle` with casks, taps, Mac App Store apps, VSCode extensions, Go, Cargo and Flatpak packages and to start background services with `brew services`.
 
 ```ruby
 tap "apple/apple"
@@ -66,6 +66,7 @@ cask "firefox"
 mas "Refined GitHub", id: 1519867270
 vscode "editorconfig.editorconfig"
 go "github.com/charmbracelet/crush"
+cargo "ripgrep"
 flatpak "com.visualstudio.code"
 flatpak "org.godotengine.Godot", remote: "flathub-beta", url: "https://dl.flathub.org/beta-repo/"
 flatpak "io.github.dvlv.boxbuddyrs", remote: "flathub-beta"
@@ -82,7 +83,8 @@ Using firefox
 Using Refined GitHub
 Using editorconfig.editorconfig
 Using github.com/charmbracelet/crush
-`brew bundle` complete! 7 Brewfile dependencies now installed.
+Using ripgrep
+`brew bundle` complete! 8 Brewfile dependencies now installed.
 ```
 
 ### Projects

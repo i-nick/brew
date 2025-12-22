@@ -118,7 +118,7 @@ module Homebrew
         # Poll for workflow completion
         initial_sleep_time = 15
         sleep_time = 5
-        max_attempts = 60 # 5 minutes (5 seconds * 60 attempts)
+        max_attempts = 180 # 15 minutes (5 seconds * 180 attempts)
         attempt = 0
         run_conclusion = T.let(nil, T.nilable(String))
 

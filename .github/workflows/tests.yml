@@ -29,7 +29,7 @@ concurrency:
 jobs:
   syntax:
     if: github.repository_owner == 'Homebrew'
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -162,7 +162,7 @@ jobs:
   vendored-gems:
     name: vendored gems
     needs: syntax
-    runs-on: ubuntu-slim
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
@@ -194,7 +194,7 @@ jobs:
       matrix:
         include:
           - name: update-test (Linux)
-            runs-on: ubuntu-slim
+            runs-on: ubuntu-latest
           - name: update-test (macOS)
             runs-on: macos-latest
     steps:
@@ -304,7 +304,7 @@ jobs:
           disable_search: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
-      - uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
+      - uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           working-directory: ${{ steps.set-up-homebrew.outputs.repository-path }}
           files: Library/Homebrew/test/coverage/coverage.xml
@@ -452,7 +452,7 @@ jobs:
       matrix:
         include:
           - name: analytics (Linux)
-            runs-on: ubuntu-slim
+            runs-on: ubuntu-latest
           - name: analytics (macOS)
             runs-on: macos-latest
     needs: syntax

@@ -17,7 +17,6 @@
 /Library/Homebrew/test/coverage
 /Library/Homebrew/test/junit
 /Library/Homebrew/test/fs_leak_log
-/Library/Homebrew/tmp/test_prof
 /Library/Homebrew/vendor/portable-ruby
 /Library/Taps
 /Library/PinnedTaps
@@ -176,7 +175,6 @@
 # Ignore generated documentation site
 /docs/_site
 /docs/.jekyll-metadata
-/docs/tmp/.htmlproofer
 /docs/vendor
 /docs/Gemfile.lock
 /docs/rubydoc
@@ -211,3 +209,6 @@
 
 # Ignore local AI configuration
 /.claude/settings.local.json
+
+# Ignore tmp files
+**/tmp/

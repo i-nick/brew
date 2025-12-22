@@ -177,7 +177,8 @@ module Homebrew
       },
       HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN: {
         description: "Use this base64 encoded username and password for authenticating with a Docker registry " \
-                     "proxying GitHub Packages. " \
+                     "proxying GitHub Packages. If set to `none`, no authentication header will be sent. " \
+                     "This can be used, if remote `$HOMEBREW_BOTTLE_DOMAIN` does not support any authentication. " \
                      "If `$HOMEBREW_DOCKER_REGISTRY_TOKEN` is set, it will be used instead.",
       },
       HOMEBREW_DOCKER_REGISTRY_TOKEN:            {

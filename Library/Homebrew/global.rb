@@ -32,9 +32,9 @@ HOMEBREW_USER_AGENT_RUBY =
   "#{ENV.fetch("HOMEBREW_USER_AGENT")} ruby/#{RUBY_VERSION}-p#{RUBY_PATCHLEVEL}".freeze
 HOMEBREW_USER_AGENT_FAKE_SAFARI =
   # Don't update this beyond 10.15.7 until Safari actually updates their
-  # user agent to be beyond 10.15.7 (not the case as-of macOS 14)
+  # user agent to be beyond 10.15.7 (not the case as-of macOS 26)
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 " \
-  "(KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+  "(KHTML, like Gecko) Version/26.0 Safari/605.1.15"
 HOMEBREW_GITHUB_PACKAGES_AUTH = ENV.fetch("HOMEBREW_GITHUB_PACKAGES_AUTH").freeze
 HOMEBREW_DEFAULT_PREFIX = ENV.fetch("HOMEBREW_GENERIC_DEFAULT_PREFIX").freeze
 HOMEBREW_DEFAULT_REPOSITORY = ENV.fetch("HOMEBREW_GENERIC_DEFAULT_REPOSITORY").freeze

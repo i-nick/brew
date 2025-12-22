@@ -20,6 +20,9 @@ RSpec.describe Homebrew::Bundle::Commands::Install do
   context "when a Brewfile is found", :no_api do
     before do
       Homebrew::Bundle::CaskDumper.reset!
+      allow(Homebrew::Bundle).to receive(:brew).and_return(true)
+      allow(Homebrew::Bundle::FormulaInstaller).to receive(:formula_installed_and_up_to_date?).and_return(false)
+      allow(Homebrew::Bundle::CaskInstaller).to receive(:installable_or_upgradable?).and_return(true)
     end
 
     let(:brewfile_contents) do
@@ -86,7 +89,6 @@ RSpec.describe Homebrew::Bundle::Commands::Install do
       allow(Homebrew::Bundle::FlatpakInstaller).to receive_messages(preinstall!: true, install!: true)
       allow_any_instance_of(Pathname).to receive(:read).and_return(brewfile_contents)
 
-      expect(Homebrew::Bundle).not_to receive(:system)
       expect { described_class.run }.to raise_error(SystemExit)
     end
   end

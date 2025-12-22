@@ -85,8 +85,7 @@ module Homebrew
         require "utils"
 
         if !Homebrew::Services::System.launchctl? && !Homebrew::Services::System.systemctl?
-          raise UsageError,
-                "`brew services` is supported only on macOS or Linux (with systemd)!"
+          raise UsageError, Homebrew::Services::System::MISSING_DAEMON_MANAGER_EXCEPTION_MESSAGE
         end
 
         if (sudo_service_user = args.sudo_service_user)

@@ -134,6 +134,7 @@ RSpec.describe Livecheck do
 
   describe "#url" do
     let(:url_string) { "https://brew.sh" }
+    let(:referer_url) { "https://example.com/referer" }
 
     it "returns nil if not set" do
       expect(livecheck_f.url).to be_nil
@@ -164,11 +165,28 @@ RSpec.describe Livecheck do
       # (i.e. existing values aren't reset to `nil`). [We only call `url` once
       # in a `livecheck` block but this should technically work due to how it's
       # implemented.]
-      livecheck_f.url(url_string, homebrew_curl: true, post_form: post_hash)
+      livecheck_f.url(
+        url_string,
+        cookies:       { "cookie_key" => "cookie_value" },
+        header:        "Accept: */*",
+        homebrew_curl: true,
+        post_form:     post_hash,
+        referer:       referer_url,
+        user_agent:    :browser,
+      )
       livecheck_f.url(url_string, post_json: post_hash)
       expect(livecheck_f.options.homebrew_curl).to be(true)
       expect(livecheck_f.options.post_form).to eq(post_hash)
       expect(livecheck_f.options.post_json).to eq(post_hash)
+      expect(livecheck_f.options.referer).to eq(referer_url)
+      expect(livecheck_f.options.user_agent).to eq(:browser)
+
+      header_array = ["Accept: */*", "X-Requested-With: XMLHttpRequest"]
+      livecheck_f.url(url_string, header: header_array)
+      expect(livecheck_f.options.header).to eq(header_array)
+
+      livecheck_f.url(url_string, user_agent: "Example")
+      expect(livecheck_f.options.user_agent).to eq("Example")
     end
 
     it "raises an ArgumentError if the argument isn't a valid Symbol" do

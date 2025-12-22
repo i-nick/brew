@@ -18,7 +18,7 @@ module Homebrew
 
     HOMEBREW_CACHE_API = T.let((HOMEBREW_CACHE/"api").freeze, Pathname)
     HOMEBREW_CACHE_API_SOURCE = T.let((HOMEBREW_CACHE/"api-source").freeze, Pathname)
-    DEFAULT_API_STALE_SECONDS = T.let(86400, Integer) # 1 day
+    DEFAULT_API_STALE_SECONDS = T.let(7 * 24 * 60 * 60, Integer) # 7 days
 
     sig { params(endpoint: String).returns(T::Hash[String, T.untyped]) }
     def self.fetch(endpoint)
@@ -362,14 +362,19 @@ module Homebrew
     end
   end
 
-  sig { params(block: T.proc.returns(T.untyped)).returns(T.untyped) }
+  sig { type_parameters(:U).params(block: T.proc.returns(T.type_parameter(:U))).returns(T.type_parameter(:U)) }
   def self.with_no_api_env(&block)
     return yield if Homebrew::EnvConfig.no_install_from_api?
 
     with_env(HOMEBREW_NO_INSTALL_FROM_API: "1", HOMEBREW_AUTOMATICALLY_SET_NO_INSTALL_FROM_API: "1", &block)
   end
 
-  sig { params(condition: T::Boolean, block: T.proc.returns(T.untyped)).returns(T.untyped) }
+  sig {
+    type_parameters(:U).params(
+      condition: T::Boolean,
+      block:     T.proc.returns(T.type_parameter(:U)),
+    ).returns(T.type_parameter(:U))
+  }
   def self.with_no_api_env_if_needed(condition, &block)
     return yield unless condition
 

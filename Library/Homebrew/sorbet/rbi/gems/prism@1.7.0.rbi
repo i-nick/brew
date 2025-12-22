@@ -1519,10 +1519,11 @@ class Prism::CallNode < ::Prism::Node
       opening_loc: T.nilable(Prism::Location),
       arguments: T.nilable(Prism::ArgumentsNode),
       closing_loc: T.nilable(Prism::Location),
+      equal_loc: T.nilable(Prism::Location),
       block: T.nilable(T.any(Prism::BlockNode, Prism::BlockArgumentNode))
     ).void
   end
-  def initialize(source, node_id, location, flags, receiver, call_operator_loc, name, message_loc, opening_loc, arguments, closing_loc, block); end
+  def initialize(source, node_id, location, flags, receiver, call_operator_loc, name, message_loc, opening_loc, arguments, closing_loc, equal_loc, block); end
 
   def ===(other); end
 
@@ -1571,16 +1572,23 @@ class Prism::CallNode < ::Prism::Node
       opening_loc: T.nilable(Prism::Location),
       arguments: T.nilable(Prism::ArgumentsNode),
       closing_loc: T.nilable(Prism::Location),
+      equal_loc: T.nilable(Prism::Location),
       block: T.nilable(T.any(Prism::BlockNode, Prism::BlockArgumentNode))
     ).returns(Prism::CallNode)
   end
-  def copy(node_id: T.unsafe(nil), location: T.unsafe(nil), flags: T.unsafe(nil), receiver: T.unsafe(nil), call_operator_loc: T.unsafe(nil), name: T.unsafe(nil), message_loc: T.unsafe(nil), opening_loc: T.unsafe(nil), arguments: T.unsafe(nil), closing_loc: T.unsafe(nil), block: T.unsafe(nil)); end
+  def copy(node_id: T.unsafe(nil), location: T.unsafe(nil), flags: T.unsafe(nil), receiver: T.unsafe(nil), call_operator_loc: T.unsafe(nil), name: T.unsafe(nil), message_loc: T.unsafe(nil), opening_loc: T.unsafe(nil), arguments: T.unsafe(nil), closing_loc: T.unsafe(nil), equal_loc: T.unsafe(nil), block: T.unsafe(nil)); end
 
   sig { override.returns(T::Array[T.nilable(Prism::Node)]) }
   def deconstruct; end
 
   sig { params(keys: T.nilable(T::Array[Symbol])).returns(T::Hash[Symbol, T.untyped]) }
   def deconstruct_keys(keys); end
+
+  sig { returns(T.nilable(String)) }
+  def equal; end
+
+  sig { returns(T.nilable(Prism::Location)) }
+  def equal_loc; end
 
   sig { override.returns(T::Array[Prism::Reflection::Field]) }
   def fields; end
@@ -1617,6 +1625,7 @@ class Prism::CallNode < ::Prism::Node
 
   def save_call_operator_loc(repository); end
   def save_closing_loc(repository); end
+  def save_equal_loc(repository); end
   def save_message_loc(repository); end
   def save_opening_loc(repository); end
 
@@ -4157,10 +4166,11 @@ module Prism::DSL
       opening_loc: T.nilable(Prism::Location),
       arguments: T.nilable(Prism::ArgumentsNode),
       closing_loc: T.nilable(Prism::Location),
+      equal_loc: T.nilable(Prism::Location),
       block: T.nilable(T.any(Prism::BlockNode, Prism::BlockArgumentNode))
     ).returns(Prism::CallNode)
   end
-  def call_node(source: T.unsafe(nil), node_id: T.unsafe(nil), location: T.unsafe(nil), flags: T.unsafe(nil), receiver: T.unsafe(nil), call_operator_loc: T.unsafe(nil), name: T.unsafe(nil), message_loc: T.unsafe(nil), opening_loc: T.unsafe(nil), arguments: T.unsafe(nil), closing_loc: T.unsafe(nil), block: T.unsafe(nil)); end
+  def call_node(source: T.unsafe(nil), node_id: T.unsafe(nil), location: T.unsafe(nil), flags: T.unsafe(nil), receiver: T.unsafe(nil), call_operator_loc: T.unsafe(nil), name: T.unsafe(nil), message_loc: T.unsafe(nil), opening_loc: T.unsafe(nil), arguments: T.unsafe(nil), closing_loc: T.unsafe(nil), equal_loc: T.unsafe(nil), block: T.unsafe(nil)); end
 
   sig { params(name: Symbol).returns(Integer) }
   def call_node_flag(name); end
@@ -5067,7 +5077,7 @@ module Prism::DSL
       location: Prism::Location,
       flags: Integer,
       opening_loc: T.nilable(Prism::Location),
-      parts: T::Array[T.any(Prism::StringNode, Prism::EmbeddedStatementsNode, Prism::EmbeddedVariableNode, Prism::InterpolatedStringNode, Prism::XStringNode)],
+      parts: T::Array[T.any(Prism::StringNode, Prism::EmbeddedStatementsNode, Prism::EmbeddedVariableNode, Prism::InterpolatedStringNode, Prism::XStringNode, Prism::InterpolatedXStringNode, Prism::SymbolNode, Prism::InterpolatedSymbolNode)],
       closing_loc: T.nilable(Prism::Location)
     ).returns(Prism::InterpolatedStringNode)
   end
@@ -9993,7 +10003,7 @@ class Prism::InterpolatedStringNode < ::Prism::Node
       location: Prism::Location,
       flags: Integer,
       opening_loc: T.nilable(Prism::Location),
-      parts: T::Array[T.any(Prism::StringNode, Prism::EmbeddedStatementsNode, Prism::EmbeddedVariableNode, Prism::InterpolatedStringNode, Prism::XStringNode)],
+      parts: T::Array[T.any(Prism::StringNode, Prism::EmbeddedStatementsNode, Prism::EmbeddedVariableNode, Prism::InterpolatedStringNode, Prism::XStringNode, Prism::InterpolatedXStringNode, Prism::SymbolNode, Prism::InterpolatedSymbolNode)],
       closing_loc: T.nilable(Prism::Location)
     ).void
   end
@@ -10025,7 +10035,7 @@ class Prism::InterpolatedStringNode < ::Prism::Node
       location: Prism::Location,
       flags: Integer,
       opening_loc: T.nilable(Prism::Location),
-      parts: T::Array[T.any(Prism::StringNode, Prism::EmbeddedStatementsNode, Prism::EmbeddedVariableNode, Prism::InterpolatedStringNode, Prism::XStringNode)],
+      parts: T::Array[T.any(Prism::StringNode, Prism::EmbeddedStatementsNode, Prism::EmbeddedVariableNode, Prism::InterpolatedStringNode, Prism::XStringNode, Prism::InterpolatedXStringNode, Prism::SymbolNode, Prism::InterpolatedSymbolNode)],
       closing_loc: T.nilable(Prism::Location)
     ).returns(Prism::InterpolatedStringNode)
   end
@@ -10061,7 +10071,7 @@ class Prism::InterpolatedStringNode < ::Prism::Node
   def opening_loc; end
 
   sig do
-    returns(T::Array[T.any(Prism::StringNode, Prism::EmbeddedStatementsNode, Prism::EmbeddedVariableNode, Prism::InterpolatedStringNode, Prism::XStringNode)])
+    returns(T::Array[T.any(Prism::StringNode, Prism::EmbeddedStatementsNode, Prism::EmbeddedVariableNode, Prism::InterpolatedStringNode, Prism::XStringNode, Prism::InterpolatedXStringNode, Prism::SymbolNode, Prism::InterpolatedSymbolNode)])
   end
   def parts; end
 
@@ -15745,8 +15755,14 @@ class Prism::Translation::Parser34 < ::Prism::Translation::Parser
   def version; end
 end
 
-class Prism::Translation::Parser35 < ::Prism::Translation::Parser
+Prism::Translation::Parser35 = Prism::Translation::Parser40
+
+class Prism::Translation::Parser40 < ::Prism::Translation::Parser
   sig { override.returns(Integer) }
+  def version; end
+end
+
+class Prism::Translation::Parser41 < ::Prism::Translation::Parser
   def version; end
 end
 
@@ -15925,8 +15941,8 @@ class Prism::Translation::Parser::Compiler < ::Prism::Compiler
   def numeric_negate(message_loc, receiver); end
   def procarg0?(parameters); end
   def srange(location); end
-  def srange_find(start_offset, end_offset, character); end
   def srange_offsets(start_offset, end_offset); end
+  def srange_semicolon(start_offset, end_offset); end
   def string_nodes_from_interpolation(node, opening); end
   def string_nodes_from_line_continuations(unescaped, escaped, start_offset, opening); end
   def token(location); end
@@ -16653,6 +16669,7 @@ end
 class Prism::Translation::RubyParser
   def parse(source, filepath = T.unsafe(nil)); end
   def parse_file(filepath); end
+  def process(ruby, file = T.unsafe(nil), timeout = T.unsafe(nil)); end
 
   private
 
@@ -16823,6 +16840,7 @@ class Prism::Translation::RubyParser::Compiler < ::Prism::Compiler
 
   private
 
+  def attach_comments(sexp, node); end
   def class_variable_write_type; end
   def copy_compiler(in_def: T.unsafe(nil), in_pattern: T.unsafe(nil)); end
   def op_asgn?(node); end
@@ -17968,3 +17986,6 @@ class Prism::YieldNode < ::Prism::Node
     def type; end
   end
 end
+
+class RubyParser; end
+class RubyParser::SyntaxError < ::RuntimeError; end

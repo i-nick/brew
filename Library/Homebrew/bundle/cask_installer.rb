@@ -74,6 +74,10 @@ module Homebrew
         result
       end
 
+      def self.installable_or_upgradable?(name, no_upgrade: false, **options)
+        !cask_installed?(name) || upgrading?(no_upgrade, name, options)
+      end
+
       private_class_method def self.postinstall_change_state!(name:, options:, verbose:)
         postinstall = options.fetch(:postinstall, nil)
         return true if postinstall.blank?

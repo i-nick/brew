@@ -49,7 +49,7 @@ module OS
             end
 
             # codesign the file if needed
-            codesign_patched_binary(file) if needs_codesigning
+            codesign_patched_binary(file.to_s) if needs_codesigning
           end
         end
       end
@@ -96,7 +96,7 @@ module OS
             end
 
             # codesign the file if needed
-            codesign_patched_binary(file) if needs_codesigning
+            codesign_patched_binary(file.to_s) if needs_codesigning
           end
         end
 

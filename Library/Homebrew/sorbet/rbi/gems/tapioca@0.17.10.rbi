@@ -72,7 +72,12 @@ class RBI::Tree < ::RBI::NodeWithComments
   sig { params(name: ::String, block: T.nilable(T.proc.params(scope: ::RBI::Scope).void)).returns(::RBI::Scope) }
   def create_module(name, &block); end
 
-  sig { params(constant: ::Module, block: T.nilable(T.proc.params(scope: ::RBI::Scope).void)).returns(::RBI::Scope) }
+  sig do
+    params(
+      constant: T::Module[T.anything],
+      block: T.nilable(T.proc.params(scope: ::RBI::Scope).void)
+    ).returns(::RBI::Scope)
+  end
   def create_path(constant, &block); end
 
   sig do
@@ -359,7 +364,12 @@ class Tapioca::Commands::AbstractDsl < ::Tapioca::Commands::CommandWithoutTracke
   end
   def compile_dsl_rbi(constant_name, rbi, outpath: T.unsafe(nil), quiet: T.unsafe(nil)); end
 
-  sig { params(constant_names: T::Array[::String], ignore_missing: T::Boolean).returns(T::Array[::Module]) }
+  sig do
+    params(
+      constant_names: T::Array[::String],
+      ignore_missing: T::Boolean
+    ).returns(T::Array[T::Module[T.anything]])
+  end
   def constantize(constant_names, ignore_missing: T.unsafe(nil)); end
 
   sig { params(compiler_names: T::Array[::String]).returns(T::Array[T.class_of(Tapioca::Dsl::Compiler)]) }
@@ -838,7 +848,7 @@ class Tapioca::Dsl::Compiler
 
   abstract!
 
-  ConstantType = type_member { { upper: Module } }
+  ConstantType = type_member { { upper: T::Module[T.anything] } }
 
   sig do
     params(
@@ -883,16 +893,16 @@ class Tapioca::Dsl::Compiler
   def parameters_types_from_signature(method_def, signature); end
 
   class << self
-    sig { abstract.returns(T::Enumerable[::Module]) }
+    sig { abstract.returns(T::Enumerable[T::Module[T.anything]]) }
     def gather_constants; end
 
-    sig { params(constant: ::Module).returns(T::Boolean) }
+    sig { params(constant: T::Module[T.anything]).returns(T::Boolean) }
     def handles?(constant); end
 
-    sig { returns(T::Set[::Module]) }
+    sig { returns(T::Set[T::Module[T.anything]]) }
     def processable_constants; end
 
-    sig { params(constants: T::Array[::Module]).void }
+    sig { params(constants: T::Array[T::Module[T.anything]]).void }
     def requested_constants=(constants); end
 
     sig { void }
@@ -903,7 +913,7 @@ class Tapioca::Dsl::Compiler
     sig { returns(T::Enumerable[T::Class[T.anything]]) }
     def all_classes; end
 
-    sig { returns(T::Enumerable[::Module]) }
+    sig { returns(T::Enumerable[T::Module[T.anything]]) }
     def all_modules; end
 
     sig do
@@ -922,12 +932,12 @@ Tapioca::Dsl::Compilers::NAMESPACES = T.let(T.unsafe(nil), Array)
 class Tapioca::Dsl::Pipeline
   sig do
     params(
-      requested_constants: T::Array[::Module],
+      requested_constants: T::Array[T::Module[T.anything]],
       requested_paths: T::Array[::Pathname],
       requested_compilers: T::Array[T.class_of(Tapioca::Dsl::Compiler)],
       excluded_compilers: T::Array[T.class_of(Tapioca::Dsl::Compiler)],
       error_handler: T.proc.params(error: ::String).void,
-      skipped_constants: T::Array[::Module],
+      skipped_constants: T::Array[T::Module[T.anything]],
       number_of_workers: T.nilable(::Integer),
       compiler_options: T::Hash[::String, T.untyped],
       lsp_addon: T::Boolean
@@ -953,21 +963,21 @@ class Tapioca::Dsl::Pipeline
   sig { returns(T::Array[::String]) }
   def errors; end
 
-  sig { returns(T::Array[::Module]) }
+  sig { returns(T::Array[T::Module[T.anything]]) }
   def requested_constants; end
 
   sig { returns(T::Array[::Pathname]) }
   def requested_paths; end
 
   sig do
-    type_parameters(:T)
+    type_parameters(:R)
       .params(
-        blk: T.proc.params(constant: ::Module, rbi: ::RBI::File).returns(T.type_parameter(:T))
-      ).returns(T::Array[T.type_parameter(:T)])
+        blk: T.proc.params(constant: T::Module[T.anything], rbi: ::RBI::File).returns(T.type_parameter(:R))
+      ).returns(T::Array[T.type_parameter(:R)])
   end
   def run(&blk); end
 
-  sig { returns(T::Array[::Module]) }
+  sig { returns(T::Array[T::Module[T.anything]]) }
   def skipped_constants; end
 
   private
@@ -975,7 +985,7 @@ class Tapioca::Dsl::Pipeline
   sig { void }
   def abort_if_pending_migrations!; end
 
-  sig { params(constants: T::Set[::Module]).returns(T::Set[::Module]) }
+  sig { params(constants: T::Set[T::Module[T.anything]]).returns(T::Set[T::Module[T.anything]]) }
   def filter_anonymous_and_reloaded_constants(constants); end
 
   sig do
@@ -988,14 +998,14 @@ class Tapioca::Dsl::Pipeline
 
   sig do
     params(
-      requested_constants: T::Array[::Module],
+      requested_constants: T::Array[T::Module[T.anything]],
       requested_paths: T::Array[::Pathname],
-      skipped_constants: T::Array[::Module]
-    ).returns(T::Set[::Module])
+      skipped_constants: T::Array[T::Module[T.anything]]
+    ).returns(T::Set[T::Module[T.anything]])
   end
   def gather_constants(requested_constants, requested_paths, skipped_constants); end
 
-  sig { params(constant: ::Module).returns(T.nilable(::RBI::File)) }
+  sig { params(constant: T::Module[T.anything]).returns(T.nilable(::RBI::File)) }
   def rbi_for_constant(constant); end
 
   sig { params(error: ::String).void }
@@ -1033,7 +1043,7 @@ Tapioca::Executor::MINIMUM_ITEMS_PER_WORKER = T.let(T.unsafe(nil), Integer)
 module Tapioca::Gem; end
 
 class Tapioca::Gem::ConstNodeAdded < ::Tapioca::Gem::NodeAdded
-  sig { params(symbol: ::String, constant: ::Module, node: ::RBI::Const).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything], node: ::RBI::Const).void }
   def initialize(symbol, constant, node); end
 
   sig { returns(::RBI::Const) }
@@ -1054,10 +1064,10 @@ class Tapioca::Gem::Event
 end
 
 class Tapioca::Gem::ForeignConstantFound < ::Tapioca::Gem::ConstantFound
-  sig { params(symbol: ::String, constant: ::Module).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything]).void }
   def initialize(symbol, constant); end
 
-  sig { override.returns(::Module) }
+  sig { override.returns(T::Module[T.anything]) }
   def constant; end
 end
 
@@ -1129,9 +1139,9 @@ class Tapioca::Gem::Listeners::Methods < ::Tapioca::Gem::Listeners::Base
     params(
       tree: ::RBI::Tree,
       module_name: ::String,
-      mod: ::Module,
+      mod: T::Module[T.anything],
       for_visibility: T::Array[::Symbol],
-      attached_class: T.nilable(::Module)
+      attached_class: T.nilable(T::Module[T.anything])
     ).void
   end
   def compile_directly_owned_methods(tree, module_name, mod, for_visibility = T.unsafe(nil), attached_class: T.unsafe(nil)); end
@@ -1140,7 +1150,7 @@ class Tapioca::Gem::Listeners::Methods < ::Tapioca::Gem::Listeners::Base
     params(
       tree: ::RBI::Tree,
       symbol_name: ::String,
-      constant: ::Module,
+      constant: T::Module[T.anything],
       method: T.nilable(::UnboundMethod),
       visibility: ::RBI::Visibility
     ).void
@@ -1150,22 +1160,27 @@ class Tapioca::Gem::Listeners::Methods < ::Tapioca::Gem::Listeners::Base
   sig { override.params(event: ::Tapioca::Gem::NodeAdded).returns(T::Boolean) }
   def ignore?(event); end
 
-  sig { params(constant: ::Module).returns(T.nilable(::UnboundMethod)) }
+  sig { params(constant: T::Module[T.anything]).returns(T.nilable(::UnboundMethod)) }
   def initialize_method_for(constant); end
 
-  sig { params(mod: ::Module).returns(T::Hash[::Symbol, T::Array[::Symbol]]) }
+  sig { params(mod: T::Module[T.anything]).returns(T::Hash[::Symbol, T::Array[::Symbol]]) }
   def method_names_by_visibility(mod); end
 
-  sig { params(attached_class: T.nilable(::Module), method_name: ::Symbol).returns(T.nilable(T::Boolean)) }
+  sig do
+    params(
+      attached_class: T.nilable(T::Module[T.anything]),
+      method_name: ::Symbol
+    ).returns(T.nilable(T::Boolean))
+  end
   def method_new_in_abstract_class?(attached_class, method_name); end
 
-  sig { params(method: ::UnboundMethod, constant: ::Module).returns(T::Boolean) }
+  sig { params(method: ::UnboundMethod, constant: T::Module[T.anything]).returns(T::Boolean) }
   def method_owned_by_constant?(method, constant); end
 
   sig { override.params(event: ::Tapioca::Gem::ScopeNodeAdded).void }
   def on_scope(event); end
 
-  sig { params(constant: ::Module, method_name: ::String).returns(T::Boolean) }
+  sig { params(constant: T::Module[T.anything], method_name: ::String).returns(T::Boolean) }
   def struct_method?(constant, method_name); end
 end
 
@@ -1178,8 +1193,8 @@ class Tapioca::Gem::Listeners::Mixins < ::Tapioca::Gem::Listeners::Base
   sig do
     params(
       tree: ::RBI::Tree,
-      constant: ::Module,
-      mods: T::Array[::Module],
+      constant: T::Module[T.anything],
+      mods: T::Array[T::Module[T.anything]],
       mixin_type: ::Tapioca::Runtime::Trackers::Mixin::Type
     ).void
   end
@@ -1188,13 +1203,13 @@ class Tapioca::Gem::Listeners::Mixins < ::Tapioca::Gem::Listeners::Base
   sig { params(mixin_name: ::String).returns(T::Boolean) }
   def filtered_mixin?(mixin_name); end
 
-  sig { params(constant: ::Module).returns(T::Array[::Module]) }
+  sig { params(constant: T::Module[T.anything]).returns(T::Array[T::Module[T.anything]]) }
   def interesting_ancestors_of(constant); end
 
   sig do
     params(
-      constant: ::Module,
-      mixin: ::Module,
+      constant: T::Module[T.anything],
+      mixin: T::Module[T.anything],
       mixin_type: ::Tapioca::Runtime::Trackers::Mixin::Type
     ).returns(T::Boolean)
   end
@@ -1292,7 +1307,7 @@ class Tapioca::Gem::Listeners::SorbetTypeVariables < ::Tapioca::Gem::Listeners::
 
   private
 
-  sig { params(tree: ::RBI::Tree, constant: ::Module).void }
+  sig { params(tree: ::RBI::Tree, constant: T::Module[T.anything]).void }
   def compile_type_variable_declarations(tree, constant); end
 
   sig { override.params(event: ::Tapioca::Gem::NodeAdded).returns(T::Boolean) }
@@ -1366,7 +1381,7 @@ class Tapioca::Gem::MethodNodeAdded < ::Tapioca::Gem::NodeAdded
   sig do
     params(
       symbol: ::String,
-      constant: ::Module,
+      constant: T::Module[T.anything],
       method: ::UnboundMethod,
       node: ::RBI::Method,
       signature: T.untyped,
@@ -1391,10 +1406,10 @@ end
 class Tapioca::Gem::NodeAdded < ::Tapioca::Gem::Event
   abstract!
 
-  sig { params(symbol: ::String, constant: ::Module).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything]).void }
   def initialize(symbol, constant); end
 
-  sig { returns(::Module) }
+  sig { returns(T::Module[T.anything]) }
   def constant; end
 
   sig { returns(::String) }
@@ -1432,29 +1447,29 @@ class Tapioca::Gem::Pipeline
   sig do
     params(
       method_name: ::Symbol,
-      owner: ::Module
+      owner: T::Module[T.anything]
     ).returns(::Tapioca::Gem::Pipeline::MethodDefinitionLookupResult)
   end
   def method_definition_in_gem(method_name, owner); end
 
-  sig { params(constant: ::Module).returns(T.nilable(::String)) }
+  sig { params(constant: T::Module[T.anything]).returns(T.nilable(::String)) }
   def name_of(constant); end
 
-  sig { params(symbol: ::String, constant: ::Module, node: ::RBI::Const).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything], node: ::RBI::Const).void }
   def push_const(symbol, constant, node); end
 
   def push_constant(symbol, constant); end
 
-  sig { params(symbol: ::String, constant: ::Module).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything]).void }
   def push_foreign_constant(symbol, constant); end
 
-  sig { params(symbol: ::String, constant: ::Module, node: ::RBI::Scope).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything], node: ::RBI::Scope).void }
   def push_foreign_scope(symbol, constant, node); end
 
   sig do
     params(
       symbol: ::String,
-      constant: ::Module,
+      constant: T::Module[T.anything],
       method: ::UnboundMethod,
       node: ::RBI::Method,
       signature: T.untyped,
@@ -1463,7 +1478,7 @@ class Tapioca::Gem::Pipeline
   end
   def push_method(symbol, constant, method, node, signature, parameters); end
 
-  sig { params(symbol: ::String, constant: ::Module, node: ::RBI::Scope).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything], node: ::RBI::Scope).void }
   def push_scope(symbol, constant, node); end
 
   sig { params(symbol: ::String).void }
@@ -1480,41 +1495,41 @@ class Tapioca::Gem::Pipeline
   sig { params(name: ::String).returns(T::Boolean) }
   def alias_namespaced?(name); end
 
-  sig { params(name: ::String, constant: ::Module).void }
+  sig { params(name: ::String, constant: T::Module[T.anything]).void }
   def compile_alias(name, constant); end
 
   def compile_constant(symbol, constant); end
 
-  sig { params(symbol: ::String, constant: ::Module).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything]).void }
   def compile_foreign_constant(symbol, constant); end
 
-  sig { params(name: ::String, constant: ::Module).void }
+  sig { params(name: ::String, constant: T::Module[T.anything]).void }
   def compile_module(name, constant); end
 
   def compile_object(name, value); end
 
-  sig { params(name: ::String, constant: ::Module).returns(::RBI::Scope) }
+  sig { params(name: ::String, constant: T::Module[T.anything]).returns(::RBI::Scope) }
   def compile_scope(name, constant); end
 
   sig { params(constant: T::Class[T.anything]).returns(T.nilable(::String)) }
   def compile_superclass(constant); end
 
-  sig { params(constant: ::Module, strict: T::Boolean).returns(T::Boolean) }
+  sig { params(constant: T::Module[T.anything], strict: T::Boolean).returns(T::Boolean) }
   def defined_in_gem?(constant, strict: T.unsafe(nil)); end
 
   sig { params(event: ::Tapioca::Gem::Event).void }
   def dispatch(event); end
 
-  sig { params(constant: T.all(::Module, ::T::Generic)).returns(::String) }
+  sig { params(constant: T.all(::T::Generic, T::Module[T.anything])).returns(::String) }
   def generic_name_of(constant); end
 
-  sig { params(constant: ::Module).returns(T::Set[::String]) }
+  sig { params(constant: T::Module[T.anything]).returns(T::Set[::String]) }
   def get_file_candidates(constant); end
 
   sig { params(gem: ::Tapioca::Gemfile::GemSpec).returns(T::Set[::String]) }
   def load_bootstrap_symbols(gem); end
 
-  sig { params(constant: ::Module, class_name: T.nilable(::String)).returns(T.nilable(::String)) }
+  sig { params(constant: T::Module[T.anything], class_name: T.nilable(::String)).returns(T.nilable(::String)) }
   def name_of_proxy_target(constant, class_name); end
 
   sig { returns(::Tapioca::Gem::Event) }
@@ -1535,15 +1550,15 @@ class Tapioca::Gem::Pipeline
   sig { params(name: ::String).returns(T::Boolean) }
   def seen?(name); end
 
-  sig { params(name: ::String, constant: ::Module).returns(T::Boolean) }
+  sig { params(name: ::String, constant: T::Module[T.anything]).returns(T::Boolean) }
   def skip_alias?(name, constant); end
 
   def skip_constant?(name, constant); end
 
-  sig { params(name: ::String, constant: ::Module).returns(T::Boolean) }
+  sig { params(name: ::String, constant: T::Module[T.anything]).returns(T::Boolean) }
   def skip_foreign_constant?(name, constant); end
 
-  sig { params(name: ::String, constant: ::Module).returns(T::Boolean) }
+  sig { params(name: ::String, constant: T::Module[T.anything]).returns(T::Boolean) }
   def skip_module?(name, constant); end
 
   def skip_object?(name, constant); end
@@ -1571,7 +1586,7 @@ class Tapioca::Gem::Pipeline::MethodNotInGem < ::Tapioca::Gem::Pipeline::MethodD
 class Tapioca::Gem::Pipeline::MethodUnknown < ::Tapioca::Gem::Pipeline::MethodDefinitionLookupResult; end
 
 class Tapioca::Gem::ScopeNodeAdded < ::Tapioca::Gem::NodeAdded
-  sig { params(symbol: ::String, constant: ::Module, node: ::RBI::Scope).void }
+  sig { params(symbol: ::String, constant: T::Module[T.anything], node: ::RBI::Scope).void }
   def initialize(symbol, constant, node); end
 
   sig { returns(::RBI::Scope) }

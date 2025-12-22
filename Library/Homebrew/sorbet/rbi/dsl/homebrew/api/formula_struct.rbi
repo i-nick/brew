@@ -10,10 +10,10 @@ class Homebrew::API::FormulaStruct
   def bottle?; end
 
   sig { returns(T::Boolean) }
-  def deprecated?; end
+  def deprecate?; end
 
   sig { returns(T::Boolean) }
-  def disabled?; end
+  def disable?; end
 
   sig { returns(T::Boolean) }
   def head?; end

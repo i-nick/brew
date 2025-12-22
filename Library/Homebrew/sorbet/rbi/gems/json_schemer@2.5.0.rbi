@@ -675,9 +675,13 @@ JSONSchemer::Format::Hostname::KATAKANA_MIDDLE_DOT_CONTEXT_REGEX = T.let(T.unsaf
 JSONSchemer::Format::Hostname::KATAKANA_MIDDLE_DOT_REGEX = T.let(T.unsafe(nil), Regexp)
 JSONSchemer::Format::Hostname::LABEL_CHARACTER_CLASS = T.let(T.unsafe(nil), String)
 JSONSchemer::Format::Hostname::LABEL_REGEX_STRING = T.let(T.unsafe(nil), String)
+JSONSchemer::Format::Hostname::LABEL_SEPARATOR_CHARACTER_CLASS = T.let(T.unsafe(nil), String)
+JSONSchemer::Format::Hostname::LABEL_SEPARATOR_REGEX = T.let(T.unsafe(nil), Regexp)
 JSONSchemer::Format::Hostname::LEADING_CHARACTER_CLASS = T.let(T.unsafe(nil), String)
 JSONSchemer::Format::Hostname::LETTER_DIGITS = T.let(T.unsafe(nil), String)
 JSONSchemer::Format::Hostname::MARKS = T.let(T.unsafe(nil), String)
+JSONSchemer::Format::Hostname::MAX_A_LABEL_SIZE = T.let(T.unsafe(nil), Integer)
+JSONSchemer::Format::Hostname::MAX_HOSTNAME_SIZE = T.let(T.unsafe(nil), Integer)
 JSONSchemer::Format::Hostname::MIDDLE_DOT = T.let(T.unsafe(nil), String)
 JSONSchemer::Format::Hostname::VIRAMA_CHARACTER_CLASS = T.let(T.unsafe(nil), String)
 JSONSchemer::Format::Hostname::ZERO_WIDTH_NON_JOINER_JOINING_TYPE = T.let(T.unsafe(nil), String)
@@ -915,6 +919,10 @@ class JSONSchemer::Result < ::Struct
   private
 
   def default_keyword_instance(schema); end
+  def formatted_instance_location; end
+  def interpolation_variables; end
+  def resolved_instance_location; end
+  def resolved_keyword_location; end
 
   class << self
     def [](*_arg0); end

@@ -1212,6 +1212,7 @@ class YARD::Handlers::Ruby::ConstantHandler < ::YARD::Handlers::Ruby::Base
 
   def extract_parameters(superclass); end
   def process_constant(statement); end
+  def process_dataclass(statement); end
   def process_structclass(statement); end
 end
 
@@ -3634,7 +3635,7 @@ class YARD::Tags::TypesExplainer::Type
 
   private
 
-  def list_join(list); end
+  def list_join(list, with: T.unsafe(nil)); end
 end
 
 class YARD::Tags::VisibilityDirective < ::YARD::Tags::Directive

@@ -18,6 +18,9 @@ class Homebrew::Cmd::Bundle::Args < Homebrew::CLI::Args
   def brews?; end
 
   sig { returns(T::Boolean) }
+  def cargo?; end
+
+  sig { returns(T::Boolean) }
   def cask?; end
 
   sig { returns(T::Boolean) }
@@ -61,6 +64,9 @@ class Homebrew::Cmd::Bundle::Args < Homebrew::CLI::Args
 
   sig { returns(T::Boolean) }
   def mas?; end
+
+  sig { returns(T::Boolean) }
+  def no_cargo?; end
 
   sig { returns(T::Boolean) }
   def no_flatpak?; end

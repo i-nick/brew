@@ -1301,7 +1301,12 @@ class Formula
   end
 
   # Runs a block with the given log type in effect for its duration.
-  sig { params(log_type: String, _block: T.proc.void).void }
+  sig {
+    type_parameters(:U).params(
+      log_type: String,
+      _block:   T.proc.returns(T.type_parameter(:U)),
+    ).returns(T.type_parameter(:U))
+  }
   def with_logging(log_type, &_block)
     old_log_type = @active_log_type
     @active_log_type = T.let(log_type, T.nilable(String))
@@ -2234,6 +2239,18 @@ class Formula
   # (zsh_completion/"_foo").write Utils.safe_popen_read({ "SHELL" => "zsh", "COMPLETE" => "zsh" }, bin/"foo")
   # ```
   #
+  # Using predefined `shell_parameter_format :typer`.
+  #
+  # ```ruby
+  # generate_completions_from_executable(bin/"foo", shell_parameter_format: :typer, shells: [:zsh])
+  #
+  # # translates to
+  # (zsh_completion/"_foo").write Utils.safe_popen_read(
+  #   { "SHELL" => "zsh", "_TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION" => "1" },
+  #   bin/"foo", "--show-completion", "zsh"
+  # )
+  # ```
+  #
   # Using custom `shell_parameter_format`.
   #
   # ```ruby
@@ -2255,7 +2272,7 @@ class Formula
   #   the shells to generate completion scripts for. Defaults to `[:bash, :zsh, :fish]`.
   # @param shell_parameter_format
   #   specify how `shells` should each be passed to the `executable`. Takes either a String representing a
-  #   prefix, or one of `[:flag, :arg, :none, :click, :clap]`. Defaults to plainly passing the shell.
+  #   prefix, or one of `[:flag, :arg, :none, :click, :clap, :typer]`. Defaults to plainly passing the shell.
   sig {
     params(
       commands:               T.any(Pathname, String),
@@ -2299,6 +2316,9 @@ class Formula
       elsif shell_parameter_format == :clap
         popen_read_env["COMPLETE"] = shell_argument.to_s
         nil
+      elsif shell_parameter_format == :typer
+        popen_read_env["_TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION"] = "1"
+        ["--show-completion", shell_argument]
       else
         "#{shell_parameter_format}#{shell_argument}"
       end
@@ -2975,7 +2995,10 @@ class Formula
     self.class.on_system_blocks_exist? || @on_system_blocks_exist
   end
 
-  sig { params(keep_tmp: T::Boolean).returns(T.untyped) }
+  sig {
+    # TODO: replace `returns(BasicObject)` with `void` after dropping `return false` handling in test
+    params(keep_tmp: T::Boolean).returns(BasicObject)
+  }
   def run_test(keep_tmp: false)
     @prefix_returns_versioned_prefix = T.let(true, T.nilable(T::Boolean))
 
@@ -3020,7 +3043,10 @@ class Formula
     method(:test).owner != Formula
   end
 
-  sig { returns(T.nilable(T::Boolean)) }
+  sig {
+    # TODO: replace `returns(BasicObject)` with `void` after dropping `return false` handling in test
+    returns(BasicObject)
+  }
   def test; end
 
   sig { params(file: T.any(Pathname, String)).returns(Pathname) }
@@ -3330,12 +3356,12 @@ class Formula
   # or calling `do |staging| ... staging.retain!` in the block will skip
   # the deletion and retain the temporary directory's contents.
   sig {
-    params(
+    type_parameters(:U).params(
       prefix:          String,
       retain:          T::Boolean,
       retain_in_cache: T::Boolean,
-      block:           T.proc.params(arg0: Mktemp).void,
-    ).void
+      block:           T.proc.params(arg0: Mktemp).returns(T.type_parameter(:U)),
+    ).returns(T.type_parameter(:U))
   }
   def mktemp(prefix = name, retain: false, retain_in_cache: false, &block)
     Mktemp.new(prefix, retain:, retain_in_cache:).run(&block)
@@ -4440,9 +4466,11 @@ class Formula
     # Failed assertions and failed `system` commands will raise exceptions.
     #
     # @see https://docs.brew.sh/Formula-Cookbook#add-a-test-to-the-formula Tests
-    # @return [Boolean]
     # @api public
-    sig { params(block: T.proc.returns(T.untyped)).returns(T.untyped) }
+    sig {
+      # TODO: replace `returns(BasicObject)` with `void` after dropping `return false` handling in test
+      params(block: T.proc.returns(BasicObject)).returns(BasicObject)
+    }
     def test(&block) = define_method(:test, &block)
 
     # {Livecheck} can be used to check for newer versions of the software.

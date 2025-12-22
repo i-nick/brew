@@ -137,7 +137,8 @@ and are now no longer needed.
 ### `bundle` \[*`subcommand`*\]
 
 Bundler for non-Ruby dependencies from Homebrew, Homebrew Cask, Mac App Store,
-Visual Studio Code (and forks/variants), Go packages and Flatpak.
+Visual Studio Code (and forks/variants), Go packages, Cargo packages and
+Flatpak.
 
 Note: Flatpak support is only available on Linux.
 
@@ -302,6 +303,10 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 : `list` or `dump` Go packages.
 
+`--cargo`
+
+: `list` or `dump` Cargo packages.
+
 `--flatpak`
 
 : `list` or `dump` Flatpak packages. Note: Linux only.
@@ -315,6 +320,11 @@ flags which will help with finding keg-only dependencies like `openssl`,
 
 : `dump` without Go packages. Enabled by default if
   `$HOMEBREW_BUNDLE_DUMP_NO_GO` is set.
+
+`--no-cargo`
+
+: `dump` without Cargo packages. Enabled by default if
+  `$HOMEBREW_BUNDLE_DUMP_NO_CARGO` is set.
 
 `--no-flatpak`
 
@@ -4123,8 +4133,10 @@ command execution (e.g. `$(cat file)`).
 `HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN`
 
 : Use this base64 encoded username and password for authenticating with a Docker
-  registry proxying GitHub Packages. If `$HOMEBREW_DOCKER_REGISTRY_TOKEN` is
-  set, it will be used instead.
+  registry proxying GitHub Packages. If set to `none`, no authentication header
+  will be sent. This can be used, if remote `$HOMEBREW_BOTTLE_DOMAIN` does not
+  support any authentication. If `$HOMEBREW_DOCKER_REGISTRY_TOKEN` is set, it
+  will be used instead.
 
 `HOMEBREW_DOCKER_REGISTRY_TOKEN`
 

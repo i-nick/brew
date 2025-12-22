@@ -59,14 +59,15 @@ module Homebrew
       CheckResult = Struct.new :work_to_be_done, :errors
 
       CHECKS = {
-        taps_to_tap:            "Taps",
-        casks_to_install:       "Casks",
-        extensions_to_install:  "VSCode Extensions",
-        apps_to_install:        "Apps",
-        formulae_to_install:    "Formulae",
-        formulae_to_start:      "Services",
-        go_packages_to_install: "Go Packages",
-        flatpaks_to_install:    "Flatpaks",
+        taps_to_tap:               "Taps",
+        casks_to_install:          "Casks",
+        extensions_to_install:     "VSCode Extensions",
+        apps_to_install:           "Apps",
+        formulae_to_install:       "Formulae",
+        formulae_to_start:         "Services",
+        go_packages_to_install:    "Go Packages",
+        cargo_packages_to_install: "Cargo Packages",
+        flatpaks_to_install:       "Flatpaks",
       }.freeze
 
       def self.check(global: false, file: nil, exit_on_first_error: false, no_upgrade: false, verbose: false)
@@ -142,6 +143,14 @@ module Homebrew
       def self.go_packages_to_install(exit_on_first_error: false, no_upgrade: false, verbose: false)
         require "bundle/go_checker"
         Homebrew::Bundle::Checker::GoChecker.new.find_actionable(
+          @dsl.entries,
+          exit_on_first_error:, no_upgrade:, verbose:,
+        )
+      end
+
+      def self.cargo_packages_to_install(exit_on_first_error: false, no_upgrade: false, verbose: false)
+        require "bundle/cargo_checker"
+        Homebrew::Bundle::Checker::CargoChecker.new.find_actionable(
           @dsl.entries,
           exit_on_first_error:, no_upgrade:, verbose:,
         )

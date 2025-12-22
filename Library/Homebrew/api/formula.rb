@@ -281,8 +281,8 @@ module Homebrew
 
         # Should match FormulaStruct::PREDICATES
         hash["bottle_present"] = hash["bottle"].present?
-        hash["deprecated_present"] = hash["deprecation_date"].present?
-        hash["disabled_present"] = hash["disable_date"].present?
+        hash["deprecate_present"] = hash["deprecate_args"].present?
+        hash["disable_present"] = hash["disable_args"].present?
         hash["head_present"] = hash.dig("urls", "head").present?
         hash["keg_only_present"] = hash["keg_only_reason"].present?
         hash["no_autobump_message_present"] = hash["no_autobump_message"].present?

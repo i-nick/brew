@@ -52,7 +52,6 @@ module Homebrew
         load_path_cache:    true,
         compile_cache_iseq: compile_cache,
         compile_cache_yaml: compile_cache,
-        compile_cache_json: compile_cache,
       )
     end
 

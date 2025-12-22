@@ -82,6 +82,11 @@ module Homebrew
         @entries << Entry.new(:go, name)
       end
 
+      sig { params(name: String).void }
+      def cargo(name)
+        @entries << Entry.new(:cargo, name)
+      end
+
       sig { params(name: String, options: T::Hash[Symbol, String]).void }
       def flatpak(name, options = {})
         # Validate: url: can only be used with a named remote (not a URL remote)

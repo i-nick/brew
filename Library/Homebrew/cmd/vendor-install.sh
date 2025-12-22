@@ -120,8 +120,13 @@ fetch() {
     --remote-time
     --location
     --user-agent "${HOMEBREW_USER_AGENT_CURL}"
-    --header "Authorization: ${HOMEBREW_GITHUB_PACKAGES_AUTH}"
   )
+
+  if [[ -n "${HOMEBREW_GITHUB_PACKAGES_AUTH}" ]]
+  then
+    curl_args[${#curl_args[*]}]="--header"
+    curl_args[${#curl_args[*]}]="Authorization: ${HOMEBREW_GITHUB_PACKAGES_AUTH}"
+  fi
 
   if [[ -n "${HOMEBREW_QUIET}" ]]
   then

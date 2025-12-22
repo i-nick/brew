@@ -405,6 +405,44 @@ RSpec.describe Formulary do
         }
       end
 
+      let(:future_date) { Date.today + 365 }
+
+      let(:deprecate_future_json) do
+        {
+          "deprecated"                      => true,
+          "deprecation_date"                => future_date.to_s,
+          "deprecation_reason"              => nil,
+          "deprecation_replacement_formula" => nil,
+          "deprecation_replacement_cask"    => nil,
+          "deprecate_args"                  => {
+            date:             future_date.to_s,
+            because:          :repo_archived,
+            replacement_cask: "bar",
+          },
+        }
+      end
+
+      let(:disable_future_json) do
+        {
+          "deprecated"                      => true,
+          "deprecation_date"                => nil,
+          "deprecation_reason"              => "requires something else",
+          "deprecation_replacement_formula" => "foo",
+          "deprecation_replacement_cask"    => nil,
+          "deprecate_args"                  => nil,
+          "disabled"                        => false,
+          "disable_date"                    => future_date.to_s,
+          "disable_reason"                  => nil,
+          "disable_replacement_formula"     => nil,
+          "disable_replacement_cask"        => nil,
+          "disable_args"                    => {
+            date:                future_date.to_s,
+            because:             "requires something else",
+            replacement_formula: "foo",
+          },
+        }
+      end
+
       let(:variations_json) do
         {
           "variations" => {
@@ -517,6 +555,42 @@ RSpec.describe Formulary do
         expect(formula.disabled?).to be true
         expect(formula.disable_date).to eq(Date.parse("2022-06-15"))
         expect(formula.disable_reason).to eq("requires something else")
+        expect do
+          formula.install
+        end.to raise_error("Cannot build from source from abstract formula.")
+      end
+
+      it "returns a future-deprecated Formula when given a name" do
+        contents = formula_json_contents(deprecate_future_json)
+        allow(Homebrew::API::Formula).to receive(:all_formulae).and_return contents
+
+        formula = described_class.factory(formula_name)
+        expect(formula).to be_a(Formula)
+        expect(formula.deprecated?).to be false
+        expect(formula.deprecation_date).to eq(future_date)
+        expect(formula.deprecation_reason).to be_nil
+        expect(formula.deprecation_replacement_formula).to be_nil
+        expect(formula.deprecation_replacement_cask).to be_nil
+        expect do
+          formula.install
+        end.to raise_error("Cannot build from source from abstract formula.")
+      end
+
+      it "returns a future-disabled Formula when given a name" do
+        allow(Homebrew::API::Formula).to receive(:all_formulae).and_return formula_json_contents(disable_future_json)
+
+        formula = described_class.factory(formula_name)
+        expect(formula).to be_a(Formula)
+        expect(formula.deprecated?).to be true
+        expect(formula.deprecation_date).to be_nil
+        expect(formula.deprecation_reason).to eq("requires something else")
+        expect(formula.deprecation_replacement_formula).to eq("foo")
+        expect(formula.deprecation_replacement_cask).to be_nil
+        expect(formula.disabled?).to be false
+        expect(formula.disable_date).to eq(future_date)
+        expect(formula.disable_reason).to be_nil
+        expect(formula.disable_replacement_formula).to be_nil
+        expect(formula.disable_replacement_cask).to be_nil
         expect do
           formula.install
         end.to raise_error("Cannot build from source from abstract formula.")

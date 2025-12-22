@@ -51,7 +51,12 @@ class Mktemp
     "[Mktemp: #{tmpdir} retain=#{@retain} quiet=#{@quiet}]"
   end
 
-  sig { params(chdir: T::Boolean, _block: T.proc.params(arg0: Mktemp).void).void }
+  sig {
+    type_parameters(:U).params(
+      chdir:  T::Boolean,
+      _block: T.proc.params(arg0: Mktemp).returns(T.type_parameter(:U)),
+    ).returns(T.type_parameter(:U))
+  }
   def run(chdir: true, &_block)
     prefix_name = @prefix.tr "@", "AT"
     @tmpdir = if retain_in_cache?

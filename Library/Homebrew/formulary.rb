@@ -287,8 +287,8 @@ module Formulary
 
       keg_only(*formula_struct.keg_only_args) if formula_struct.keg_only?
 
-      deprecate!(**formula_struct.deprecate_args) if formula_struct.deprecated?
-      disable!(**formula_struct.disable_args) if formula_struct.disabled?
+      deprecate!(**formula_struct.deprecate_args) if formula_struct.deprecate?
+      disable!(**formula_struct.disable_args) if formula_struct.disable?
 
       formula_struct.conflicts.each do |name, args|
         conflicts_with(name, **args)

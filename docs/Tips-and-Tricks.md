@@ -224,6 +224,14 @@ by setting an environment variable before running the Homebrew installer:
 export HOMEBREW_BREW_GIT_REMOTE=https://git.example.com/Homebrew-mirrors/brew-mirror
 ```
 
+Other artifact repositories like Sonatype Nexus Repository Manager doesn't support explicit anonymous auth and
+still raise an 401 Unauthorized error, even when public read access is allowed. To mitigate this, set these environment
+variables for Homebrew to omit the Authorization header when accessing the artifact repository:
+
+```sh
+export HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN=none
+```
+
 ## Load Homebrew from the same dotfiles on different operating systems
 
 Some users may want to use the same shell initialization files on macOS and Linux.

@@ -9,8 +9,8 @@ module Homebrew
     class FormulaStruct < T::Struct
       PREDICATES = [
         :bottle,
-        :deprecated,
-        :disabled,
+        :deprecate,
+        :disable,
         :head,
         :keg_only,
         :no_autobump_message,

@@ -274,7 +274,7 @@ class Keg
 
         file.atomic_write patched_binary
       end
-      codesign_patched_binary(file)
+      codesign_patched_binary(file.to_s)
     end
   end
 

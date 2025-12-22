@@ -168,7 +168,7 @@ module Homebrew
             T.must(location.path).exclude?("/gems/sorbet-runtime-")
           end.fetch(1)
           @command_name = T.let(T.must(cmd_location.label).chomp("_args").tr("_", "-"), String)
-          @is_dev_cmd = T.let(T.must(cmd_location.absolute_path).start_with?(Commands::HOMEBREW_DEV_CMD_PATH),
+          @is_dev_cmd = T.let(T.must(cmd_location.absolute_path).start_with?(Commands::HOMEBREW_DEV_CMD_PATH.to_s),
                               T::Boolean)
           odisabled(
             "`brew #{@command_name}'. This command needs to be refactored, as it is written in a style that",
@@ -380,7 +380,7 @@ module Homebrew
               i += 1
             end
           rescue OptionParser::InvalidOption
-            if ignore_invalid_options || (allow_commands && Commands.path(arg))
+            if ignore_invalid_options || (allow_commands && arg && Commands.path(arg))
               remaining << arg
             else
               $stderr.puts generate_help_text

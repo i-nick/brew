@@ -10,7 +10,7 @@ module Homebrew
         usage_banner <<~EOS
           `bundle` [<subcommand>]
 
-          Bundler for non-Ruby dependencies from Homebrew, Homebrew Cask, Mac App Store, Visual Studio Code (and forks/variants), Go packages and Flatpak.
+          Bundler for non-Ruby dependencies from Homebrew, Homebrew Cask, Mac App Store, Visual Studio Code (and forks/variants), Go packages, Cargo packages and Flatpak.
 
           Note: Flatpak support is only available on Linux.
 
@@ -111,6 +111,8 @@ module Homebrew
                description: "`list`, `dump` or `cleanup` VSCode (and forks/variants) extensions."
         switch "--go",
                description: "`list` or `dump` Go packages."
+        switch "--cargo",
+               description: "`list` or `dump` Cargo packages."
         switch "--flatpak",
                description: "`list` or `dump` Flatpak packages. Note: Linux only."
         switch "--no-vscode",
@@ -119,6 +121,9 @@ module Homebrew
         switch "--no-go",
                description: "`dump` without Go packages.",
                env:         :bundle_dump_no_go
+        switch "--no-cargo",
+               description: "`dump` without Cargo packages.",
+               env:         :bundle_dump_no_cargo
         switch "--no-flatpak",
                description: "`dump` without Flatpak packages.",
                env:         :bundle_dump_no_flatpak
@@ -142,6 +147,8 @@ module Homebrew
         conflicts "--vscode", "--no-vscode"
         conflicts "--all", "--no-go"
         conflicts "--go", "--no-go"
+        conflicts "--all", "--no-cargo"
+        conflicts "--cargo", "--no-cargo"
         conflicts "--all", "--no-flatpak"
         conflicts "--flatpak", "--no-flatpak"
         conflicts "--install", "--upgrade"
@@ -186,7 +193,7 @@ module Homebrew
         Homebrew::Bundle.upgrade_formulae = args.upgrade_formulae
 
         no_type_args = [args.formulae?, args.casks?, args.taps?, args.mas?, args.vscode?, args.go?,
-                        args.flatpak?].none?
+                        args.cargo?, args.flatpak?].none?
 
         if args.install?
           if [nil, "install", "upgrade"].include?(subcommand)
@@ -237,6 +244,14 @@ module Homebrew
             no_type_args
           end
 
+          cargo = if args.no_cargo?
+            false
+          elsif args.cargo?
+            true
+          else
+            no_type_args
+          end
+
           flatpak = if args.no_flatpak?
             false
           elsif args.flatpak?
@@ -256,6 +271,7 @@ module Homebrew
             mas:        args.mas? || no_type_args,
             vscode:,
             go:,
+            cargo:,
             flatpak:
           )
         when "edit"
@@ -285,6 +301,7 @@ module Homebrew
             mas:      args.mas? || args.all?,
             vscode:   args.vscode? || args.all?,
             go:       args.go? || args.all?,
+            cargo:    args.cargo? || args.all?,
             flatpak:  args.flatpak? || args.all?,
           )
         when "add", "remove"
@@ -296,6 +313,7 @@ module Homebrew
             mas:     args.mas?,
             vscode:  args.vscode?,
             go:      args.go?,
+            cargo:   args.cargo?,
             flatpak: args.flatpak?,
             none:    no_type_args,
           }

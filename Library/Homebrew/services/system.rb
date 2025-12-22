@@ -10,6 +10,10 @@ module Homebrew
       extend Utils::Output::Mixin
 
       LAUNCHCTL_DOMAIN_ACTION_NOT_SUPPORTED = T.let(125, Integer)
+      MISSING_DAEMON_MANAGER_EXCEPTION_MESSAGE = T.let(
+        "`brew services` is supported only on macOS or Linux (with systemd)!",
+        String,
+      )
 
       # Path to launchctl binary.
       sig { returns(T.nilable(Pathname)) }
@@ -51,27 +55,31 @@ module Homebrew
       end
 
       # Run at boot.
-      sig { returns(T.nilable(Pathname)) }
+      sig { returns(Pathname) }
       def self.boot_path
         if launchctl?
           Pathname.new("/Library/LaunchDaemons")
         elsif systemctl?
           Pathname.new("/usr/lib/systemd/system")
+        else
+          raise UsageError, MISSING_DAEMON_MANAGER_EXCEPTION_MESSAGE
         end
       end
 
       # Run at login.
-      sig { returns(T.nilable(Pathname)) }
+      sig { returns(Pathname) }
       def self.user_path
         if launchctl?
           Pathname.new("#{Dir.home}/Library/LaunchAgents")
         elsif systemctl?
           Pathname.new("#{Dir.home}/.config/systemd/user")
+        else
+          raise UsageError, MISSING_DAEMON_MANAGER_EXCEPTION_MESSAGE
         end
       end
 
       # If root, return `boot_path`, else return `user_path`.
-      sig { returns(T.nilable(Pathname)) }
+      sig { returns(Pathname) }
       def self.path
         root? ? boot_path : user_path
       end

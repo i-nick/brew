@@ -50,7 +50,15 @@ begin
   Pathname.activate_extensions!
 
   # tests can also return false to indicate failure
-  run_test = proc { |_| raise "test returned false" if formula.run_test(keep_tmp: args.keep_tmp?) == false }
+  run_test = proc do |_|
+    # TODO: Replace proc usage with direct `formula.run_test` when removing this.
+    # Also update formula.rb 'TODO: replace `returns(BasicObject)` with `void`'
+    if formula.run_test(keep_tmp: args.keep_tmp?) == false
+      require "utils/output"
+      Utils::Output.odeprecated "`return false` in test", "`raise \"<reason for failure>\"`"
+      raise "test returned false"
+    end
+  end
   if args.debug? # --debug is interactive
     run_test.call(nil)
   else
@@ -70,7 +78,7 @@ ensure
     $stderr.puts "Killing child processes..."
     system pkill, "-P", pid
     sleep 1
-    system pgrep, "-9", "-P", pid
+    system pkill, "-9", "-P", pid
   end
   exit! 1 if e
 end

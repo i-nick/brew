@@ -83,7 +83,7 @@ Uninstall formulae that were only installed as a dependency of another formula a
 \fB\-n\fP, \fB\-\-dry\-run\fP
 List what would be uninstalled, but do not actually uninstall anything\.
 .SS "\fBbundle\fP \fR[\fIsubcommand\fP]"
-Bundler for non\-Ruby dependencies from Homebrew, Homebrew Cask, Mac App Store, Visual Studio Code (and forks/variants), Go packages and Flatpak\.
+Bundler for non\-Ruby dependencies from Homebrew, Homebrew Cask, Mac App Store, Visual Studio Code (and forks/variants), Go packages, Cargo packages and Flatpak\.
 .P
 Note: Flatpak support is only available on Linux\.
 .TP
@@ -188,6 +188,9 @@ Temporarily start services while running the \fBexec\fP or \fBsh\fP command\. En
 \fB\-\-go\fP
 \fBlist\fP or \fBdump\fP Go packages\.
 .TP
+\fB\-\-cargo\fP
+\fBlist\fP or \fBdump\fP Cargo packages\.
+.TP
 \fB\-\-flatpak\fP
 \fBlist\fP or \fBdump\fP Flatpak packages\. Note: Linux only\.
 .TP
@@ -196,6 +199,9 @@ Temporarily start services while running the \fBexec\fP or \fBsh\fP command\. En
 .TP
 \fB\-\-no\-go\fP
 \fBdump\fP without Go packages\. Enabled by default if \fB$HOMEBREW_BUNDLE_DUMP_NO_GO\fP is set\.
+.TP
+\fB\-\-no\-cargo\fP
+\fBdump\fP without Cargo packages\. Enabled by default if \fB$HOMEBREW_BUNDLE_DUMP_NO_CARGO\fP is set\.
 .TP
 \fB\-\-no\-flatpak\fP
 \fBdump\fP without Flatpak packages\. Enabled by default if \fB$HOMEBREW_BUNDLE_DUMP_NO_FLATPAK\fP is set\.
@@ -2672,7 +2678,7 @@ Use this X11 display when opening a page in a browser, for example with \fBbrew 
 If set, print install times for each formula at the end of the run\.
 .TP
 \fBHOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN\fP
-Use this base64 encoded username and password for authenticating with a Docker registry proxying GitHub Packages\. If \fB$HOMEBREW_DOCKER_REGISTRY_TOKEN\fP is set, it will be used instead\.
+Use this base64 encoded username and password for authenticating with a Docker registry proxying GitHub Packages\. If set to \fBnone\fP, no authentication header will be sent\. This can be used, if remote \fB$HOMEBREW_BOTTLE_DOMAIN\fP does not support any authentication\. If \fB$HOMEBREW_DOCKER_REGISTRY_TOKEN\fP is set, it will be used instead\.
 .TP
 \fBHOMEBREW_DOCKER_REGISTRY_TOKEN\fP
 Use this bearer token for authenticating with a Docker registry proxying GitHub Packages\. Preferred over \fB$HOMEBREW_DOCKER_REGISTRY_BASIC_AUTH_TOKEN\fP\&\.

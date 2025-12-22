@@ -77,8 +77,10 @@ module Utils
         retry_max_time:  T.nilable(T.any(Integer, Float)),
         show_output:     T.nilable(T::Boolean),
         show_error:      T.nilable(T::Boolean),
-        user_agent:      T.nilable(T.any(String, Symbol)),
+        cookies:         T.nilable(T::Hash[String, String]),
+        header:          T.nilable(T.any(String, T::Array[String])),
         referer:         T.nilable(String),
+        user_agent:      T.nilable(T.any(String, Symbol)),
       ).returns(T::Array[String])
     }
     def curl_args(
@@ -89,8 +91,10 @@ module Utils
       retry_max_time: nil,
       show_output: false,
       show_error: true,
-      user_agent: nil,
-      referer: nil
+      cookies: nil,
+      header: nil,
+      referer: nil,
+      user_agent: nil
     )
       args = []
 
@@ -106,25 +110,37 @@ module Utils
         args << "--disable"
       end
 
-      # echo any cookies received on a redirect
-      args << "--cookie" << File::NULL
+      args << "--cookie" << if cookies
+        cookies.map { |k, v| "#{k}=#{v}" }.join(";")
+      else
+        # Echo any cookies received on a redirect
+        File::NULL
+      end
 
       args << "--globoff"
 
       args << "--show-error" if show_error
 
-      args << "--user-agent" << case user_agent
-      when :browser, :fake
-        HOMEBREW_USER_AGENT_FAKE_SAFARI
-      when :default, nil
-        HOMEBREW_USER_AGENT_CURL
-      when String
-        user_agent
-      else
-        raise TypeError, ":user_agent must be :browser/:fake, :default, or a String"
+      if user_agent != :curl
+        args << "--user-agent" << case user_agent
+        when :browser, :fake
+          HOMEBREW_USER_AGENT_FAKE_SAFARI
+        when :default, nil
+          HOMEBREW_USER_AGENT_CURL
+        when String
+          user_agent
+        else
+          raise TypeError, ":user_agent must be :browser/:fake, :default, :curl, or a String"
+        end
       end
 
       args << "--header" << "Accept-Language: en"
+      case header
+      when String
+        args << "--header" << header
+      when Array
+        header.each { |h| args << "--header" << h.strip }
+      end
 
       if show_output != true
         args << "--fail"

@@ -84,8 +84,9 @@ begin
     # `Homebrew::Help.help` never returns, except for unknown commands.
   end
 
-  if internal_cmd || Commands.external_ruby_v2_cmd_path(cmd)
-    cmd = T.must(cmd)
+  if cmd.nil?
+    raise UsageError, "Unknown command: brew #{ARGV.join(" ")}"
+  elsif internal_cmd || Commands.external_ruby_v2_cmd_path(cmd)
     cmd_class = Homebrew::AbstractCommand.command(cmd)
     Homebrew.running_command = cmd
     if cmd_class

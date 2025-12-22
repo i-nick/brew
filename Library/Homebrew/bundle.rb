@@ -68,6 +68,16 @@ module Homebrew
       end
 
       sig { returns(T.nilable(Pathname)) }
+      def which_cargo
+        @which_cargo ||= which("cargo", ORIGINAL_PATHS)
+      end
+
+      sig { returns(T::Boolean) }
+      def cargo_installed?
+        @cargo_installed ||= which_cargo.present?
+      end
+
+      sig { returns(T.nilable(Pathname)) }
       def which_flatpak
         @which_flatpak ||= which("flatpak", ORIGINAL_PATHS)
       end
@@ -155,6 +165,8 @@ module Homebrew
         @which_vscode = T.let(nil, T.nilable(Pathname))
         @which_go = T.let(nil, T.nilable(Pathname))
         @go_installed = T.let(nil, T.nilable(T::Boolean))
+        @which_cargo = T.let(nil, T.nilable(Pathname))
+        @cargo_installed = T.let(nil, T.nilable(T::Boolean))
         @which_flatpak = T.let(nil, T.nilable(Pathname))
         @flatpak_installed = T.let(nil, T.nilable(T::Boolean))
         @cask_installed = T.let(nil, T.nilable(T::Boolean))

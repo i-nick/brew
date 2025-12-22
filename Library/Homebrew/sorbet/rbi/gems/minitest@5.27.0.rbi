@@ -58,6 +58,7 @@ end
 Minitest::Assertion::RE = T.let(T.unsafe(nil), Regexp)
 
 module Minitest::Assertions
+  def _caller_uplevel; end
   def _synchronize; end
   def _where; end
   def assert(test, msg = T.unsafe(nil)); end

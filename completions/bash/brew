@@ -669,6 +669,7 @@ _brew_bundle() {
     -*)
       __brewcomp "
       --all
+      --cargo
       --cask
       --check
       --cleanup
@@ -683,6 +684,7 @@ _brew_bundle() {
       --help
       --install
       --mas
+      --no-cargo
       --no-flatpak
       --no-go
       --no-restart
