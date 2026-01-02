@@ -67,7 +67,7 @@ module Homebrew
         flag   "--file=",
                description: "Read from or write to the `Brewfile` from this location. " \
                             "Use `--file=-` to pipe to stdin/stdout."
-        switch "--global",
+        switch "-g", "--global",
                description: "Read from or write to the `Brewfile` from `$HOMEBREW_BUNDLE_FILE_GLOBAL` (if set), " \
                             "`${XDG_CONFIG_HOME}/homebrew/Brewfile` (if `$XDG_CONFIG_HOME` is set), " \
                             "`~/.homebrew/Brewfile` or `~/.Brewfile` otherwise."

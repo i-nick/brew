@@ -18,7 +18,7 @@ module Cask
 
       sig { params(cask: Cask, command: T.class_of(SystemCommand)).void }
       def initialize(cask, command = SystemCommand)
-        @cask = T.let(cask, Cask)
+        @cask = cask
         @command = T.let(command, T.class_of(SystemCommand))
       end
 

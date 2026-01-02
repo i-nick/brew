@@ -47,11 +47,18 @@ module OS
 
         sig { returns(T.nilable(String)) }
         def metal_toolchain
-          @metal_toolchain ||= T.let(if MacOS::Xcode.installed? || MacOS::CLT.installed?
-                                       result = SystemCommand.run("xcrun", args: ["metal", "-v"],
+          return unless ::Hardware::CPU.arm64?
+
+          @metal_toolchain ||= T.let(nil, T.nilable(String))
+          @metal_toolchain ||= if MacOS::Xcode.installed? || MacOS::CLT.installed?
+            result = SystemCommand.run("xcrun", args: ["--find", "metal"],
                                        print_stderr: false, print_stdout: false)
-                                       "present" if result.success?
-          end, T.nilable(String))
+            pattern = /MetalToolchain-v(?<major>\d+)\.(?<letter>\d+)\.(?<build>\d+)\.(?<minor>\d+)/
+            if result.success? && (m = result.stdout.match(pattern))
+              letter = ("A".ord - 1 + m[:letter].to_i).chr
+              "#{m[:major]}.#{m[:minor]} (#{m[:major]}#{letter}#{m[:build]})"
+            end
+          end
         end
 
         sig { params(out: T.any(File, StringIO, IO)).void }
@@ -61,7 +68,7 @@ module OS
           out.puts "CLT: #{clt || "N/A"}"
           out.puts "Xcode: #{xcode || "N/A"}"
           # Metal Toolchain is a separate install starting with Xcode 26.
-          if MacOS::Xcode.installed? && MacOS::Xcode.version >= "26.0"
+          if ::Hardware::CPU.arm64? && MacOS::Xcode.installed? && MacOS::Xcode.version >= "26.0"
             out.puts "Metal Toolchain: #{metal_toolchain || "N/A"}"
           end
           out.puts "Rosetta 2: #{::Hardware::CPU.in_rosetta2?}" if ::Hardware::CPU.physical_cpu_arm64?

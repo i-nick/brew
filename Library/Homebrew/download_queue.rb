@@ -44,9 +44,8 @@ module Homebrew
       ) do |download, force, quiet, check_attestation|
         download.clear_cache if force
         download.fetch(quiet:)
-        if check_attestation
-          bottle = T.cast(downloadable, Bottle)
-          Utils::Attestation.check_attestation(bottle, quiet: true)
+        if check_attestation && downloadable.is_a?(Bottle)
+          Utils::Attestation.check_attestation(downloadable, quiet: true)
         end
       end
     end
@@ -66,6 +65,7 @@ module Homebrew
           raise e unless bottle_manifest_error?(downloadable, e)
         end
       else
+        message_length_max = downloads.keys.map { |download| download.download_queue_message.length }.max || 0
         remaining_downloads = downloads.dup.to_a
         previous_pending_line_count = 0
 
@@ -77,9 +77,9 @@ module Homebrew
             exception = future.reason if future.rejected?
             next 1 if bottle_manifest_error?(downloadable, exception)
 
-            message = "#{downloadable.download_queue_type} #{downloadable.download_queue_name}"
+            message = downloadable.download_queue_message
             if tty
-              message = message_with_progress(downloadable, future, message)
+              message = message_with_progress(downloadable, future, message, message_length_max)
               stdout_print_and_flush "#{status} #{message}#{"\n" unless last}"
             elsif status
               $stderr.puts "#{status} #{message}"
@@ -266,8 +266,8 @@ module Homebrew
       @spinner ||= Spinner.new
     end
 
-    sig { params(downloadable: Downloadable, future: Concurrent::Promises::Future, message: String).returns(String) }
-    def message_with_progress(downloadable, future, message)
+    sig { params(downloadable: Downloadable, future: Concurrent::Promises::Future, message: String, message_length_max: Integer).returns(String) }
+    def message_with_progress(downloadable, future, message, message_length_max)
       tty_width = Tty.width
       return message unless tty_width.positive?
 
@@ -294,7 +294,19 @@ module Homebrew
 
       max_phase_length = 11
       phase = format("%-<phase>#{max_phase_length}s", phase: downloadable.phase.to_s.capitalize)
-      progress = " [#{phase} #{formatted_fetched_size}/#{formatted_total_size}]"
+      progress = " #{phase} #{formatted_fetched_size}/#{formatted_total_size}"
+      bar_length = [4, available_width - progress.length - message_length_max - 1].max
+      if downloadable.phase == :downloading
+        percent = if (total_size = downloadable.total_size)
+          (fetched_size.to_f / [1, total_size].max).clamp(0.0, 1.0)
+        else
+          0.0
+        end
+        bar_used = (percent * bar_length).round
+        bar_completed = "#" * bar_used
+        bar_pending = "-" * (bar_length - bar_used)
+        progress = " #{bar_completed}#{bar_pending}#{progress}"
+      end
       message_length = available_width - progress.length
       return message[0, available_width].to_s unless message_length.positive?
 

@@ -16,10 +16,10 @@ class TestRunnerFormula
   sig { params(formula: Formula, eval_all: T::Boolean).void }
   def initialize(formula, eval_all: Homebrew::EnvConfig.eval_all?)
     Formulary.enable_factory_cache!
-    @formula = T.let(formula, Formula)
+    @formula = formula
     @name = T.let(formula.name, String)
     @dependent_hash = T.let({}, T::Hash[Symbol, T::Array[TestRunnerFormula]])
-    @eval_all = T.let(eval_all, T::Boolean)
+    @eval_all = eval_all
     freeze
   end
 

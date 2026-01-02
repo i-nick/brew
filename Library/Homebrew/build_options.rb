@@ -5,8 +5,8 @@
 class BuildOptions
   sig { params(args: Options, options: Options).void }
   def initialize(args, options)
-    @args = T.let(args, Options)
-    @options = T.let(options, Options)
+    @args = args
+    @options = options
   end
 
   # True if a {Formula} is being built with a specific option.

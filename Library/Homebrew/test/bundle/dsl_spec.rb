@@ -135,10 +135,4 @@ RSpec.describe Homebrew::Bundle::Dsl do
     expect(described_class.send(:sanitize_cask_name, "homebrew/cask-versions/adoptopenjdk8")).to eql("adoptopenjdk8")
     expect(described_class.send(:sanitize_cask_name, "adoptopenjdk8")).to eql("adoptopenjdk8")
   end
-
-  it ".pluralize_dependency" do
-    expect(described_class.send(:pluralize_dependency, 0)).to eql("dependencies")
-    expect(described_class.send(:pluralize_dependency, 1)).to eql("dependency")
-    expect(described_class.send(:pluralize_dependency, 5)).to eql("dependencies")
-  end
 end

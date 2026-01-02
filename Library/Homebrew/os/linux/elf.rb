@@ -187,7 +187,7 @@ module ELFShim
       require "patchelf"
       patcher = path.patchelf_patcher
 
-      @path = T.let(path, ELFShim)
+      @path = path
       @dylibs = T.let(nil, T.nilable(T::Array[String]))
       @dylib_id = T.let(nil, T.nilable(String))
       @needed = T.let([], T::Array[String])

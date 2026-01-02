@@ -19,8 +19,8 @@ module RuboCop
           ).void
         }
         def initialize(method_node, all_comments)
-          @method_node = T.let(method_node, RuboCop::AST::Node)
-          @all_comments = T.let(all_comments, T::Array[T.any(String, Parser::Source::Comment)])
+          @method_node = method_node
+          @all_comments = all_comments
         end
 
         sig { returns(RuboCop::AST::Node) }

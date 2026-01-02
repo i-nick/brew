@@ -147,7 +147,7 @@ module Cask
       # @api public
       sig { returns(T::Array[Version]) } # Only top-level T.self_type is supported https://sorbet.org/docs/self-type
       def csv
-        split(",").map { self.class.new(_1) }
+        split(",").map { self.class.new(it) }
       end
 
       # The version part before the first comma.

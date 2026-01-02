@@ -58,10 +58,10 @@ class GitHubRunnerMatrix
       raise ArgumentError, "all_supported is mutually exclusive to other arguments"
     end
 
-    @testing_formulae = T.let(testing_formulae, T::Array[TestRunnerFormula])
-    @deleted_formulae = T.let(deleted_formulae, T::Array[String])
-    @all_supported = T.let(all_supported, T::Boolean)
-    @dependent_matrix = T.let(dependent_matrix, T::Boolean)
+    @testing_formulae = testing_formulae
+    @deleted_formulae = deleted_formulae
+    @all_supported = all_supported
+    @dependent_matrix = dependent_matrix
     @compatible_testing_formulae = T.let({}, T::Hash[GitHubRunner, T::Array[TestRunnerFormula]])
     @formulae_with_untested_dependents = T.let({}, T::Hash[GitHubRunner, T::Array[TestRunnerFormula]])
 

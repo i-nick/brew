@@ -17,7 +17,7 @@ class CaskDependent
 
   sig { params(cask: Cask::Cask).void }
   def initialize(cask)
-    @cask = T.let(cask, Cask::Cask)
+    @cask = cask
   end
 
   sig { returns(String) }

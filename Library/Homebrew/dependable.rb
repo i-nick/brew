@@ -46,10 +46,12 @@ module Dependable
     !build? && !test? && !optional? && !recommended?
   end
 
+  sig { returns(T::Array[String]) }
   def option_tags
-    tags - RESERVED_TAGS
+    tags.grep(String)
   end
 
+  sig { returns(Options) }
   def options
     Options.create(option_tags)
   end

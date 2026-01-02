@@ -211,7 +211,7 @@ class Keg
     files ||= text_files | libtool_files
 
     changed_files = T.let([], T::Array[Pathname])
-    files.map { path.join(_1) }.group_by { |f| f.stat.ino }.each_value do |first, *rest|
+    files.map { path.join(it) }.group_by { |f| f.stat.ino }.each_value do |first, *rest|
       first = T.must(first)
       s = first.open("rb", &:read)
 

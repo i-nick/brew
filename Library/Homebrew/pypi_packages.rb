@@ -30,9 +30,9 @@ class PypiPackages
     exclude_packages: [],
     dependencies: []
   )
-    @package_name = T.let(package_name, T.nilable(String))
-    @extra_packages = T.let(extra_packages, T::Array[String])
-    @exclude_packages = T.let(exclude_packages, T::Array[String])
-    @dependencies = T.let(dependencies, T::Array[String])
+    @package_name = package_name
+    @extra_packages = extra_packages
+    @exclude_packages = exclude_packages
+    @dependencies = dependencies
   end
 end

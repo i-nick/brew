@@ -342,7 +342,13 @@ module Homebrew
 
           problem "Don't use 'git' as a dependency (it's always available)" if @new_formula && dep.name == "git"
 
-          problem "Dependency '#{dep.name}' is marked as :run. Remove :run; it is a no-op." if dep.tags.include?(:run)
+          dep.tags.each do |tag|
+            if [:run, :linked].include?(tag)
+              problem "Dependency '#{dep.name}' is marked as :#{tag}. Remove :#{tag}; it is a no-op."
+            elsif tag.is_a?(Symbol) && Dependable::RESERVED_TAGS.exclude?(tag)
+              problem "Dependency '#{dep.name}' is marked as :#{tag} which is not a valid tag."
+            end
+          end
 
           next unless @core_tap
 

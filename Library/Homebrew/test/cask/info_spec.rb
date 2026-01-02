@@ -4,7 +4,24 @@ require "utils"
 require "cask/info"
 
 RSpec.describe Cask::Info, :cask do
+  include Utils::Output::Mixin
+
   let(:args) { instance_double(Homebrew::Cmd::Info::Args) }
+
+  def uninstalled(string)
+    "#{Tty.bold}#{string} #{Formatter.error("✘")}#{Tty.reset}"
+  end
+
+  def installed(string)
+    "#{Tty.bold}#{string} #{Formatter.success("✔")}#{Tty.reset}"
+  end
+
+  def mock_cask_installed(cask_name)
+    cask = Cask::CaskLoader.load(cask_name)
+    allow(cask).to receive(:installed?).and_return(true)
+    allow(Cask::CaskLoader).to receive(:load).and_call_original
+    allow(Cask::CaskLoader).to receive(:load).with(cask_name).and_return(cask)
+  end
 
   before do
     # Prevent unnecessary network requests in `Utils::Analytics.cask_output`
@@ -29,39 +46,42 @@ RSpec.describe Cask::Info, :cask do
   end
 
   it "prints cask dependencies if the Cask has any" do
+    allow_any_instance_of(StringIO).to receive(:tty?).and_return(true)
+    mock_cask_installed("local-transmission-zip")
     expect do
       described_class.info(Cask::CaskLoader.load("with-depends-on-cask-multiple"), args:)
     end.to output(<<~EOS).to_stdout
-      ==> with-depends-on-cask-multiple: 1.2.3
-      https://brew.sh/with-depends-on-cask-multiple
+      #{oh1_title "with-depends-on-cask-multiple"}: 1.2.3
+      #{Formatter.url("https://brew.sh/with-depends-on-cask-multiple")}
       Not installed
-      From: https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/w/with-depends-on-cask-multiple.rb
-      ==> Name
-      None
-      ==> Description
-      None
-      ==> Dependencies
-      local-caffeine (cask), local-transmission-zip (cask)
-      ==> Artifacts
+      From: #{Formatter.url("https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/w/with-depends-on-cask-multiple.rb")}
+      #{ohai_title "Name"}
+      #{Formatter.error("None")}
+      #{ohai_title "Description"}
+      #{Formatter.error("None")}
+      #{ohai_title "Dependencies"}
+      #{uninstalled("local-caffeine (cask)")}, #{installed("local-transmission-zip (cask)")}
+      #{ohai_title "Artifacts"}
       Caffeine.app (App)
     EOS
   end
 
   it "prints cask and formulas dependencies if the Cask has both" do
+    allow_any_instance_of(StringIO).to receive(:tty?).and_return(true)
     expect do
       described_class.info(Cask::CaskLoader.load("with-depends-on-everything"), args:)
     end.to output(<<~EOS).to_stdout
-      ==> with-depends-on-everything: 1.2.3
-      https://brew.sh/with-depends-on-everything
+      #{oh1_title "with-depends-on-everything"}: 1.2.3
+      #{Formatter.url("https://brew.sh/with-depends-on-everything")}
       Not installed
-      From: https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/w/with-depends-on-everything.rb
-      ==> Name
-      None
-      ==> Description
-      None
-      ==> Dependencies
-      unar, local-caffeine (cask), with-depends-on-cask (cask)
-      ==> Artifacts
+      From: #{Formatter.url("https://github.com/Homebrew/homebrew-cask/blob/HEAD/Casks/w/with-depends-on-everything.rb")}
+      #{ohai_title "Name"}
+      #{Formatter.error("None")}
+      #{ohai_title "Description"}
+      #{Formatter.error("None")}
+      #{ohai_title "Dependencies"}
+      #{uninstalled("unar")}, #{uninstalled("local-caffeine (cask)")}, #{uninstalled("with-depends-on-cask (cask)")}
+      #{ohai_title "Artifacts"}
       Caffeine.app (App)
     EOS
   end

@@ -71,6 +71,11 @@ module Downloadable
   sig { abstract.returns(String) }
   def download_queue_type; end
 
+  sig(:final) { returns(String) }
+  def download_queue_message
+    "#{download_queue_type} #{download_queue_name}"
+  end
+
   sig(:final) { returns(T::Boolean) }
   def downloaded?
     cached_download.exist?

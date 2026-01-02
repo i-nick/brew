@@ -67,6 +67,7 @@ module Cask
       @new_cask = new_cask
       @only = only
       @except = except
+      @livecheck_result = T.let(nil, T.nilable(T.any(T::Boolean, Symbol)))
     end
 
     sig { returns(T::Boolean) }
@@ -323,13 +324,13 @@ module Cask
     LIVECHECK_REFERENCE_URL = "https://docs.brew.sh/Cask-Cookbook#stanza-livecheck"
     private_constant :LIVECHECK_REFERENCE_URL
 
-    sig { params(livecheck_result: T.nilable(T.any(T::Boolean, Symbol))).void }
-    def audit_hosting_with_livecheck(livecheck_result: audit_livecheck_version)
+    sig { void }
+    def audit_hosting_with_livecheck
       return if cask.deprecated? || cask.disabled?
       return if cask.version&.latest?
       return if (url = cask.url).nil?
       return if cask.livecheck_defined?
-      return if livecheck_result == :auto_detected
+      return if audit_livecheck_version == :auto_detected
 
       add_livecheck = "please add a livecheck. See #{Formatter.url(LIVECHECK_REFERENCE_URL)}"
 
@@ -630,7 +631,9 @@ module Cask
         }.compact
 
         Homebrew::Install.perform_preinstall_checks_once
-        formula_installers = primary_container.dependencies.map do |dep|
+        formula_installers = primary_container.dependencies.filter_map do |dep|
+          next unless dep.is_a?(Formula)
+
           FormulaInstaller.new(
             dep,
             **install_options,
@@ -743,8 +746,11 @@ module Cask
 
     sig { returns(T.nilable(T.any(T::Boolean, Symbol))) }
     def audit_livecheck_version
+      return @livecheck_result unless @livecheck_result.nil?
       return unless online?
       return unless cask.version
+
+      odebug "Auditing livecheck version"
 
       referenced_cask, = Homebrew::Livecheck.resolve_livecheck_reference(cask)
 
@@ -758,18 +764,24 @@ module Cask
 
       # Respect cask skip conditions (e.g. deprecated, disabled, latest, unversioned)
       skip_info ||= Homebrew::Livecheck::SkipConditions.skip_information(cask)
-      return :skip if skip_info.present?
+      if skip_info.present?
+        @livecheck_result = :skip
+        return @livecheck_result
+      end
 
       latest_version = Homebrew::Livecheck.latest_version(
         cask,
         referenced_formula_or_cask: referenced_cask,
       )&.fetch(:latest, nil)
 
-      return :auto_detected if latest_version && (cask.version.to_s == latest_version.to_s)
+      if latest_version && (cask.version.to_s == latest_version.to_s)
+        @livecheck_result = :auto_detected
+        return @livecheck_result
+      end
 
       add_error "Version '#{cask.version}' differs from '#{latest_version}' retrieved by livecheck."
 
-      false
+      @livecheck_result = false
     end
 
     sig { void }
@@ -1164,6 +1176,14 @@ module Cask
       options = cask.livecheck.options
       return if options.post_form || options.post_json
 
+      # Validating HTTPS availability is unnecessary if the check uses HTTPS
+      # and does not fail.
+      if url.start_with?("https:") && audit_livecheck_version != false
+        odebug "Skipping livecheck_https_availability audit (working HTTPS livecheck)"
+        return
+      end
+
+      odebug "Auditing livecheck HTTPS availability"
       validate_url_for_https_availability(
         url, "livecheck URL",
         check_content: true,

@@ -66,7 +66,7 @@ system "npm", "install", *std_npm_args
 This will install your Node module in npm's global module style with a custom prefix to `libexec`. All your modules' executables will be automatically resolved by npm into `libexec/bin` for you, which are not symlinked into Homebrew's prefix. To make sure these are installed, we need to symlink all executables to `bin` with:
 
 ```ruby
-bin.install_symlink Dir["#{libexec}/bin/*"]
+bin.install_symlink libexec.glob("bin/*")
 ```
 
 ### Installing module dependencies locally with `std_npm_args`
@@ -96,7 +96,7 @@ class Foo < Formula
 
   def install
     system "npm", "install", *std_npm_args
-    bin.install_symlink Dir["#{libexec}/bin/*"]
+    bin.install_symlink libexec.glob("bin/*")
   end
 
   test do

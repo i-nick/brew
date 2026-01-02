@@ -20,7 +20,10 @@ class LinkageChecker
   attr_reader :store
 
   sig { returns(T::Array[String]) }
-  attr_reader :undeclared_deps
+  attr_reader :indirect_deps, :undeclared_deps, :unwanted_system_dylibs
+
+  sig { returns(T::Set[String]) }
+  attr_reader :system_dylibs
 
   sig { params(keg: Keg, formula: T.nilable(Formula), cache_db: CacheStoreDatabase, rebuild_cache: T::Boolean).void }
   def initialize(keg, formula = nil, cache_db:, rebuild_cache: false)

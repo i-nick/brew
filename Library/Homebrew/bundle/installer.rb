@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "bundle/dsl"
@@ -15,6 +15,18 @@ require "bundle/skipper"
 module Homebrew
   module Bundle
     module Installer
+      sig {
+        params(
+          entries:    T::Array[Dsl::Entry],
+          global:     T::Boolean,
+          file:       T.nilable(String),
+          no_lock:    T::Boolean,
+          no_upgrade: T::Boolean,
+          verbose:    T::Boolean,
+          force:      T::Boolean,
+          quiet:      T::Boolean,
+        ).returns(T::Boolean)
+      }
       def self.install!(entries, global: false, file: nil, no_lock: false, no_upgrade: false, verbose: false,
                         force: false, quiet: false)
         success = 0
@@ -93,19 +105,32 @@ module Homebrew
         end
 
         unless failure.zero?
-          dependency = Homebrew::Bundle::Dsl.pluralize_dependency(failure)
+          require "utils"
+          dependency = Utils.pluralize("dependency", failure)
           $stderr.puts Formatter.error "`brew bundle` failed! #{failure} Brewfile #{dependency} failed to install"
           return false
         end
 
         unless quiet
-          dependency = Homebrew::Bundle::Dsl.pluralize_dependency(success)
+          require "utils"
+          dependency = Utils.pluralize("dependency", success)
           puts Formatter.success "`brew bundle` complete! #{success} Brewfile #{dependency} now installed."
         end
 
         true
       end
 
+      sig {
+        params(
+          entries:    T::Array[{ name:    String,
+                                 args:    T::Array[T.anything],
+                                 options: T::Hash[Symbol, T.untyped],
+                                 verb:    String,
+                                 type:    Symbol,
+                                 cls:     T::Module[T.anything] }],
+          no_upgrade: T::Boolean,
+        ).returns(T::Array[String])
+      }
       def self.fetchable_formulae_and_casks(entries, no_upgrade:)
         entries.filter_map do |entry|
           name = entry.fetch(:name)
@@ -113,15 +138,26 @@ module Homebrew
 
           case entry.fetch(:type)
           when :brew
+            next unless tap_installed?(name)
             next if Homebrew::Bundle::FormulaInstaller.formula_installed_and_up_to_date?(name, no_upgrade:)
 
             name
           when :cask
+            full_name = options.fetch(:full_name, name)
+            next unless tap_installed?(full_name)
             next unless Homebrew::Bundle::CaskInstaller.installable_or_upgradable?(name, no_upgrade:, **options)
 
-            options.fetch(:full_name, name)
+            full_name
           end
         end
+      end
+
+      sig { params(package_full_name: String).returns(T::Boolean) }
+      def self.tap_installed?(package_full_name)
+        user, repository, = package_full_name.split("/", 3)
+        return true if user.blank? || repository.blank?
+
+        Homebrew::Bundle::TapInstaller.installed_taps.include?("#{user}/#{repository}")
       end
     end
   end

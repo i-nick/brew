@@ -89,7 +89,7 @@ module Cask
       specs[:only_path]  = @only_path  = T.let(only_path, T.nilable(String))
 
       @specs = T.let(specs.compact, T::Hash[Symbol, T.untyped])
-      @caller_location = T.let(caller_location, Thread::Backtrace::Location)
+      @caller_location = caller_location
     end
 
     sig { returns(Homebrew::SourceLocation) }

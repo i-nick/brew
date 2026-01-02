@@ -969,6 +969,98 @@ RSpec.describe Homebrew::FormulaAuditor do
         end
       end
     end
+
+    describe "dependency tag" do
+      subject(:f_a) { fa }
+
+      let(:core_tap) { false }
+      let(:fa) do
+        formula_auditor "foo", <<~RUBY, core_tap:
+          class Foo < Formula
+            url "https://brew.sh/foo-1.0.tgz"
+            homepage "https://brew.sh"
+
+            depends_on "bar" => #{tag.inspect}
+          end
+        RUBY
+      end
+      let(:f_bar) do
+        formula do
+          url "https://brew.sh/bar-1.0.tgz"
+          homepage "https://brew.sh"
+        end
+      end
+
+      before do
+        allow(fa.formula.deps.first).to receive(:to_formula).and_return(f_bar)
+        fa.audit_deps
+      end
+
+      describe ":build" do
+        let(:tag) { :build }
+
+        it(:problems) { expect(f_a.problems).to be_empty }
+      end
+
+      describe ":run" do
+        let(:tag) { :run }
+
+        it(:problems) do
+          expect(f_a.problems).to include(a_hash_including(message: a_string_matching(/is a no-op/)))
+        end
+      end
+
+      describe ":linked" do
+        let(:tag) { :linked }
+
+        it(:problems) do
+          expect(f_a.problems).to include(a_hash_including(message: a_string_matching(/is a no-op/)))
+        end
+      end
+
+      describe ":optional" do
+        let(:tag) { :optional }
+
+        it(:problems) { expect(f_a.problems).to be_empty }
+
+        describe "in core tap" do
+          let(:core_tap) { true }
+
+          it(:problems) do
+            expect(f_a.problems).to include(a_hash_including(message: a_string_matching(/should not have optional/)))
+          end
+        end
+      end
+
+      describe "when invalid" do
+        let(:tag) { :foo }
+
+        it(:problems) do
+          expect(f_a.problems).to include(a_hash_including(message: a_string_matching(/is not a valid tag/)))
+        end
+      end
+
+      describe "when undefined option" do
+        let(:tag) { "with-debug" }
+
+        it(:problems) do
+          expect(f_a.problems).to include(a_hash_including(message: a_string_matching(/does not define option/)))
+        end
+      end
+
+      describe "when defined option" do
+        let(:tag) { "with-debug" }
+        let(:f_bar) do
+          formula do
+            url "https://brew.sh/bar-1.0.tgz"
+            homepage "https://brew.sh"
+            option "with-debug"
+          end
+        end
+
+        it(:problems) { expect(f_a.problems).to be_empty }
+      end
+    end
   end
 
   describe "#audit_stable_version" do

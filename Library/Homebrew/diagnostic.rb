@@ -61,7 +61,7 @@ module Homebrew
 
       sig { params(verbose: T::Boolean).void }
       def initialize(verbose: true)
-        @verbose = T.let(verbose, T::Boolean)
+        @verbose = verbose
         @found = T.let([], T::Array[String])
         @seen_prefix_bin = T.let(false, T::Boolean)
         @seen_prefix_sbin = T.let(false, T::Boolean)
@@ -1067,7 +1067,7 @@ module Homebrew
 
       sig { returns(T.nilable(String)) }
       def check_cask_load_path
-        paths = $LOAD_PATH.map { user_tilde(_1) }
+        paths = $LOAD_PATH.map { user_tilde(it) }
 
         add_info "$LOAD_PATHS", paths.presence || none_string
 

@@ -243,7 +243,7 @@ module Homebrew
             system "meson", "install", "-C", "build"
         <% elsif @mode == :node %>
             system "npm", "install", *std_npm_args
-            bin.install_symlink Dir["\#{libexec}/bin/*"]
+            bin.install_symlink libexec.glob("bin/*")
         <% elsif @mode == :perl %>
             ENV.prepend_create_path "PERL5LIB", libexec/"lib/perl5"
             ENV.prepend_path "PERL5LIB", libexec/"lib"

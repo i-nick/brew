@@ -171,7 +171,7 @@ module Homebrew
           files = hash.dig("bottle", "stable", "files") || {}
           files.map do |tag, bottle_spec|
             {
-              cellar: Formulary.convert_to_string_or_symbol(bottle_spec.fetch("cellar")),
+              cellar: Utils.convert_to_string_or_symbol(bottle_spec.fetch("cellar")),
               tag.to_sym => bottle_spec.fetch("sha256"),
             }
           end
@@ -214,7 +214,7 @@ module Homebrew
         end
 
         if (keg_only_hash = hash["keg_only_reason"])
-          reason = Formulary.convert_to_string_or_symbol(keg_only_hash.fetch("reason"))
+          reason = Utils.convert_to_string_or_symbol(keg_only_hash.fetch("reason"))
           explanation = keg_only_hash["explanation"]
           hash["keg_only_args"] = [reason, explanation].compact
         end

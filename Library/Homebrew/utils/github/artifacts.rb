@@ -28,7 +28,7 @@ class GitHubArtifactDownloadStrategy < AbstractFileDownloadStrategy
   def initialize(url, artifact_id, token:)
     super(url, "artifact", artifact_id)
     @cache = T.let(HOMEBREW_CACHE/"gh-actions-artifact", Pathname)
-    @token = T.let(token, String)
+    @token = token
   end
 
   sig { override.params(timeout: T.nilable(T.any(Float, Integer))).void }

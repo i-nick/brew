@@ -84,6 +84,7 @@ module Homebrew
               info += "\nbranch: #{tap.git_branch || "(none)"}" if default_branches.exclude?(tap.git_branch)
             else
               info += "Not installed"
+              Homebrew.failed = true
             end
             puts info
           end
@@ -92,7 +93,11 @@ module Homebrew
 
       sig { params(taps: T::Array[Tap]).void }
       def print_tap_json(taps)
-        puts JSON.pretty_generate(taps.map(&:to_hash))
+        taps_hashes = taps.map do |tap|
+          Homebrew.failed = true unless tap.installed?
+          tap.to_hash
+        end
+        puts JSON.pretty_generate(taps_hashes)
       end
     end
   end

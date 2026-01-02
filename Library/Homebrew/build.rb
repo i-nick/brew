@@ -39,7 +39,7 @@ class Build
   def initialize(formula, options, args:)
     @formula = formula
     @formula.build = BuildOptions.new(options, formula.options)
-    @args = T.let(args, Homebrew::Cmd::InstallCmd::Args)
+    @args = args
     @deps = T.let([], T::Array[Dependency])
     @reqs = T.let(Requirements.new, Requirements)
 

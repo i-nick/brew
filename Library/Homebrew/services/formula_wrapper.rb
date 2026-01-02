@@ -29,7 +29,7 @@ module Homebrew
       # Initialize a new `Service` instance with supplied formula.
       sig { params(formula: Formula).void }
       def initialize(formula)
-        @formula = T.let(formula, Formula)
+        @formula = formula
         @status_output_success_type = T.let(nil, T.nilable(StatusOutputSuccessType))
 
         return if System.launchctl? || System.systemctl?
@@ -384,9 +384,9 @@ module Homebrew
 
         sig { params(output: String, success: T::Boolean, type: Symbol).void }
         def initialize(output, success, type)
-          @output = T.let(output, String)
-          @success = T.let(success, T::Boolean)
-          @type = T.let(type, Symbol)
+          @output = output
+          @success = success
+          @type = type
         end
       end
     end

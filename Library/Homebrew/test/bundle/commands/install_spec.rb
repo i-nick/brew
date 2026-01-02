@@ -23,6 +23,7 @@ RSpec.describe Homebrew::Bundle::Commands::Install do
       allow(Homebrew::Bundle).to receive(:brew).and_return(true)
       allow(Homebrew::Bundle::FormulaInstaller).to receive(:formula_installed_and_up_to_date?).and_return(false)
       allow(Homebrew::Bundle::CaskInstaller).to receive(:installable_or_upgradable?).and_return(true)
+      allow(Homebrew::Bundle::TapInstaller).to receive(:installed_taps).and_return([])
     end
 
     let(:brewfile_contents) do

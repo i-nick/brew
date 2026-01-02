@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "compilers"
@@ -7,8 +7,12 @@ require "os/linux/libstdcxx"
 module OS
   module Linux
     module LinkageChecker
+      extend T::Helpers
+
+      requires_ancestor { ::LinkageChecker }
+
       # Libraries provided by glibc and gcc.
-      SYSTEM_LIBRARY_ALLOWLIST = %W[
+      SYSTEM_LIBRARY_ALLOWLIST = T.let(%W[
         ld-linux-x86-64.so.2
         ld-linux-aarch64.so.1
         libanl.so.1
@@ -27,18 +31,19 @@ module OS
         libgomp.so.1
         #{OS::Linux::Libstdcxx::SONAME}
         libquadmath.so.0
-      ].freeze
+      ].freeze, T::Array[String])
 
       private
 
+      sig { params(rebuild_cache: T::Boolean).void }
       def check_dylibs(rebuild_cache:)
         super
 
         # glibc and gcc are implicit dependencies.
         # No other linkage to system libraries is expected or desired.
-        @unwanted_system_dylibs = @system_dylibs.reject do |s|
+        unwanted_system_dylibs.replace(system_dylibs.reject do |s|
           SYSTEM_LIBRARY_ALLOWLIST.include? File.basename(s)
-        end
+        end)
 
         # We build all formulae with an RPATH that includes the gcc formula's runtime lib directory.
         # See: https://github.com/Homebrew/brew/blob/e689cc07/Library/Homebrew/extend/os/linux/extend/ENV/super.rb#L53
@@ -48,8 +53,8 @@ module OS
         #   https://github.com/Homebrew/brew/pull/13659
         #   https://github.com/Homebrew/brew/pull/13796
         # TODO: Find a nicer way to handle this. (e.g. examining the ELF file to determine the required libstdc++.)
-        @undeclared_deps.delete("gcc")
-        @indirect_deps.delete("gcc")
+        undeclared_deps.delete("gcc")
+        indirect_deps.delete("gcc")
       end
     end
   end

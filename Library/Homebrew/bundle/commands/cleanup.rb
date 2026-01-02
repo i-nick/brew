@@ -199,7 +199,7 @@ module Homebrew
           require "bundle/tap_dumper"
 
           @dsl ||= Brewfile.read(global:, file:)
-          kept_formulae = self.kept_formulae(global:, file:).filter_map { lookup_formula(_1) }
+          kept_formulae = self.kept_formulae(global:, file:).filter_map { lookup_formula(it) }
           kept_taps = @dsl.entries.select { |e| e.type == :tap }.map(&:name)
           kept_taps += kept_formulae.filter_map(&:tap).map(&:name)
           current_taps = Homebrew::Bundle::TapDumper.tap_names

@@ -142,10 +142,6 @@ module Homebrew
         name = name.split("/").last if name.include?("/")
         name.downcase
       end
-
-      def self.pluralize_dependency(installed_count)
-        (installed_count == 1) ? "dependency" : "dependencies"
-      end
     end
   end
 end

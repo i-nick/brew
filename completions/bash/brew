@@ -2479,6 +2479,23 @@ _brew_shellenv() {
   esac
 }
 
+_brew_source() {
+  local cur="${COMP_WORDS[COMP_CWORD]}"
+  case "${cur}" in
+    -*)
+      __brewcomp "
+      --debug
+      --help
+      --quiet
+      --verbose
+      "
+      return
+      ;;
+    *) ;;
+  esac
+  __brew_complete_formulae
+}
+
 _brew_style() {
   local cur="${COMP_WORDS[COMP_CWORD]}"
   case "${cur}" in
@@ -3420,6 +3437,7 @@ _brew() {
     setup-ruby) _brew_setup_ruby ;;
     sh) _brew_sh ;;
     shellenv) _brew_shellenv ;;
+    source) _brew_source ;;
     style) _brew_style ;;
     tab) _brew_tab ;;
     tap) _brew_tap ;;

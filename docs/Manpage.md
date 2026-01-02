@@ -227,7 +227,7 @@ flags which will help with finding keg-only dependencies like `openssl`,
 : Read from or write to the `Brewfile` from this location. Use `--file=-` to
   pipe to stdin/stdout.
 
-`--global`
+`-g`, `--global`
 
 : Read from or write to the `Brewfile` from `$HOMEBREW_BUNDLE_FILE_GLOBAL` (if
   set), `${XDG_CONFIG_HOME}/homebrew/Brewfile` (if `$XDG_CONFIG_HOME` is set),
@@ -1531,6 +1531,15 @@ evaluation of this command's output to your dotfiles (e.g. `~/.bash_profile` or
 
 The shell can be specified explicitly with a supported shell name parameter.
 Unknown shells will output POSIX exports.
+
+### `source` \[*`formula`* ...\]
+
+Open a *`formula`*'s source repository in a browser, or open Homebrew's own
+repository if no argument is provided.
+
+The repository URL is determined from the formula's head URL, stable URL, or
+homepage. Supports GitHub, GitLab, Bitbucket, Codeberg and SourceHut
+repositories.
 
 ### `tab` \[*`options`*\] *`installed_formula`*\|*`installed_cask`* \[...\]
 

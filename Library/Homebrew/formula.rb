@@ -250,10 +250,10 @@ class Formula
     # Now that we have an instance, it's too late to make any changes to the class-level definition.
     self.class.freeze
 
-    @name = T.let(name, String)
-    @unresolved_path = T.let(path, Pathname)
+    @name = name
+    @unresolved_path = path
     @path = T.let(path.resolved_path, Pathname)
-    @alias_path = T.let(alias_path, T.nilable(Pathname))
+    @alias_path = alias_path
     @alias_name = T.let((File.basename(alias_path) if alias_path), T.nilable(String))
     @revision = T.let(self.class.revision || 0, Integer)
     @version_scheme = T.let(self.class.version_scheme || 0, Integer)
@@ -264,7 +264,7 @@ class Formula
     @autobump = T.let(true, T::Boolean)
     @no_autobump_message = T.let(nil, T.nilable(T.any(String, Symbol)))
 
-    @force_bottle = T.let(force_bottle, T::Boolean)
+    @force_bottle = force_bottle
 
     @tap = T.let(tap, T.nilable(Tap))
     @tap ||= if path == Formulary.core_path(name)
@@ -730,7 +730,7 @@ class Formula
   def aliases
     @aliases ||= T.let(
       if (tap = self.tap)
-        tap.alias_reverse_table.fetch(full_name, []).map { _1.split("/").fetch(-1) }
+        tap.alias_reverse_table.fetch(full_name, []).map { it.split("/").fetch(-1) }
       else
         []
       end, T.nilable(T::Array[String])
@@ -2192,15 +2192,6 @@ class Formula
   # (zsh_completion/"_bar").write Utils.safe_popen_read({ "SHELL" => "zsh" }, bin/"foo", "completions", "zsh")
   # ```
   #
-  # Using predefined `shell_parameter_format :flag`.
-  #
-  # ```ruby
-  # generate_completions_from_executable(bin/"foo", "completions", shell_parameter_format: :flag, shells: [:bash])
-  #
-  # # translates to
-  # (bash_completion/"foo").write Utils.safe_popen_read({ "SHELL" => "bash" }, bin/"foo", "completions", "--bash")
-  # ```
-  #
   # Using predefined `shell_parameter_format :arg`.
   #
   # ```ruby
@@ -2211,13 +2202,13 @@ class Formula
   #                                                     "completions", "--shell=bash")
   # ```
   #
-  # Using predefined `shell_parameter_format :none`.
+  # Using predefined `shell_parameter_format :clap`.
   #
   # ```ruby
-  # generate_completions_from_executable(bin/"foo", "completions", shell_parameter_format: :none, shells: [:bash])
+  # generate_completions_from_executable(bin/"foo", shell_parameter_format: :clap, shells: [:zsh])
   #
   # # translates to
-  # (bash_completion/"foo").write Utils.safe_popen_read({ "SHELL" => "bash" }, bin/"foo", "completions")
+  # (zsh_completion/"_foo").write Utils.safe_popen_read({ "SHELL" => "zsh", "COMPLETE" => "zsh" }, bin/"foo")
   # ```
   #
   # Using predefined `shell_parameter_format :click`.
@@ -2230,13 +2221,31 @@ class Formula
   #                                                     bin/"foo")
   # ```
   #
-  # Using predefined `shell_parameter_format :clap`.
+  # Using predefined `shell_parameter_format :cobra`.
   #
   # ```ruby
-  # generate_completions_from_executable(bin/"foo", shell_parameter_format: :clap, shells: [:zsh])
+  # generate_completions_from_executable(bin/"foo", shell_parameter_format: :cobra, shells: [:bash])
   #
   # # translates to
-  # (zsh_completion/"_foo").write Utils.safe_popen_read({ "SHELL" => "zsh", "COMPLETE" => "zsh" }, bin/"foo")
+  # (bash_completion/"foo").write Utils.safe_popen_read({ "SHELL" => "bash" }, bin/"foo", "completion", "bash")
+  # ```
+  #
+  # Using predefined `shell_parameter_format :flag`.
+  #
+  # ```ruby
+  # generate_completions_from_executable(bin/"foo", "completions", shell_parameter_format: :flag, shells: [:bash])
+  #
+  # # translates to
+  # (bash_completion/"foo").write Utils.safe_popen_read({ "SHELL" => "bash" }, bin/"foo", "completions", "--bash")
+  # ```
+  #
+  # Using predefined `shell_parameter_format :none`.
+  #
+  # ```ruby
+  # generate_completions_from_executable(bin/"foo", "completions", shell_parameter_format: :none, shells: [:bash])
+  #
+  # # translates to
+  # (bash_completion/"foo").write Utils.safe_popen_read({ "SHELL" => "bash" }, bin/"foo", "completions")
   # ```
   #
   # Using predefined `shell_parameter_format :typer`.
@@ -2268,23 +2277,24 @@ class Formula
   # @param base_name
   #   the base name of the generated completion script. Defaults to the name of the executable if installed
   #   within formula's bin or sbin. Otherwise falls back to the formula name.
-  # @param shells
-  #   the shells to generate completion scripts for. Defaults to `[:bash, :zsh, :fish]`.
   # @param shell_parameter_format
   #   specify how `shells` should each be passed to the `executable`. Takes either a String representing a
-  #   prefix, or one of `[:flag, :arg, :none, :click, :clap, :typer]`. Defaults to plainly passing the shell.
+  #   prefix, or one of `[:arg, :clap, :click, :cobra, :flag, :none, :typer]`.
+  #   Defaults to plainly passing the shell.
+  # @param shells
+  #   the shells to generate completion scripts for. Defaults to `[:bash, :zsh, :fish]`.
   sig {
     params(
       commands:               T.any(Pathname, String),
       base_name:              T.nilable(String),
-      shells:                 T::Array[Symbol],
       shell_parameter_format: T.nilable(T.any(Symbol, String)),
+      shells:                 T::Array[Symbol],
     ).void
   }
   def generate_completions_from_executable(*commands,
                                            base_name: nil,
-                                           shells: [:bash, :zsh, :fish],
-                                           shell_parameter_format: nil)
+                                           shell_parameter_format: nil,
+                                           shells: default_completion_shells(shell_parameter_format))
     executable = commands.first.to_s
     base_name ||= File.basename(executable) if executable.start_with?(bin.to_s, sbin.to_s)
     base_name ||= name
@@ -2299,29 +2309,13 @@ class Formula
     shells.each do |shell|
       popen_read_env = { "SHELL" => shell.to_s }
       script_path = completion_script_path_map[shell]
-      # Go's cobra and Rust's clap accept "powershell".
-      shell_argument = (shell == :pwsh) ? "powershell" : shell.to_s
-      shell_parameter = if shell_parameter_format.nil?
-        shell_argument.to_s
-      elsif shell_parameter_format == :flag
-        "--#{shell_argument}"
-      elsif shell_parameter_format == :arg
-        "--shell=#{shell_argument}"
-      elsif shell_parameter_format == :none
-        nil
-      elsif shell_parameter_format == :click
-        prog_name = File.basename(executable).upcase.tr("-", "_")
-        popen_read_env["_#{prog_name}_COMPLETE"] = "#{shell_argument}_source"
-        nil
-      elsif shell_parameter_format == :clap
-        popen_read_env["COMPLETE"] = shell_argument.to_s
-        nil
-      elsif shell_parameter_format == :typer
-        popen_read_env["_TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION"] = "1"
-        ["--show-completion", shell_argument]
-      else
-        "#{shell_parameter_format}#{shell_argument}"
-      end
+
+      shell_parameter = completion_shell_parameter(
+        shell_parameter_format,
+        shell,
+        executable,
+        popen_read_env,
+      )
 
       popen_read_args = %w[]
       popen_read_args << commands
@@ -2335,6 +2329,56 @@ class Formula
       script_path.write Utils.safe_popen_read(popen_read_env, *popen_read_args, **popen_read_options)
     end
   end
+
+  sig { params(format: T.nilable(T.any(Symbol, String))).returns(T::Array[Symbol]) }
+  def default_completion_shells(format)
+    case format
+    when :cobra, :typer
+      [:bash, :zsh, :fish, :pwsh]
+    else
+      [:bash, :zsh, :fish]
+    end
+  end
+  private :default_completion_shells
+
+  sig {
+    params(
+      format:     T.nilable(T.any(Symbol, String)),
+      shell:      Symbol,
+      executable: String,
+      env:        T::Hash[String, String],
+    ).returns(T.nilable(T.any(String, T::Array[String])))
+  }
+  def completion_shell_parameter(format, shell, executable, env)
+    # Go's cobra and Rust's clap accept "powershell".
+    shell_parameter = (shell == :pwsh) ? "powershell" : shell.to_s
+
+    case format
+    when nil
+      shell_parameter
+    when :arg
+      "--shell=#{shell_parameter}"
+    when :clap
+      env["COMPLETE"] = shell_parameter
+      nil
+    when :click
+      prog_name = File.basename(executable).upcase.tr("-", "_")
+      env["_#{prog_name}_COMPLETE"] = "#{shell_parameter}_source"
+      nil
+    when :cobra
+      ["completion", shell_parameter]
+    when :flag
+      "--#{shell_parameter}"
+    when :none
+      nil
+    when :typer
+      env["_TYPER_COMPLETE_TEST_DISABLE_SHELL_DETECTION"] = "1"
+      ["--show-completion", shell_parameter]
+    else
+      "#{format}#{shell}"
+    end
+  end
+  private :completion_shell_parameter
 
   # An array of all core {Formula} names.
   sig { returns(T::Array[String]) }

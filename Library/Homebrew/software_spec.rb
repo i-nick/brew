@@ -77,7 +77,7 @@ class SoftwareSpec
     @bottle_specification = T.let(BottleSpecification.new, BottleSpecification)
     @patches = T.let([], T::Array[T.any(EmbeddedPatch, ExternalPatch)])
     @options = T.let(Options.new, Options)
-    @flags = T.let(flags, T::Array[String])
+    @flags = flags
     @deprecated_flags = T.let([], T::Array[DeprecatedOption])
     @deprecated_options = T.let([], T::Array[DeprecatedOption])
     @build = T.let(BuildOptions.new(Options.create(@flags), options), BuildOptions)
@@ -197,7 +197,7 @@ class SoftwareSpec
     end
   end
 
-  sig { params(name: String).returns(T::Boolean) }
+  sig { params(name: T.any(Option, String)).returns(T::Boolean) }
   def option_defined?(name)
     options.include?(name)
   end
@@ -211,7 +211,7 @@ class SoftwareSpec
     options << Option.new(name, description)
   end
 
-  sig { params(hash: T::Hash[T.any(String, Symbol, T::Array[String]), T.any(String, Symbol, T::Array[String])]).void }
+  sig { params(hash: T::Hash[T.any(String, T::Array[String]), T.any(String, T::Array[String])]).void }
   def deprecated_option(hash)
     raise ArgumentError, "deprecated_option hash must not be empty" if hash.empty?
 

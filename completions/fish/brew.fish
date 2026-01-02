@@ -1625,6 +1625,14 @@ __fish_brew_complete_arg 'shellenv' -l quiet -d 'Make some output more quiet'
 __fish_brew_complete_arg 'shellenv' -l verbose -d 'Make some output more verbose'
 
 
+__fish_brew_complete_cmd 'source' 'Open a formula\'s source repository in a browser, or open Homebrew\'s own repository if no argument is provided'
+__fish_brew_complete_arg 'source' -l debug -d 'Display any debugging information'
+__fish_brew_complete_arg 'source' -l help -d 'Show this message'
+__fish_brew_complete_arg 'source' -l quiet -d 'Make some output more quiet'
+__fish_brew_complete_arg 'source' -l verbose -d 'Make some output more verbose'
+__fish_brew_complete_arg 'source' -a '(__fish_brew_suggest_formulae_all)'
+
+
 __fish_brew_complete_cmd 'style' 'Check formulae or files for conformance to Homebrew style guidelines'
 __fish_brew_complete_arg 'style' -l cask -d 'Treat all named arguments as casks'
 __fish_brew_complete_arg 'style' -l changed -d 'Check files that were changed from the `main` branch'
