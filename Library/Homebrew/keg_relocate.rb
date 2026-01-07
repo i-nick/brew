@@ -105,6 +105,10 @@ class Keg
         old: "/usr/local/var/homebrew",
         new: "#{PREFIX_PLACEHOLDER}/var/homebrew",
       },
+      var_www:      {
+        old: "/usr/local/var/www",
+        new: "#{PREFIX_PLACEHOLDER}/var/www",
+      },
       var_name:     {
         old: "/usr/local/var/#{name}",
         new: "#{PREFIX_PLACEHOLDER}/var/#{name}",

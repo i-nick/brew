@@ -1154,6 +1154,7 @@ _brew_generate_man_completions() {
   _arguments \
     '--debug[Display any debugging information]' \
     '--help[Show this message]' \
+    '--no-exit-code[Exit with code 0 even if no changes were made]' \
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]'
 }

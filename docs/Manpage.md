@@ -2784,9 +2784,13 @@ generated files are written to the current directory.
 
 : Generate API data without writing it to files.
 
-### `generate-man-completions`
+### `generate-man-completions` \[`--no-exit-code`\]
 
 Generate Homebrew's manpages and shell completions.
+
+`--no-exit-code`
+
+: Exit with code 0 even if no changes were made.
 
 ### `install-bundler-gems` \[`--groups=`\] \[`--add-groups=`\]
 

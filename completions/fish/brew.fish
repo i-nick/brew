@@ -915,6 +915,7 @@ __fish_brew_complete_arg 'generate-formula-api' -l verbose -d 'Make some output 
 __fish_brew_complete_cmd 'generate-man-completions' 'Generate Homebrew\'s manpages and shell completions'
 __fish_brew_complete_arg 'generate-man-completions' -l debug -d 'Display any debugging information'
 __fish_brew_complete_arg 'generate-man-completions' -l help -d 'Show this message'
+__fish_brew_complete_arg 'generate-man-completions' -l no-exit-code -d 'Exit with code 0 even if no changes were made'
 __fish_brew_complete_arg 'generate-man-completions' -l quiet -d 'Make some output more quiet'
 __fish_brew_complete_arg 'generate-man-completions' -l verbose -d 'Make some output more verbose'
 

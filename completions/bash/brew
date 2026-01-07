@@ -1345,6 +1345,7 @@ _brew_generate_man_completions() {
       __brewcomp "
       --debug
       --help
+      --no-exit-code
       --quiet
       --verbose
       "
