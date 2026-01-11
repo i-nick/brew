@@ -147,8 +147,8 @@ module Homebrew
       end
 
       # NOTE: this will be used to load installed cask JSON files, so it must never fail with older JSON API versions)
-      sig { params(hash: T::Hash[String, T.untyped]).returns(CaskStruct) }
-      def self.generate_cask_struct_hash(hash)
+      sig { params(hash: T::Hash[String, T.untyped], ignore_types: T::Boolean).returns(CaskStruct) }
+      def self.generate_cask_struct_hash(hash, ignore_types: false)
         hash = Homebrew::API.merge_variations(hash).dup.deep_symbolize_keys.transform_keys(&:to_s)
 
         hash["conflicts_with_args"] = hash["conflicts_with"]
@@ -253,8 +253,9 @@ module Homebrew
         hash["deprecate_present"] = hash["deprecate_args"].present?
         hash["desc_present"] = hash["desc"].present?
         hash["disable_present"] = hash["disable_args"].present?
+        hash["homepage_present"] = hash["homepage"].present?
 
-        CaskStruct.from_hash(hash)
+        CaskStruct.from_hash(hash, ignore_types:)
       end
     end
   end

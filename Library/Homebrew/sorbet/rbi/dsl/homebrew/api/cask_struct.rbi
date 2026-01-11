@@ -29,4 +29,7 @@ class Homebrew::API::CaskStruct
 
   sig { returns(T::Boolean) }
   def disable?; end
+
+  sig { returns(T::Boolean) }
+  def homepage?; end
 end

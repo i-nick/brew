@@ -137,6 +137,7 @@ module Cask
         @token = path.basename(path.extname).to_s
         @path = path
         @tap = Tap.from_path(path) || Homebrew::API.tap_from_source_download(path)
+        @from_installed_caskfile = false
       end
 
       sig { override.params(config: T.nilable(Config)).returns(Cask) }
@@ -151,7 +152,8 @@ module Cask
         if !self.class.invalid_path?(path, valid_extnames: %w[.json]) &&
            (from_json = JSON.parse(@content).presence) &&
            from_json.is_a?(Hash)
-          return FromAPILoader.new(token, from_json:, path:).load(config:)
+          return FromAPILoader.new(token, from_json:, path:,
+from_installed_caskfile: @from_installed_caskfile).load(config:)
         end
 
         begin
@@ -323,16 +325,18 @@ module Cask
 
       sig {
         params(
-          token:     String,
-          from_json: T.nilable(T::Hash[String, T.untyped]),
-          path:      T.nilable(Pathname),
+          token:                   String,
+          from_json:               T.nilable(T::Hash[String, T.untyped]),
+          path:                    T.nilable(Pathname),
+          from_installed_caskfile: T::Boolean,
         ).void
       }
-      def initialize(token, from_json: T.unsafe(nil), path: nil)
+      def initialize(token, from_json: T.unsafe(nil), path: nil, from_installed_caskfile: false)
         @token = token.sub(%r{^homebrew/(?:homebrew-)?cask/}i, "")
         @sourcefile_path = path || Homebrew::API.cached_cask_json_file_path
         @path = path || CaskLoader.default_path(@token)
         @from_json = from_json
+        @from_installed_caskfile = from_installed_caskfile
       end
 
       def load(config:)
@@ -343,7 +347,7 @@ module Cask
           Homebrew::API::Cask.all_casks.fetch(token)
         end
 
-        cask_struct = Homebrew::API::Cask.generate_cask_struct_hash(json_cask)
+        cask_struct = Homebrew::API::Cask.generate_cask_struct_hash(json_cask, ignore_types: @from_installed_caskfile)
 
         cask_options = {
           loaded_from_api: true,
@@ -352,8 +356,11 @@ module Cask
           source:          JSON.pretty_generate(json_cask),
           config:,
           loader:          self,
-          tap:             Tap.fetch(cask_struct.tap_string),
         }
+
+        if (tap_string = cask_struct.tap_string)
+          cask_options[:tap] = Tap.fetch(tap_string)
+        end
 
         api_cask = Cask.new(token, **cask_options) do
           version cask_struct.version
@@ -364,7 +371,7 @@ module Cask
             name cask_name
           end
           desc cask_struct.desc if cask_struct.desc?
-          homepage cask_struct.homepage
+          homepage cask_struct.homepage if cask_struct.homepage?
 
           deprecate!(**cask_struct.deprecate_args) if cask_struct.deprecate?
           disable!(**cask_struct.disable_args) if cask_struct.disable?
@@ -458,6 +465,7 @@ module Cask
 
         installed_tap = Cask.new(@token).tab.tap
         @tap = installed_tap if installed_tap
+        @from_installed_caskfile = true
       end
     end
 

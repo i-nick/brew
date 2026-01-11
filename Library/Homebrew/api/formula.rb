@@ -205,7 +205,8 @@ module Homebrew
         hash["head_dependency_hash"] = hash["head_dependencies"]
 
         hash["head_url_args"] = begin
-          url = hash.dig("urls", "head", "url")
+          # Fall back to "" to satisfy the type checker. If the head URL is missing, head_present will be false.
+          url = hash.dig("urls", "head", "url") || ""
           specs = {
             branch: hash.dig("urls", "head", "branch"),
             using:  hash.dig("urls", "head", "using")&.to_sym,
