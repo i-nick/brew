@@ -252,6 +252,7 @@ __brew_internal_commands() {
     'vendor-gems:Install and commit Homebrew'\''s vendored gems'
     'vendor-install:Install Homebrew'\''s portable Ruby'
     'verify:Verify the build provenance of bottles using GitHub'\''s attestation tools'
+    'version-install:Extract a specific version of formula into a personal tap and install it'
     'which-formula:Show which formula(e) provides the given command'
     'which-update:Database update for `brew which-formula`'
   )
@@ -2562,6 +2563,17 @@ _brew_verify() {
     '--help[Show this message]' \
     '--json[Return JSON for the attestation data for each bottle]' \
     '(--bottle-tag)--os[Download for the given operating system. (Pass `all` to download for all operating systems.)]' \
+    '--quiet[Make some output more quiet]' \
+    '--verbose[Make some output more verbose]' \
+    - formula \
+    '*:formula:__brew_formulae'
+}
+
+# brew version-install
+_brew_version_install() {
+  _arguments \
+    '--debug[Display any debugging information]' \
+    '--help[Show this message]' \
     '--quiet[Make some output more quiet]' \
     '--verbose[Make some output more verbose]' \
     - formula \

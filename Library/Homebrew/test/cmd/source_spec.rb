@@ -98,6 +98,27 @@ RSpec.describe Homebrew::Cmd::Source do
     end
   end
 
+  describe "#pypi_repo_url", :needs_utils_curl do
+    it "finds repository for PyPI URL" do
+      expect(described_class.new([])
+        .send(:pypi_repo_url,
+              "https://files.pythonhosted.org/packages/24/62/ae72ff66c0f1fd959925b4c11f8c2dea61f47f6acaea75a08512cdfe3fed/numpy-2.4.1.tar.gz"))
+        .to eq("https://github.com/numpy/numpy")
+    end
+
+    it "returns nil for PyPI package without project information" do
+      expect(described_class.new([])
+        .send(:pypi_repo_url,
+              "https://files.pythonhosted.org/packages/00/00/000000000000000000000000000000000000000000000000000000000000/foobar-0.0.1.tar.gz"))
+        .to be_nil
+    end
+
+    it "returns nil for non-PyPI URLs" do
+      expect(described_class.new([]).send(:pypi_repo_url, "https://example.com/repo.git"))
+        .to be_nil
+    end
+  end
+
   describe "#url_to_repo" do
     it "returns GitHub repo URL for GitHub URLs" do
       expect(described_class.new([]).send(:url_to_repo, "https://github.com/Homebrew/brew"))

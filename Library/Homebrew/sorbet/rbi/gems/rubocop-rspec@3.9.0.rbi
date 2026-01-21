@@ -980,6 +980,7 @@ class RuboCop::Cop::RSpec::LeakyLocalVariable < ::RuboCop::Cop::RSpec::Base
   def allowed_reference?(node); end
   def check_references(variable); end
   def example_scope?(node); end
+  def in_example_arguments?(ancestor, node); end
   def inside_describe_block?(node); end
   def part_of_example_scope?(node); end
 
@@ -1296,6 +1297,23 @@ end
 
 RuboCop::Cop::RSpec::NotToNot::MSG = T.let(T.unsafe(nil), String)
 RuboCop::Cop::RSpec::NotToNot::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
+
+class RuboCop::Cop::RSpec::Output < ::RuboCop::Cop::RSpec::Base
+  extend ::RuboCop::Cop::AutoCorrector
+
+  def io_output?(param0 = T.unsafe(nil)); end
+  def on_send(node); end
+  def output?(param0 = T.unsafe(nil)); end
+
+  private
+
+  def match_gvar?(sym); end
+end
+
+RuboCop::Cop::RSpec::Output::IO_METHODS = T.let(T.unsafe(nil), Set)
+RuboCop::Cop::RSpec::Output::KERNEL_METHODS = T.let(T.unsafe(nil), Set)
+RuboCop::Cop::RSpec::Output::MSG = T.let(T.unsafe(nil), String)
+RuboCop::Cop::RSpec::Output::RESTRICT_ON_SEND = T.let(T.unsafe(nil), Array)
 
 class RuboCop::Cop::RSpec::OverwritingSetup < ::RuboCop::Cop::RSpec::Base
   def first_argument_name(param0 = T.unsafe(nil)); end
@@ -2081,6 +2099,7 @@ end
 class RuboCop::RSpec::Hook < ::RuboCop::RSpec::Concept
   def example?; end
   def extract_metadata(param0 = T.unsafe(nil)); end
+  def inside_class_method?; end
   def knowable_scope?; end
   def metadata; end
   def name; end
@@ -2088,6 +2107,7 @@ class RuboCop::RSpec::Hook < ::RuboCop::RSpec::Concept
 
   private
 
+  def inside_class_self?(node); end
   def scope_argument; end
   def scope_name; end
   def transform_metadata(meta); end

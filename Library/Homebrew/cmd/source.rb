@@ -3,6 +3,7 @@
 
 require "abstract_command"
 require "formula"
+require "utils/curl"
 
 module Homebrew
   module Cmd
@@ -70,7 +71,8 @@ module Homebrew
           gitlab_repo_url(url) ||
           bitbucket_repo_url(url) ||
           codeberg_repo_url(url) ||
-          sourcehut_repo_url(url)
+          sourcehut_repo_url(url) ||
+          pypi_repo_url(url)
       end
 
       sig { params(url: String).returns(T.nilable(String)) }
@@ -149,6 +151,36 @@ module Homebrew
         user = match[:user]
         repo = match[:repo]&.delete_suffix(".git")
         "https://sr.ht/~#{user}/#{repo}"
+      end
+
+      sig { params(url: String).returns(T.nilable(String)) }
+      def pypi_repo_url(url)
+        regex = %r{
+          https?://files\.pythonhosted\.org
+          /packages
+          (?:/[^/]+)+
+          /(?<package_name>.+)-
+          .*?
+          (?:\.tar\.[a-z0-9]+|\.[a-z0-9]+)
+        }x
+        match = url.match(regex)
+        return unless match
+
+        package_name = match[:package_name]
+        return unless package_name
+
+        api_url = "https://pypi.org/pypi/#{package_name.gsub(/%20|_/, "-")}/json"
+        curl_args = Utils::Curl.curl_args(show_error: false, retries: 0)
+        stdout, _, status = Utils::Curl.curl_output(*curl_args, api_url)
+
+        return unless status.success?
+
+        project_urls = JSON.parse(stdout).dig("info", "project_urls")&.transform_keys(&:downcase)
+
+        project_urls["repository"] || project_urls["source"] ||
+          url_to_repo(project_urls.fetch("homepage", "")) # Homepages often link to source repositories
+      rescue JSON::ParserError
+        nil
       end
     end
   end

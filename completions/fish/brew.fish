@@ -2092,6 +2092,14 @@ __fish_brew_complete_arg 'verify' -l verbose -d 'Make some output more verbose'
 __fish_brew_complete_arg 'verify' -a '(__fish_brew_suggest_formulae_all)'
 
 
+__fish_brew_complete_cmd 'version-install' 'Extract a specific version of formula into a personal tap and install it'
+__fish_brew_complete_arg 'version-install' -l debug -d 'Display any debugging information'
+__fish_brew_complete_arg 'version-install' -l help -d 'Show this message'
+__fish_brew_complete_arg 'version-install' -l quiet -d 'Make some output more quiet'
+__fish_brew_complete_arg 'version-install' -l verbose -d 'Make some output more verbose'
+__fish_brew_complete_arg 'version-install' -a '(__fish_brew_suggest_formulae_all)'
+
+
 __fish_brew_complete_cmd 'which-formula' 'Show which formula(e) provides the given command'
 __fish_brew_complete_arg 'which-formula' -l debug -d 'Display any debugging information'
 __fish_brew_complete_arg 'which-formula' -l explain -d 'Output explanation of how to get command by installing one of the providing formulae'

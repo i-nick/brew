@@ -160,7 +160,8 @@ module Homebrew
       end
 
       HOMEBREW_CACHE.mkpath
-      cache_env = if (cache_dir = HOMEBREW_CACHE.realpath/"style") && cache_dir.writable?
+      cache_dir = HOMEBREW_CACHE.realpath/"style"
+      cache_env = if (!cache_dir.exist? && cache_dir.parent.writable?) || cache_dir.writable?
         args << "--parallel" unless fix
 
         FileUtils.rm_rf cache_dir if reset_cache

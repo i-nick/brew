@@ -970,18 +970,15 @@ then
   export HOMEBREW_DEVELOPER_COMMAND="1"
 fi
 
-if [[ -n "${HOMEBREW_DEVELOPER_COMMAND}" && -z "${HOMEBREW_DEVELOPER}" ]]
+if [[ -n "${HOMEBREW_DEVELOPER_COMMAND}" && -z "${HOMEBREW_DEVELOPER}" && -z "${HOMEBREW_DEV_CMD_RUN}" ]]
 then
-  if [[ -z "${HOMEBREW_DEV_CMD_RUN}" ]]
-  then
-    opoo <<EOS
+  opoo <<EOS
 $(bold "${HOMEBREW_COMMAND}") is a developer command, so Homebrew's
 developer mode has been automatically turned on.
 To turn developer mode off, run:
   brew developer off
 
 EOS
-  fi
 
   git config --file="${HOMEBREW_GIT_CONFIG_FILE}" --replace-all homebrew.devcmdrun true 2>/dev/null
   export HOMEBREW_DEV_CMD_RUN="1"

@@ -275,6 +275,10 @@ RSpec/Focus:
 RSpec/MessageSpies:
   EnforcedStyle: receive
 
+RSpec/Output:
+  Exclude:
+    - "**/fixtures/**/*.rb"
+
 # These are legacy violations that we should try to fix.
 Sorbet/AllowIncompatibleOverride:
   Exclude:

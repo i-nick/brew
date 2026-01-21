@@ -215,8 +215,8 @@ from_installed_caskfile: @from_installed_caskfile).load(config:)
         if ALLOWED_URL_SCHEMES.exclude?(url.scheme)
           raise UnsupportedInstallationMethod,
                 "Non-checksummed download of #{name} formula file from an arbitrary URL is unsupported! " \
-                "`brew extract` or `brew create` and `brew tap-new` to create a formula file in a tap " \
-                "on GitHub instead."
+                "`brew version-install` to install a formula file from your own custom tap " \
+                "instead."
         end
 
         begin

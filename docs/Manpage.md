@@ -1878,6 +1878,12 @@ dependency for their stable builds.
 
 : Include only casks.
 
+### `version-install` *`formula`*\[@*`version`*\] \[*`version`*\]
+
+Extract a specific *`version`* of *`formula`* into a personal tap and install
+it. The default tap is *`user`*/versions. *`user`* uses the GitHub username if
+available and the local username otherwise.
+
 ### `which-formula` \[`--explain`\] \[`--skip-update`\] *`command`* \[...\]
 
 Show which formula(e) provides the given command.

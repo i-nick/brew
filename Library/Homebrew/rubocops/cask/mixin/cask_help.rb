@@ -60,7 +60,7 @@ module RuboCop
 
         sig { returns(T.nilable(String)) }
         def cask_tap
-          return unless (match_obj = @file_path&.match(%r{/(homebrew-\w+)/}))
+          return unless (match_obj = @file_path&.match(%r{(?:/Taps/[\w-]+|^)/(homebrew-[\w-]+)/}))
 
           match_obj[1]
         end

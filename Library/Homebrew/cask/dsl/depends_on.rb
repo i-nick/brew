@@ -32,16 +32,20 @@ module Cask
       sig { void }
       def initialize
         super({})
+        @arch = T.let(nil, T.nilable(T::Array[T::Hash[Symbol, T.any(Symbol, Integer)]]))
+        @cask = T.let(nil, T.nilable(T::Array[String]))
+        @formula = T.let(nil, T.nilable(T::Array[String]))
+        @macos = T.let(nil, T.nilable(MacOSRequirement))
       end
 
       sig { returns(T::Array[String]) }
       def cask
-        @cask ||= T.let([], T.nilable(T::Array[String]))
+        @cask ||= []
       end
 
       sig { returns(T::Array[String]) }
       def formula
-        @formula ||= T.let([], T.nilable(T::Array[String]))
+        @formula ||= []
       end
 
       sig { params(pairs: T::Hash[Symbol, T.any(String, Symbol, T::Array[T.any(String, Symbol)])]).void }
@@ -65,28 +69,25 @@ module Cask
 
       sig { params(args: T.any(String, Symbol)).returns(T.nilable(MacOSRequirement)) }
       def macos=(*args)
-        raise "Only a single 'depends_on macos' is allowed." if defined?(@macos)
+        raise "Only a single 'depends_on macos' is allowed." if @macos
 
         # workaround for https://github.com/sorbet/sorbet/issues/6860
         first_arg = args.first
         first_arg_s = first_arg&.to_s
 
         begin
-          @macos = T.let(
-            if args.count > 1
-              MacOSRequirement.new([args], comparator: "==")
-            elsif first_arg.is_a?(Symbol) && MacOSVersion::SYMBOLS.key?(first_arg)
-              MacOSRequirement.new([args.first], comparator: "==")
-            elsif (md = /^\s*(?<comparator><|>|[=<>]=)\s*:(?<version>\S+)\s*$/.match(first_arg_s))
-              MacOSRequirement.new([T.must(md[:version]).to_sym], comparator: md[:comparator])
-            elsif (md = /^\s*(?<comparator><|>|[=<>]=)\s*(?<version>\S+)\s*$/.match(first_arg_s))
-              MacOSRequirement.new([md[:version]], comparator: md[:comparator])
-            # This is not duplicate of the first case: see `args.first` and a different comparator.
-            else # rubocop:disable Lint/DuplicateBranch
-              MacOSRequirement.new([args.first], comparator: "==")
-            end,
-            T.nilable(MacOSRequirement),
-          )
+          @macos = if args.count > 1
+            MacOSRequirement.new([args], comparator: "==")
+          elsif first_arg.is_a?(Symbol) && MacOSVersion::SYMBOLS.key?(first_arg)
+            MacOSRequirement.new([args.first], comparator: "==")
+          elsif (md = /^\s*(?<comparator><|>|[=<>]=)\s*:(?<version>\S+)\s*$/.match(first_arg_s))
+            MacOSRequirement.new([T.must(md[:version]).to_sym], comparator: md[:comparator])
+          elsif (md = /^\s*(?<comparator><|>|[=<>]=)\s*(?<version>\S+)\s*$/.match(first_arg_s))
+            MacOSRequirement.new([md[:version]], comparator: md[:comparator])
+          # This is not duplicate of the first case: see `args.first` and a different comparator.
+          else # rubocop:disable Lint/DuplicateBranch
+            MacOSRequirement.new([args.first], comparator: "==")
+          end
         rescue MacOSVersion::Error, TypeError => e
           raise "invalid 'depends_on macos' value: #{e}"
         end
@@ -94,7 +95,7 @@ module Cask
 
       sig { params(args: Symbol).returns(T::Array[T::Hash[Symbol, T.any(Symbol, Integer)]]) }
       def arch=(*args)
-        @arch ||= T.let([], T.nilable(T::Array[T::Hash[Symbol, T.any(Symbol, Integer)]]))
+        @arch ||= []
         arches = args.map do |elt|
           elt.to_s.downcase.sub(/^:/, "").tr("-", "_").to_sym
         end

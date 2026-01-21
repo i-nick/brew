@@ -11,10 +11,19 @@ homebrew-shellenv() {
     return
   fi
 
-  if [[ -n "$1" ]]
+  # Use specified shell name parameter, if available.
+  HOMEBREW_SHELL_NAME="${1:-}"
+
+  # Use the parent process name, if possible.
+  # This is known to fail under some sandboxes.
+  if [[ -z "${HOMEBREW_SHELL_NAME}" ]]
   then
-    HOMEBREW_SHELL_NAME="$1"
-  else
+    HOMEBREW_SHELL_NAME="$(/bin/ps -p "${PPID}" -c -o comm= 2>/dev/null)"
+  fi
+
+  # Fall back to the (login) shell name from the environment.
+  if [[ -z "${HOMEBREW_SHELL_NAME}" ]]
+  then
     HOMEBREW_SHELL_NAME="${SHELL##*/}"
   fi
 

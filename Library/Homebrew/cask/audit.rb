@@ -511,8 +511,9 @@ module Cask
       end
 
       odebug "Auditing signing"
-
-      is_in_skiplist = cask.tap&.audit_exception(:signing_audit_skiplist, cask.token)
+      is_in_skiplist = cask.tap&.audit_exception(:signing_audit_skiplist, cask.token,
+                                                 Homebrew::SimulateSystem.current_arch.to_s) ||
+                       cask.tap&.audit_exception(:signing_audit_skiplist, cask.token, "all")
 
       extract_artifacts do |artifacts, tmpdir|
         is_container = artifacts.any? { |a| a.is_a?(Artifact::App) || a.is_a?(Artifact::Pkg) }

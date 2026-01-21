@@ -185,7 +185,9 @@ module Homebrew
         installed_formulae = Formula.installed_formula_names
         return if installed_formulae.empty?
 
-        entries.each do |entry|
+        use_brew_tab = T.let(false, T::Boolean)
+
+        formulae_to_update = entries.filter_map do |entry|
           next if entry.type != :brew
 
           name = entry.name
@@ -195,9 +197,22 @@ module Homebrew
           next if tab.tabfile.blank? || !tab.tabfile.exist?
           next if tab.installed_on_request
 
+          next name if use_brew_tab
+
           tab.installed_on_request = true
-          tab.write
+
+          begin
+            tab.write
+            nil
+          rescue Errno::EACCES
+            # Some wrappers might treat `brew bundle` with lower permissions due to its execution of user code.
+            # Running through `brew tab` ensures proper privilege escalation by going through the wrapper again.
+            use_brew_tab = true
+            name
+          end
         end
+
+        brew "tab", "--installed-on-request", *formulae_to_update if use_brew_tab
       end
     end
   end

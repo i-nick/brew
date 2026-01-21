@@ -407,6 +407,15 @@ end
 module RBS::AST::Ruby; end
 module RBS::AST::Ruby::Annotations; end
 
+class RBS::AST::Ruby::Annotations::AliasAnnotation < ::RBS::AST::Ruby::Annotations::Base
+  def initialize(location:, prefix_location:, keyword_location:, type_name:, type_name_location:); end
+
+  def keyword_location; end
+  def map_type_name; end
+  def type_name; end
+  def type_name_location; end
+end
+
 class RBS::AST::Ruby::Annotations::Base
   def initialize(location, prefix_location); end
 
@@ -415,12 +424,29 @@ class RBS::AST::Ruby::Annotations::Base
   def prefix_location; end
 end
 
+class RBS::AST::Ruby::Annotations::ClassAliasAnnotation < ::RBS::AST::Ruby::Annotations::AliasAnnotation
+  def type_fingerprint; end
+end
+
 class RBS::AST::Ruby::Annotations::ColonMethodTypeAnnotation < ::RBS::AST::Ruby::Annotations::Base
   def initialize(location:, prefix_location:, annotations:, method_type:); end
 
   def annotations; end
   def map_type_name; end
   def method_type; end
+  def type_fingerprint; end
+end
+
+class RBS::AST::Ruby::Annotations::InstanceVariableAnnotation < ::RBS::AST::Ruby::Annotations::Base
+  def initialize(location:, prefix_location:, ivar_name:, ivar_name_location:, colon_location:, type:, comment_location:); end
+
+  def colon_location; end
+  def comment_location; end
+  def ivar_name; end
+  def ivar_name_location; end
+  def map_type_name(&block); end
+  def type; end
+  def type_fingerprint; end
 end
 
 class RBS::AST::Ruby::Annotations::MethodTypesAnnotation < ::RBS::AST::Ruby::Annotations::Base
@@ -428,16 +454,22 @@ class RBS::AST::Ruby::Annotations::MethodTypesAnnotation < ::RBS::AST::Ruby::Ann
 
   def map_type_name(&block); end
   def overloads; end
+  def type_fingerprint; end
   def vertical_bar_locations; end
 end
 
 RBS::AST::Ruby::Annotations::MethodTypesAnnotation::Overload = RBS::AST::Members::MethodDefinition::Overload
+
+class RBS::AST::Ruby::Annotations::ModuleAliasAnnotation < ::RBS::AST::Ruby::Annotations::AliasAnnotation
+  def type_fingerprint; end
+end
 
 class RBS::AST::Ruby::Annotations::NodeTypeAssertion < ::RBS::AST::Ruby::Annotations::Base
   def initialize(location:, prefix_location:, type:); end
 
   def map_type_name; end
   def type; end
+  def type_fingerprint; end
 end
 
 class RBS::AST::Ruby::Annotations::ReturnTypeAnnotation < ::RBS::AST::Ruby::Annotations::Base
@@ -448,6 +480,7 @@ class RBS::AST::Ruby::Annotations::ReturnTypeAnnotation < ::RBS::AST::Ruby::Anno
   def map_type_name(&block); end
   def return_location; end
   def return_type; end
+  def type_fingerprint; end
 end
 
 class RBS::AST::Ruby::Annotations::SkipAnnotation < ::RBS::AST::Ruby::Annotations::Base
@@ -455,11 +488,23 @@ class RBS::AST::Ruby::Annotations::SkipAnnotation < ::RBS::AST::Ruby::Annotation
 
   def comment_location; end
   def skip_location; end
+  def type_fingerprint; end
+end
+
+class RBS::AST::Ruby::Annotations::TypeApplicationAnnotation < ::RBS::AST::Ruby::Annotations::Base
+  def initialize(location:, prefix_location:, type_args:, close_bracket_location:, comma_locations:); end
+
+  def close_bracket_location; end
+  def comma_locations; end
+  def map_type_name(&block); end
+  def type_args; end
+  def type_fingerprint; end
 end
 
 class RBS::AST::Ruby::CommentBlock
   def initialize(source_buffer, comments); end
 
+  def as_comment; end
   def comment_buffer; end
   def comments; end
   def each_paragraph(variables, &block); end
@@ -468,6 +513,7 @@ class RBS::AST::Ruby::CommentBlock
   def leading_annotation?(index); end
   def line_location(start_line, end_line); end
   def line_starts; end
+  def location; end
   def name; end
   def offsets; end
   def parse_annotation_lines(start_line, end_line, variables); end
@@ -510,15 +556,60 @@ class RBS::AST::Ruby::Declarations::Base
 end
 
 class RBS::AST::Ruby::Declarations::ClassDecl < ::RBS::AST::Ruby::Declarations::Base
-  def initialize(buffer, name, node); end
+  def initialize(buffer, name, node, super_class); end
 
   def class_name; end
   def each_decl(&block); end
   def location; end
   def members; end
+  def name_location; end
   def node; end
   def super_class; end
+  def type_fingerprint; end
   def type_params; end
+end
+
+class RBS::AST::Ruby::Declarations::ClassDecl::SuperClass
+  def initialize(type_name_location, operator_location, type_name, type_annotation); end
+
+  def args; end
+  def location; end
+  def name; end
+  def operator_location; end
+  def type_annotation; end
+  def type_args; end
+  def type_fingerprint; end
+  def type_name; end
+  def type_name_location; end
+end
+
+class RBS::AST::Ruby::Declarations::ClassModuleAliasDecl < ::RBS::AST::Ruby::Declarations::Base
+  def initialize(buffer, node, new_name, infered_old_name, leading_comment, annotation); end
+
+  def annotation; end
+  def comment; end
+  def infered_old_name; end
+  def leading_comment; end
+  def location; end
+  def name_location; end
+  def new_name; end
+  def node; end
+  def old_name; end
+  def type_fingerprint; end
+end
+
+class RBS::AST::Ruby::Declarations::ConstantDecl < ::RBS::AST::Ruby::Declarations::Base
+  def initialize(buffer, constant_name, node, leading_comment, type_annotation); end
+
+  def comment; end
+  def constant_name; end
+  def leading_comment; end
+  def location; end
+  def name_location; end
+  def node; end
+  def type; end
+  def type_annotation; end
+  def type_fingerprint; end
 end
 
 class RBS::AST::Ruby::Declarations::ModuleDecl < ::RBS::AST::Ruby::Declarations::Base
@@ -528,8 +619,10 @@ class RBS::AST::Ruby::Declarations::ModuleDecl < ::RBS::AST::Ruby::Declarations:
   def location; end
   def members; end
   def module_name; end
+  def name_location; end
   def node; end
   def self_types; end
+  def type_fingerprint; end
   def type_params; end
 end
 
@@ -550,6 +643,23 @@ module RBS::AST::Ruby::Helpers::LocationHelper
 end
 
 module RBS::AST::Ruby::Members; end
+class RBS::AST::Ruby::Members::AttrAccessorMember < ::RBS::AST::Ruby::Members::AttributeMember; end
+class RBS::AST::Ruby::Members::AttrReaderMember < ::RBS::AST::Ruby::Members::AttributeMember; end
+class RBS::AST::Ruby::Members::AttrWriterMember < ::RBS::AST::Ruby::Members::AttributeMember; end
+
+class RBS::AST::Ruby::Members::AttributeMember < ::RBS::AST::Ruby::Members::Base
+  def initialize(buffer, node, name_nodes, leading_comment, type_annotation); end
+
+  def leading_comment; end
+  def location; end
+  def name_locations; end
+  def name_nodes; end
+  def names; end
+  def node; end
+  def type; end
+  def type_annotation; end
+  def type_fingerprint; end
+end
 
 class RBS::AST::Ruby::Members::Base
   include ::RBS::AST::Ruby::Helpers::LocationHelper
@@ -560,18 +670,33 @@ class RBS::AST::Ruby::Members::Base
 end
 
 class RBS::AST::Ruby::Members::DefMember < ::RBS::AST::Ruby::Members::Base
-  def initialize(buffer, name, node, method_type); end
+  def initialize(buffer, name, node, method_type, leading_comment); end
 
   def annotations; end
+  def leading_comment; end
   def location; end
   def method_type; end
   def name; end
+  def name_location; end
   def node; end
   def overloading?; end
   def overloads; end
+  def type_fingerprint; end
 end
 
 RBS::AST::Ruby::Members::DefMember::Overload = RBS::AST::Members::MethodDefinition::Overload
+class RBS::AST::Ruby::Members::ExtendMember < ::RBS::AST::Ruby::Members::MixinMember; end
+class RBS::AST::Ruby::Members::IncludeMember < ::RBS::AST::Ruby::Members::MixinMember; end
+
+class RBS::AST::Ruby::Members::InstanceVariableMember < ::RBS::AST::Ruby::Members::Base
+  def initialize(buffer, annotation); end
+
+  def annotation; end
+  def location; end
+  def name; end
+  def type; end
+  def type_fingerprint; end
+end
 
 class RBS::AST::Ruby::Members::MethodTypeAnnotation
   def initialize(type_annotations:); end
@@ -580,6 +705,7 @@ class RBS::AST::Ruby::Members::MethodTypeAnnotation
   def map_type_name(&block); end
   def overloads; end
   def type_annotations; end
+  def type_fingerprint; end
 
   class << self
     def build(leading_block, trailing_block, variables); end
@@ -593,16 +719,33 @@ class RBS::AST::Ruby::Members::MethodTypeAnnotation::DocStyle
   def method_type; end
   def return_type_annotation; end
   def return_type_annotation=(_arg0); end
+  def type_fingerprint; end
 end
 
+class RBS::AST::Ruby::Members::MixinMember < ::RBS::AST::Ruby::Members::Base
+  def initialize(buffer, node, module_name, annotation); end
+
+  def annotation; end
+  def location; end
+  def module_name; end
+  def name_location; end
+  def node; end
+  def type_args; end
+  def type_fingerprint; end
+end
+
+class RBS::AST::Ruby::Members::PrependMember < ::RBS::AST::Ruby::Members::MixinMember; end
+
 class RBS::AST::TypeParam
-  def initialize(name:, variance:, upper_bound:, location:, default_type: T.unsafe(nil), unchecked: T.unsafe(nil)); end
+  def initialize(name:, variance:, upper_bound:, lower_bound:, location:, default_type: T.unsafe(nil), unchecked: T.unsafe(nil)); end
 
   def ==(other); end
   def default_type; end
   def eql?(other); end
   def hash; end
   def location; end
+  def lower_bound; end
+  def lower_bound_type; end
   def map_type(&block); end
   def name; end
   def to_json(state = T.unsafe(nil)); end
@@ -1223,6 +1366,7 @@ class RBS::DefinitionBuilder::MethodBuilder
   def build_instance(type_name); end
   def build_interface(type_name); end
   def build_method(methods, type, member:, accessibility:); end
+  def build_ruby_attribute(methods, type, member:, accessibility:); end
   def build_singleton(type_name); end
   def each_rbs_member_with_accessibility(members, accessibility: T.unsafe(nil)); end
   def env; end
@@ -1328,10 +1472,10 @@ class RBS::Environment
   def class_alias_decls; end
   def class_decl?(name); end
   def class_decls; end
-  def class_entry(type_name); end
+  def class_entry(type_name, normalized: T.unsafe(nil)); end
   def constant_decl?(name); end
   def constant_decls; end
-  def constant_entry(type_name); end
+  def constant_entry(type_name, normalized: T.unsafe(nil)); end
   def constant_name?(name); end
   def declarations; end
   def each_rbs_source(&block); end
@@ -1343,11 +1487,12 @@ class RBS::Environment
   def interface_decls; end
   def interface_name?(name); end
   def module_alias?(name); end
-  def module_class_entry(type_name); end
+  def module_class_entry(type_name, normalized: T.unsafe(nil)); end
   def module_decl?(name); end
-  def module_entry(type_name); end
+  def module_entry(type_name, normalized: T.unsafe(nil)); end
   def module_name?(name); end
   def normalize_module_name(name); end
+  def normalize_module_name!(name); end
   def normalize_module_name?(name); end
   def normalize_type_name(name); end
   def normalize_type_name!(name); end
@@ -1370,7 +1515,7 @@ class RBS::Environment
   def type_alias_decls; end
   def type_alias_name?(name); end
   def type_name?(name); end
-  def unload(buffers); end
+  def unload(paths); end
   def validate_type_params; end
 
   private
@@ -1602,6 +1747,7 @@ end
 
 module RBS::InlineParser::Diagnostic; end
 class RBS::InlineParser::Diagnostic::AnnotationSyntaxError < ::RBS::InlineParser::Diagnostic::Base; end
+class RBS::InlineParser::Diagnostic::AttributeNonSymbolName < ::RBS::InlineParser::Diagnostic::Base; end
 
 class RBS::InlineParser::Diagnostic::Base
   def initialize(location, message); end
@@ -1610,9 +1756,15 @@ class RBS::InlineParser::Diagnostic::Base
   def message; end
 end
 
+class RBS::InlineParser::Diagnostic::ClassModuleAliasDeclarationMissingTypeName < ::RBS::InlineParser::Diagnostic::Base; end
+class RBS::InlineParser::Diagnostic::MixinMultipleArguments < ::RBS::InlineParser::Diagnostic::Base; end
+class RBS::InlineParser::Diagnostic::MixinNonConstantModule < ::RBS::InlineParser::Diagnostic::Base; end
 class RBS::InlineParser::Diagnostic::NonConstantClassName < ::RBS::InlineParser::Diagnostic::Base; end
+class RBS::InlineParser::Diagnostic::NonConstantConstantDeclaration < ::RBS::InlineParser::Diagnostic::Base; end
 class RBS::InlineParser::Diagnostic::NonConstantModuleName < ::RBS::InlineParser::Diagnostic::Base; end
+class RBS::InlineParser::Diagnostic::NonConstantSuperClassName < ::RBS::InlineParser::Diagnostic::Base; end
 class RBS::InlineParser::Diagnostic::NotImplementedYet < ::RBS::InlineParser::Diagnostic::Base; end
+class RBS::InlineParser::Diagnostic::TopLevelAttributeDefinition < ::RBS::InlineParser::Diagnostic::Base; end
 class RBS::InlineParser::Diagnostic::TopLevelMethodDefinition < ::RBS::InlineParser::Diagnostic::Base; end
 class RBS::InlineParser::Diagnostic::UnusedInlineAnnotation < ::RBS::InlineParser::Diagnostic::Base; end
 
@@ -1629,12 +1781,19 @@ class RBS::InlineParser::Parser < ::Prism::Visitor
   def diagnostics; end
   def insert_declaration(decl); end
   def module_nesting; end
+  def parse_attribute_call(node); end
+  def parse_constant_declaration(node); end
+  def parse_mixin_call(node); end
+  def parse_super_class(super_class_expr, inheritance_operator_loc); end
   def push_module_nesting(mod); end
   def report_unused_annotation(*annotations); end
   def report_unused_block(block); end
   def result; end
   def skip_node?(node); end
+  def visit_call_node(node); end
   def visit_class_node(node); end
+  def visit_constant_path_write_node(node); end
+  def visit_constant_write_node(node); end
   def visit_def_node(node); end
   def visit_module_node(node); end
 end
@@ -1646,6 +1805,7 @@ class RBS::InlineParser::Result
   def declarations; end
   def diagnostics; end
   def prism_result; end
+  def type_fingerprint; end
 end
 
 class RBS::InstanceVariableDuplicationError < ::RBS::VariableDuplicationError
@@ -1796,6 +1956,7 @@ class RBS::MixinClassError < ::RBS::DefinitionError
 
   private
 
+  def member_name(member); end
   def mixin_name; end
 
   class << self
@@ -1897,7 +2058,7 @@ class RBS::Parser
     def _parse_inline_trailing_annotation(_arg0, _arg1, _arg2, _arg3); end
     def _parse_method_type(_arg0, _arg1, _arg2, _arg3, _arg4); end
     def _parse_signature(_arg0, _arg1, _arg2); end
-    def _parse_type(_arg0, _arg1, _arg2, _arg3, _arg4); end
+    def _parse_type(_arg0, _arg1, _arg2, _arg3, _arg4, _arg5, _arg6); end
     def _parse_type_params(_arg0, _arg1, _arg2, _arg3); end
     def buffer(source); end
     def lex(source); end
@@ -1906,7 +2067,7 @@ class RBS::Parser
     def parse_inline_trailing_annotation(source, range, variables: T.unsafe(nil)); end
     def parse_method_type(source, range: T.unsafe(nil), variables: T.unsafe(nil), require_eof: T.unsafe(nil)); end
     def parse_signature(source); end
-    def parse_type(source, range: T.unsafe(nil), variables: T.unsafe(nil), require_eof: T.unsafe(nil)); end
+    def parse_type(source, range: T.unsafe(nil), variables: T.unsafe(nil), require_eof: T.unsafe(nil), void_allowed: T.unsafe(nil), self_allowed: T.unsafe(nil)); end
     def parse_type_params(source, module_type_params: T.unsafe(nil)); end
   end
 end
@@ -2150,33 +2311,6 @@ class RBS::Prototype::Runtime::ValueObjectBase
   def build_s_members; end
 end
 
-module RBS::RDocPlugin; end
-
-class RBS::RDocPlugin::Parser
-  def initialize(top_level, content); end
-
-  def content; end
-  def content=(_arg0); end
-  def parse_attr_decl(decl:, context:, outer_name: T.unsafe(nil)); end
-  def parse_class_decl(decl:, context:, outer_name: T.unsafe(nil)); end
-  def parse_constant_decl(decl:, context:, outer_name: T.unsafe(nil)); end
-  def parse_extend_decl(decl:, context:, outer_name: T.unsafe(nil)); end
-  def parse_include_decl(decl:, context:, outer_name: T.unsafe(nil)); end
-  def parse_member(decl:, context:, outer_name: T.unsafe(nil)); end
-  def parse_method_alias_decl(decl:, context:, outer_name: T.unsafe(nil)); end
-  def parse_method_decl(decl:, context:, outer_name: T.unsafe(nil)); end
-  def parse_module_decl(decl:, context:, outer_name: T.unsafe(nil)); end
-  def scan; end
-  def top_level; end
-  def top_level=(_arg0); end
-
-  private
-
-  def comment_string(with_comment); end
-  def construct_comment(context:, comment:); end
-  def fully_qualified_name(outer_name:, decl:); end
-end
-
 class RBS::RecursiveAliasDefinitionError < ::RBS::DefinitionError
   include ::RBS::DetailedMessageable
 
@@ -2289,16 +2423,24 @@ class RBS::Resolver::ConstantResolver::Table
 end
 
 class RBS::Resolver::TypeNameResolver
-  def initialize(env); end
+  def initialize(all_names, aliases); end
 
+  def aliased_name?(type_name); end
+  def aliases; end
   def all_names; end
   def cache; end
-  def env; end
-  def has_name?(full_name); end
-  def partition(type_name); end
+  def has_type_name?(full_name); end
+  def normalize_namespace(type_name, rhs, context, visited); end
   def resolve(type_name, context:); end
-  def resolve_in(head, context); end
+  def resolve_head_namespace(head, context); end
+  def resolve_namespace(type_name, context:); end
+  def resolve_namespace0(type_name, context, visited); end
+  def resolve_type_name(type_name, context); end
   def try_cache(query); end
+
+  class << self
+    def build(env); end
+  end
 end
 
 module RBS::Source; end
@@ -2968,8 +3110,4 @@ class RBS::Writer
   def write_loc_source(located); end
   def write_member(member); end
   def write_use_directive(dir); end
-end
-
-class RDoc::Parser::RBS < ::RDoc::Parser
-  def scan; end
 end

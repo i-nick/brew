@@ -133,5 +133,6 @@ uses
 vendor-gems
 vendor-install
 verify
+version-install
 which-formula
 which-update
