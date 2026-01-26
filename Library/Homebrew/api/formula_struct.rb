@@ -21,7 +21,7 @@ module Homebrew
         :disable,
         :head,
         :keg_only,
-        :no_autobump_message,
+        :no_autobump,
         :pour_bottle,
         :service,
         :service_run,
@@ -74,11 +74,13 @@ module Homebrew
             T.any(
               # Formula name: "foo"
               String,
-              # Hash like { "foo" => "build" } or { :foo => ["build", "test"] }
+              # Hash like { "foo" => :build } or { "foo" => [:build, :test] }
               T::Hash[
                 String,
-                T.any(String, T::Array[String]),
+                T.any(Symbol, T::Array[Symbol]),
               ],
+              # Hash like { since: :catalina } for uses_from_macos_bounds
+              T::Hash[Symbol, Symbol],
             ),
           ],
         ]
@@ -97,7 +99,6 @@ module Homebrew
 
       # Changes to this struct must be mirrored in Homebrew::API::Formula.generate_formula_struct_hash
       const :aliases, T::Array[String], default: []
-      const :bottle, T::Hash[String, T.anything], default: {}
       const :bottle_checksums, T::Array[T::Hash[Symbol, T.anything]], default: []
       const :bottle_rebuild, Integer, default: 0
       const :caveats, T.nilable(String)
@@ -116,7 +117,6 @@ module Homebrew
       const :pour_bottle_args, T::Hash[Symbol, Symbol], default: {}
       const :revision, Integer, default: 0
       const :ruby_source_checksum, String
-      const :ruby_source_path, String
       const :service_args, T::Array[[Symbol, BasicObject]], default: []
       const :service_name_args, T::Hash[Symbol, String], default: {}
       const :service_run_args, T::Array[Homebrew::Service::RunParam], default: []
@@ -124,7 +124,6 @@ module Homebrew
       const :stable_checksum, T.nilable(String)
       const :stable_url_args, [String, T::Hash[Symbol, T.anything]]
       const :stable_version, String
-      const :tap_git_head, String
       const :version_scheme, Integer, default: 0
       const :versioned_formulae, T::Array[String], default: []
 

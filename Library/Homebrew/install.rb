@@ -451,10 +451,10 @@ module Homebrew
 
         puts "#{::Utils.pluralize("Formula", formulae.count)} \
 (#{formulae.count}): #{formulae.join(", ")}\n\n"
-        puts "Download Size: #{disk_usage_readable(sizes.fetch(:download))}"
-        puts "Install Size:  #{disk_usage_readable(sizes.fetch(:installed))}"
+        puts "Download Size: #{Formatter.disk_usage_readable(sizes.fetch(:download))}"
+        puts "Install Size:  #{Formatter.disk_usage_readable(sizes.fetch(:installed))}"
         if (net_install_size = sizes[:net]) && net_install_size != 0
-          puts "Net Install Size: #{disk_usage_readable(net_install_size)}"
+          puts "Net Install Size: #{Formatter.disk_usage_readable(net_install_size)}"
         end
 
         ask_input

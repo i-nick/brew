@@ -1,5 +1,5 @@
 ---
-last_review_date: "2025-02-08"
+last_review_date: "2026-01-23"
 ---
 
 # FAQ (Frequently Asked Questions)
@@ -73,7 +73,7 @@ Which is usually: `~/Library/Caches/Homebrew`
 
 ## My Mac `.app`s don’t find Homebrew utilities
 
-GUI apps on macOS don’t have Homebrew's prefix in their `PATH` by default. If you're on Mountain Lion or later, you can fix this by running `sudo launchctl config user path "$(brew --prefix)/bin:${PATH}"` and then rebooting, as documented in `man launchctl`. Note that this sets the `launchctl` `PATH` for *all users*. For earlier versions of macOS, see [this page](https://developer.apple.com/library/archive/qa/qa1067/_index.html).
+GUI apps on macOS don't have Homebrew's prefix in their `PATH` by default. You can fix this by running `sudo launchctl config user path "$(brew --prefix)/bin:${PATH}"` and then rebooting, as documented in `man launchctl`. Note that this sets the `launchctl` `PATH` for *all users*.
 
 ## How do I contribute to Homebrew?
 

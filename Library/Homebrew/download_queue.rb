@@ -301,14 +301,14 @@ module Homebrew
       size_length = 5
       unit_length = 2
       size_formatting_string = "%<size>#{size_length}.#{precision}f%<unit>#{unit_length}s"
-      size, unit = disk_usage_readable_size_unit(fetched_size, precision:)
+      size, unit = Formatter.disk_usage_readable_size_unit(fetched_size, precision:)
       formatted_fetched_size = format(size_formatting_string, size:, unit:)
 
       total_size = downloadable.total_size
       formatted_total_size = if future.fulfilled?
         formatted_fetched_size
       elsif total_size
-        size, unit = disk_usage_readable_size_unit(total_size, precision:)
+        size, unit = Formatter.disk_usage_readable_size_unit(total_size, precision:)
         format(size_formatting_string, size:, unit:)
       else
         # fill in the missing spaces for the size if we don't have it yet.

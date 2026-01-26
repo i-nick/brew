@@ -269,7 +269,7 @@ module Utils
               table_output(category, days.to_s, results)
             else
               total_count = results.values.inject("+")
-              analytics << "#{number_readable(total_count)} (#{days} days)"
+              analytics << "#{Formatter.number_readable(total_count)} (#{days} days)"
             end
           end
 
@@ -322,7 +322,7 @@ module Utils
         end
 
         ohai "GitHub Packages Downloads"
-        puts "#{number_readable(thirty_day_download_count)} (30 days)"
+        puts "#{Formatter.number_readable(thirty_day_download_count)} (30 days)"
       end
 
       sig { params(formula: Formula, args: Homebrew::Cmd::Info::Args).void }

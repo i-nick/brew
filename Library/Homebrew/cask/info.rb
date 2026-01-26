@@ -72,7 +72,7 @@ module Cask
       tab = Tab.for_cask(cask)
 
       info = ["Installed"]
-      info << "#{versioned_staged_path} (#{disk_usage_readable(path_details)})"
+      info << "#{versioned_staged_path} (#{Formatter.disk_usage_readable(path_details)})"
       info << "  #{tab}" if tab.tabfile&.exist?
       info.join("\n")
     end

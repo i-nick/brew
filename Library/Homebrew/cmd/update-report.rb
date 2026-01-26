@@ -11,6 +11,7 @@ require "cleanup"
 require "description_cache_store"
 require "settings"
 require "reinstall"
+require "version"
 
 module Homebrew
   module Cmd
@@ -83,7 +84,7 @@ module Homebrew
 
           new_tag = Utils.popen_read(
             "git", "-C", HOMEBREW_REPOSITORY, "tag", "--list", "--sort=-version:refname", "*.*"
-          ).lines.first.chomp
+          ).lines.fetch(0).chomp
 
           Settings.write "latesttag", new_tag if new_tag != old_tag
 
@@ -221,16 +222,15 @@ module Homebrew
 
         puts
 
-        new_major_version, new_minor_version, new_patch_version = new_tag.split(".").map(&:to_i)
-        old_major_version, old_minor_version = T.must(old_tag.split(".")[0, 2]).map(&:to_i) if old_tag.present?
-        if old_tag.blank? || new_major_version > old_major_version || new_minor_version > old_minor_version
+        new_version = ::Version.new(new_tag)
+        if new_version.major_minor > ::Version.new(old_tag || "0").major_minor
           puts <<~EOS
-            The #{new_major_version}.#{new_minor_version}.0 release notes are available on the Homebrew Blog:
-              #{Formatter.url("https://brew.sh/blog/#{new_major_version}.#{new_minor_version}.0")}
+            The #{new_version.major_minor}.0 release notes are available on the Homebrew Blog:
+              #{Formatter.url("https://brew.sh/blog/#{new_version.major_minor}.0")}
           EOS
         end
 
-        return if new_patch_version.zero?
+        return if new_version.patch.to_i.zero?
 
         puts <<~EOS
           The #{new_tag} changelog can be found at:

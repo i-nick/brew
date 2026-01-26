@@ -5,8 +5,21 @@ require "cask/artifact/relocated"
 require "utils/output"
 
 module Cask
-  class List
+  module List
     extend ::Utils::Output::Mixin
+
+    TAP_AND_NAME_COMPARISON = T.let(
+      proc do |a, b|
+        if a.include?("/") && b.exclude?("/")
+          1
+        elsif a.exclude?("/") && b.include?("/")
+          -1
+        else
+          a <=> b
+        end
+      end.freeze,
+      T.proc.params(a: String, b: String).returns(Integer),
+    )
 
     sig { params(casks: Cask, one: T::Boolean, full_name: T::Boolean, versions: T::Boolean).void }
     def self.list_casks(*casks, one: false, full_name: false, versions: false)
@@ -21,7 +34,7 @@ module Cask
       if one
         puts output.map(&:to_s)
       elsif full_name
-        puts output.map(&:full_name).sort(&tap_and_name_comparison)
+        puts output.map(&:full_name).sort(&TAP_AND_NAME_COMPARISON)
       elsif versions
         puts output.map { format_versioned(it) }
       elsif !output.empty? && casks.any?

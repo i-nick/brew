@@ -1,4 +1,4 @@
-# typed: true # rubocop:todo Sorbet/StrictSigil
+# typed: strict
 # frozen_string_literal: true
 
 require "description_cache_store"
@@ -9,9 +9,34 @@ module Homebrew
   module Search
     extend Utils::Output::Mixin
 
+    SearchBlockType = T.type_alias do
+      T.nilable(
+        T.proc
+         .params(arg0: T.any(T::Array[String], T::Array[T::Array[String]]))
+         .returns(T.nilable(T.any(String, T::Array[String]))),
+      )
+    end
+
+    SearchResultType = T.type_alias do
+      T.any(
+        T::Array[String],
+        T::Array[T::Array[String]],
+        T::Hash[String, T.nilable(String)],
+        T::Hash[String, T::Array[T.nilable(String)]],
+      )
+    end
+
+    SelectableType = T.type_alias do
+      # These must define a `select` method that takes a block and returns an array or hash.
+      # Since sorbet has minimal support for overloading sig, the return type must be casted to the actual type.
+      # DescriptionCacheStore and Hash instances will return a Hash, other types will return an Array.
+      T.any(DescriptionCacheStore, SearchResultType)
+    end
+
+    sig { params(query: String).returns(T.any(Regexp, String)) }
     def self.query_regexp(query)
       if (m = query.match(%r{^/(.*)/$}))
-        Regexp.new(m[1])
+        Regexp.new(T.must(m[1]))
       else
         query
       end
@@ -19,7 +44,16 @@ module Homebrew
       raise "#{query} is not a valid regex."
     end
 
-    def self.search_descriptions(string_or_regex, args, search_type: :desc)
+    T::Sig::WithoutRuntime.sig {
+      params(
+        string_or_regex: T.any(Regexp, String),
+        # These must define `cask?`, `eval_all?`, and `formula?` methods.
+        # Since only one command is typically loaded at a time, this alias is not expected to be available at runtime.
+        args:            T.any(Homebrew::Cmd::Desc::Args, Homebrew::Cmd::SearchCmd::Args),
+        search_type:     Descriptions::SearchField,
+      ).void
+    }
+    def self.search_descriptions(string_or_regex, args, search_type: Descriptions::SearchField::Description)
       both = !args.formula? && !args.cask?
       eval_all = args.eval_all? || Homebrew::EnvConfig.eval_all?
 
@@ -37,7 +71,7 @@ module Homebrew
                  "#{Utils.pluralize("formula", unofficial)} in third party taps."
           end
           descriptions = Homebrew::API::Formula.all_formulae.transform_values { |data| data["desc"] }
-          Descriptions.search(string_or_regex, search_type, descriptions, eval_all, cache_store_hash: true).print
+          Descriptions.search(string_or_regex, search_type, descriptions, eval_all).print
         end
       end
       return if !args.cask? && !both
@@ -57,10 +91,11 @@ module Homebrew
                "#{Utils.pluralize("cask", unofficial)} in third party taps."
         end
         descriptions = Homebrew::API::Cask.all_casks.transform_values { |c| [c["name"].join(", "), c["desc"]] }
-        Descriptions.search(string_or_regex, search_type, descriptions, eval_all, cache_store_hash: true).print
+        Descriptions.search(string_or_regex, search_type, descriptions, eval_all).print
       end
     end
 
+    sig { params(string_or_regex: T.any(Regexp, String)).returns(T::Array[String]) }
     def self.search_formulae(string_or_regex)
       if string_or_regex.is_a?(String) && string_or_regex.match?(HOMEBREW_TAP_FORMULA_REGEX)
         return begin
@@ -71,7 +106,7 @@ module Homebrew
       end
 
       aliases = Formula.alias_full_names
-      results = search(Formula.full_names + aliases, string_or_regex).sort
+      results = T.cast(search(Formula.full_names + aliases, string_or_regex), T::Array[String]).sort
       if string_or_regex.is_a?(String)
         results |= Formula.fuzzy_search(string_or_regex).map do |n|
           Formulary.factory(n).full_name
@@ -97,6 +132,7 @@ module Homebrew
       end
     end
 
+    sig { params(string_or_regex: T.any(Regexp, String)).returns(T::Array[String]) }
     def self.search_casks(string_or_regex)
       if string_or_regex.is_a?(String) && string_or_regex.match?(HOMEBREW_TAP_CASK_REGEX)
         return begin
@@ -115,9 +151,11 @@ module Homebrew
         end
       end.uniq
 
-      results = search(cask_tokens, string_or_regex)
-      results += DidYouMean::SpellChecker.new(dictionary: cask_tokens)
-                                         .correct(string_or_regex)
+      results = T.cast(search(cask_tokens, string_or_regex), T::Array[String])
+      if string_or_regex.is_a?(String)
+        results += DidYouMean::SpellChecker.new(dictionary: cask_tokens)
+                                           .correct(string_or_regex)
+      end
 
       results.sort.map do |name|
         cask = Cask::CaskLoader.load(name)
@@ -129,24 +167,30 @@ module Homebrew
       end.uniq
     end
 
+    T::Sig::WithoutRuntime.sig {
+      params(
+        string_or_regex: T.any(Regexp, String),
+        # These must define `cask?`, and `formula?` methods.
+        # Since only one command is typically loaded at a time, this alias is not expected to be available at runtime.
+        args:            T.any(Homebrew::Cmd::Desc::Args, Homebrew::Cmd::InstallCmd::Args, Homebrew::Cmd::SearchCmd::Args),
+      ).returns([T::Array[String], T::Array[String]])
+    }
     def self.search_names(string_or_regex, args)
-      both = !args.formula? && !args.cask?
-
-      all_formulae = if args.formula? || both
-        search_formulae(string_or_regex)
+      if !args.formula? && !args.cask? # both
+        [search_formulae(string_or_regex), search_casks(string_or_regex)]
+      elsif args.formula?
+        [search_formulae(string_or_regex), []]
+      elsif args.cask?
+        [[], search_casks(string_or_regex)]
       else
-        []
+        [[], []]
       end
-
-      all_casks = if args.cask? || both
-        search_casks(string_or_regex)
-      else
-        []
-      end
-
-      [all_formulae, all_casks]
     end
 
+    sig {
+      params(selectable: SelectableType, string_or_regex: T.any(Regexp, String), block: SearchBlockType)
+        .returns(SearchResultType)
+    }
     def self.search(selectable, string_or_regex, &block)
       case string_or_regex
       when Regexp
@@ -156,11 +200,13 @@ module Homebrew
       end
     end
 
+    sig { params(string: String).returns(String) }
     def self.simplify_string(string)
       string.downcase.gsub(/[^a-z\d@+]/i, "")
     end
 
-    def self.search_regex(selectable, regex)
+    sig { params(selectable: SelectableType, regex: Regexp, _block: SearchBlockType).returns(SearchResultType) }
+    def self.search_regex(selectable, regex, &_block)
       selectable.select do |*args|
         args = yield(*args) if block_given?
         args = Array(args).flatten.compact
@@ -168,7 +214,8 @@ module Homebrew
       end
     end
 
-    def self.search_string(selectable, string)
+    sig { params(selectable: SelectableType, string: String, _block: SearchBlockType).returns(SearchResultType) }
+    def self.search_string(selectable, string, &_block)
       simplified_string = simplify_string(string)
       selectable.select do |*args|
         args = yield(*args) if block_given?

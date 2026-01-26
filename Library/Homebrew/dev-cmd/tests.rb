@@ -233,15 +233,19 @@ module Homebrew
         raise UsageError, "No files have been changed from the `main` branch!" if changed_files.blank?
 
         filestub_regex = %r{Library/Homebrew/([\w/-]+).rb}
-        changed_files.scan(filestub_regex).map(&:last).filter_map do |filestub|
-          if filestub.start_with?("test/")
-            # Only run tests on *_spec.rb files in test/ folder
-            filestub.end_with?("_spec") ? Pathname("#{filestub}.rb") : nil
-          else
-            # For all other changed .rb files guess the associated test file name
-            Pathname("test/#{filestub}_spec.rb")
-          end
-        end.select(&:exist?)
+        T.cast(changed_files.scan(filestub_regex), T::Array[T::Array[String]])
+         .map { it.fetch(-1) }
+         .filter_map do |filestub|
+            if filestub.start_with?("test/")
+              # Only run tests on *_spec.rb files in test/ folder
+              Pathname("#{filestub}.rb") if filestub.end_with?("_spec")
+            else
+              # For all other changed .rb files guess the associated test file name
+              Pathname("test/#{filestub}_spec.rb")
+            end
+        end
+          .select(&:exist?)
+          .map(&:to_s)
       end
 
       sig { returns(T::Array[String]) }

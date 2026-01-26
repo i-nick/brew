@@ -22,7 +22,7 @@ class Homebrew::API::FormulaStruct
   def keg_only?; end
 
   sig { returns(T::Boolean) }
-  def no_autobump_message?; end
+  def no_autobump?; end
 
   sig { returns(T::Boolean) }
   def pour_bottle?; end

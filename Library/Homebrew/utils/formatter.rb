@@ -173,4 +173,47 @@ module Formatter
 
     output.freeze
   end
+
+  sig {
+    params(
+      size_in_bytes: T.any(Integer, Float),
+      precision:     T.nilable(Integer),
+    ).returns([T.any(Integer, Float), String])
+  }
+  def self.disk_usage_readable_size_unit(size_in_bytes, precision: nil)
+    size = size_in_bytes
+    unit = "B"
+    %w[KB MB GB].each do |next_unit|
+      break if (precision ? size.abs.round(precision) : size.abs) < 1000
+
+      size /= 1000.0
+      unit = next_unit
+    end
+    [size, unit]
+  end
+
+  sig { params(size_in_bytes: T.any(Integer, Float)).returns(String) }
+  def self.disk_usage_readable(size_in_bytes)
+    size, unit = disk_usage_readable_size_unit(size_in_bytes)
+    # avoid trailing zero after decimal point
+    if ((size * 10).to_i % 10).zero?
+      "#{size.to_i}#{unit}"
+    else
+      "#{format("%<size>.1f", size:)}#{unit}"
+    end
+  end
+
+  sig { params(number: Integer).returns(String) }
+  def self.number_readable(number)
+    numstr = number.to_i.to_s
+    (numstr.size - 3).step(1, -3) { |i| numstr.insert(i.to_i, ",") }
+    numstr
+  end
+
+  sig { params(input: String, secrets: T::Array[String]).returns(String) }
+  def self.redact_secrets(input, secrets)
+    secrets.compact
+           .reduce(input) { |str, secret| str.gsub secret, "******" }
+           .freeze
+  end
 end

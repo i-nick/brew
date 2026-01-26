@@ -324,7 +324,7 @@ module Homebrew
                 formula = nil
               when %r{^diff --git a/Formula/}
                 # Example match: `diff --git a/Formula/a/aws-cdk.rb b/Formula/a/aws-cdk.rb`
-                formula = line.split("/").last.chomp(".rb\n")
+                formula = line.split("/").fetch(-1).chomp(".rb\n")
                 formula = CoreTap.instance.formula_renames.fetch(formula, formula)
                 lost_bottles = 0
               when bottle_tag_sha_regex

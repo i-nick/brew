@@ -170,6 +170,7 @@ module Homebrew
           when :homebrew_prefixes
             dimension_key = "prefix"
             groups = [:prefix, :os, :arch]
+            standard_prefixes = %w[/opt/homebrew /usr/local /home/linuxbrew/.linuxbrew]
           when :homebrew_versions
             dimension_key = "version"
             groups = [:version]
@@ -229,10 +230,11 @@ module Homebrew
                   "#{record["os"]} #{record["arch"]}"
                 end
               when :homebrew_prefixes
-                if record["prefix"] == "custom-prefix"
-                  "#{record["prefix"]} (#{record["os"]} #{record["arch"]})"
+                prefix = record["prefix"].to_s
+                if T.must(standard_prefixes).none? { |std| std.casecmp?(prefix) }
+                  "custom-prefix (#{record["os"]} #{record["arch"]})"
                 else
-                  record["prefix"].to_s
+                  prefix
                 end
               when :os_versions
                 format_os_version_dimension(record["os_name_and_version"])

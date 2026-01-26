@@ -1,6 +1,8 @@
 # typed: strict
 # frozen_string_literal: true
 
+require "utils/formatter"
+
 module DiskUsageExtension
   extend T::Helpers
 
@@ -28,8 +30,8 @@ module DiskUsageExtension
   def abv
     out = +""
     @file_count, @disk_usage = compute_disk_usage
-    out << "#{number_readable(@file_count)} files, " if @file_count > 1
-    out << disk_usage_readable(@disk_usage).to_s
+    out << "#{Formatter.number_readable(@file_count)} files, " if @file_count > 1
+    out << Formatter.disk_usage_readable(@disk_usage).to_s
     out.freeze
   end
 

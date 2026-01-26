@@ -692,7 +692,7 @@ class ErrorDuringExecution < RuntimeError
       status.termsig
     end
 
-    redacted_cmd = redact_secrets(cmd.shelljoin.gsub('\=', "="), secrets)
+    redacted_cmd = Formatter.redact_secrets(cmd.shelljoin.gsub('\=', "="), secrets)
 
     reason = if exitstatus
       "exited with #{exitstatus}"

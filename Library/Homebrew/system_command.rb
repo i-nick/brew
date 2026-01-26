@@ -132,7 +132,7 @@ class SystemCommand
 
   sig { returns(SystemCommand::Result) }
   def run!
-    $stderr.puts redact_secrets(command.shelljoin.gsub('\=', "="), @secrets) if verbose? && debug?
+    $stderr.puts Formatter.redact_secrets(command.shelljoin.gsub('\=', "="), @secrets) if verbose? && debug?
 
     @output = T.let([], T.nilable(T::Array[[Symbol, String]]))
     @output = T.must(@output)
@@ -142,17 +142,17 @@ class SystemCommand
       when :stdout
         case @print_stdout
         when true
-          $stdout << redact_secrets(line, @secrets)
+          $stdout << Formatter.redact_secrets(line, @secrets)
         when :debug
-          $stderr << redact_secrets(line, @secrets) if debug?
+          $stderr << Formatter.redact_secrets(line, @secrets) if debug?
         end
         @output << [:stdout, line]
       when :stderr
         case @print_stderr
         when true
-          $stderr << redact_secrets(line, @secrets)
+          $stderr << Formatter.redact_secrets(line, @secrets)
         when :debug
-          $stderr << redact_secrets(line, @secrets) if debug?
+          $stderr << Formatter.redact_secrets(line, @secrets) if debug?
         end
         @output << [:stderr, line]
       end

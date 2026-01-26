@@ -212,8 +212,15 @@ module Formulary
     platform_cache.fetch(:path)[path.to_s] = klass
   end
 
-  sig { params(name: String, json_formula_with_variations: T::Hash[String, T.untyped], flags: T::Array[String]).returns(T.class_of(Formula)) }
-  def self.load_formula_from_json!(name, json_formula_with_variations, flags:)
+  sig {
+    params(
+      name:                         String,
+      json_formula_with_variations: T::Hash[String, T.untyped],
+      tap_git_head:                 String,
+      flags:                        T::Array[String],
+    ).returns(T.class_of(Formula))
+  }
+  def self.load_formula_from_json!(name, json_formula_with_variations, tap_git_head:, flags:)
     namespace = :"FormulaNamespaceAPI#{namespace_key(json_formula_with_variations.to_json)}"
 
     mod = Module.new
@@ -223,6 +230,7 @@ module Formulary
     mod.const_set(:BUILD_FLAGS, flags)
 
     class_name = class_s(name)
+    ruby_source_path = "Formula/#{CoreTap.instance.new_formula_subdirectory(name)}/#{name.downcase}.rb"
     formula_struct = Homebrew::API::Formula.generate_formula_struct_hash(json_formula_with_variations)
 
     klass = Class.new(::Formula) do
@@ -267,7 +275,7 @@ module Formulary
         end
       end
 
-      no_autobump!(**formula_struct.no_autobump_args) if formula_struct.no_autobump_message?
+      no_autobump!(**formula_struct.no_autobump_args) if formula_struct.no_autobump?
 
       if formula_struct.bottle?
         bottle do
@@ -323,7 +331,7 @@ module Formulary
         self.class.instance_variable_get(:@caveats_string)
       end
 
-      @tap_git_head_string = T.let(formula_struct.tap_git_head, T.nilable(String))
+      @tap_git_head_string = T.let(tap_git_head, T.nilable(String))
       define_method(:tap_git_head) do
         self.class.instance_variable_get(:@tap_git_head_string)
       end
@@ -343,7 +351,7 @@ module Formulary
         self.class.instance_variable_get(:@versioned_formulae_array)
       end
 
-      @ruby_source_path_string = T.let(formula_struct.ruby_source_path, T.nilable(String))
+      @ruby_source_path_string = T.let(ruby_source_path, T.nilable(String))
       define_method(:ruby_source_path) do
         self.class.instance_variable_get(:@ruby_source_path_string)
       end
@@ -949,7 +957,8 @@ module Formulary
 
       raise FormulaUnavailableError, name if json_formula.nil?
 
-      Formulary.load_formula_from_json!(name, json_formula, flags:)
+      tap_git_head = json_formula.fetch("tap_git_head", "")
+      Formulary.load_formula_from_json!(name, json_formula, tap_git_head:, flags:)
     end
   end
 
@@ -965,7 +974,8 @@ module Formulary
 
     sig { override.params(flags: T::Array[String]).void }
     def load_from_api(flags:)
-      Formulary.load_formula_from_json!(name, @contents, flags:)
+      tap_git_head = @contents.fetch("tap_git_head", "")
+      Formulary.load_formula_from_json!(name, @contents, tap_git_head:, flags:)
     end
   end
 

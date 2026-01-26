@@ -40,14 +40,14 @@ module Homebrew
       sig { override.void }
       def run
         search_type = if args.search?
-          :either
+          Descriptions::SearchField::Either
         elsif args.name?
-          :name
+          Descriptions::SearchField::Name
         elsif args.description?
-          :desc
+          Descriptions::SearchField::Description
         end
 
-        if search_type.present?
+        if search_type
           if !args.eval_all? && Homebrew::EnvConfig.no_install_from_api?
             raise UsageError, "`brew desc --search` needs `--eval-all` passed or `HOMEBREW_EVAL_ALL=1` set!"
           end

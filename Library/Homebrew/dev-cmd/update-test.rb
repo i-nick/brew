@@ -79,7 +79,7 @@ module Homebrew
           start_commit = Utils.popen_read("git", "rev-parse", start_commit).chomp
           odie "Could not find start commit!" if start_commit.empty?
 
-          end_commit = T.cast(Utils.popen_read("git", "rev-parse", end_commit).chomp, String)
+          end_commit = Utils.popen_read("git", "rev-parse", end_commit).chomp
           odie "Could not find end commit!" if end_commit.empty?
 
           if Utils.popen_read("git", "branch", "--list", "main").blank?
@@ -151,6 +151,7 @@ module Homebrew
             Utils.popen_read("git", "tag", "--list", "--sort=-version:refname")
           end
         end
+        odie "Could not find git tags!" if tags.blank?
         tags
       end
     end

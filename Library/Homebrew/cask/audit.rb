@@ -634,6 +634,7 @@ module Cask
         Homebrew::Install.perform_preinstall_checks_once
         formula_installers = primary_container.dependencies.filter_map do |dep|
           next unless dep.is_a?(Formula)
+          next if dep.linked?
 
           FormulaInstaller.new(
             dep,
@@ -658,6 +659,10 @@ module Cask
         UnpackStrategy.detect(@tmpdir/nested_container, merge_xattrs: true)
                       .extract_nestedly(to: @tmpdir, verbose: false)
       end
+
+      # Propagate quarantine attributes from the downloaded file to extracted contents.
+      # This is necessary because some extraction tools (like 7zr) don't preserve xattrs.
+      Quarantine.propagate(from: downloaded_path, to: @tmpdir) if Quarantine.detect(downloaded_path)
 
       # Process rename operations after extraction
       # Create a temporary installer to process renames in the audit directory

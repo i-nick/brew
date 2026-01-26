@@ -150,8 +150,8 @@ module Homebrew
           Utils.safe_popen_read("brew", "uses", *uses_args, "--include-build", formula_name)
                .split("\n")
         end
-        dependents&.uniq!
-        dependents&.sort!
+        dependents.uniq!
+        dependents.sort!
 
         dependents -= @tested_formulae
         dependents = dependents.map { |d| Formulary.factory(d) }

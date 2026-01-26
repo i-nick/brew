@@ -338,8 +338,8 @@ module Homebrew
               bottle.fetch_tab(quiet: !args.debug?) if args.fetch_manifest?
               bottle_size = bottle.bottle_size
               installed_size = bottle.installed_size
-              puts "Bottle Size: #{disk_usage_readable(bottle_size)}" if bottle_size
-              puts "Installed Size: #{disk_usage_readable(installed_size)}" if installed_size
+              puts "Bottle Size: #{Formatter.disk_usage_readable(bottle_size)}" if bottle_size
+              puts "Installed Size: #{Formatter.disk_usage_readable(installed_size)}" if installed_size
             rescue RuntimeError => e
               odebug e
             end
@@ -432,14 +432,16 @@ module Homebrew
         ohai title
 
         total_size = items.sum(&:size)
-        total_size_str = disk_usage_readable(total_size)
+        total_size_str = Formatter.disk_usage_readable(total_size)
 
         name_width = (items.map { |item| item.name.length } + [5]).max
-        size_width = (items.map { |item| disk_usage_readable(item.size).length } + [total_size_str.length]).max
+        size_width = (items.map do |item|
+ Formatter.disk_usage_readable(item.size).length
+        end + [total_size_str.length]).max
 
         items.each do |item|
           puts format("%-#{name_width}s %#{size_width}s", item.name,
-                      disk_usage_readable(item.size))
+                      Formatter.disk_usage_readable(item.size))
         end
 
         puts format("%-#{name_width}s %#{size_width}s", "Total", total_size_str)

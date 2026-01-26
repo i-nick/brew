@@ -357,7 +357,8 @@ module Homebrew
         return unless HOMEBREW_CACHE.exist?
 
         free_gb = Utils.safe_popen_read({ "BLOCKSIZE" => (1000 ** 3).to_s }, "df", HOMEBREW_CACHE.to_s)
-                       .lines[1] # HOMEBREW_CACHE
+                       .lines
+                       .fetch(1) # HOMEBREW_CACHE
                        .split[3] # free GB
                        .to_i
         return if free_gb > 10
