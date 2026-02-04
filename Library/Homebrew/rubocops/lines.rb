@@ -316,6 +316,27 @@ module RuboCop
         end
       end
 
+      # This cop makes sure that formulae do not depend on `*-full` formulae in homebrew/core.
+      class FullDependencyCheck < FormulaCop
+        sig { override.params(formula_nodes: FormulaNodes).void }
+        def audit_formula(formula_nodes)
+          return if (body_node = formula_nodes.body_node).nil?
+          return if formula_tap != "homebrew-core"
+
+          find_every_method_call_by_name(body_node, :depends_on).each do |node|
+            node.each_descendant(:str, :sym) do |dependency_node|
+              dependency = string_content(dependency_node)
+              next if dependency.empty?
+              next unless dependency.end_with?("-full")
+
+              offending_node(node)
+              problem "Formulae in homebrew/core should not depend on `#{dependency}`."
+              break
+            end
+          end
+        end
+      end
+
       # This cop makes sure that the safe versions of `popen_*` calls are used.
       class SafePopenCommands < FormulaCop
         extend AutoCorrector

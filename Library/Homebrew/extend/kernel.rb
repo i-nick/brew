@@ -192,7 +192,7 @@ module Kernel
     return executable if executable
 
     require "formula"
-    Formulary.factory_stub(formula_name).ensure_installed!(reason:, latest:).opt_bin/name
+    Formula[formula_name].ensure_installed!(reason:, latest:).opt_bin/name
   end
 
   # Calls the given block with the passed environment variables

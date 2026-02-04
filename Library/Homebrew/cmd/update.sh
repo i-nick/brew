@@ -645,6 +645,9 @@ EOS
   if [[ -z "${HOMEBREW_CURLRC}" ]]
   then
     CURL_DISABLE_CURLRC_ARGS=(-q)
+  elif [[ "${HOMEBREW_CURLRC}" == /* ]]
+  then
+    CURL_DISABLE_CURLRC_ARGS=(-q --config "${HOMEBREW_CURLRC}")
   else
     CURL_DISABLE_CURLRC_ARGS=()
   fi

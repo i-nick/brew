@@ -284,7 +284,7 @@ module Homebrew
     sig { returns(T::Array[String]) }
     def self.formula_names
       if Homebrew::EnvConfig.use_internal_api?
-        Homebrew::API::Internal.formula_arrays.keys
+        Homebrew::API::Internal.formula_hashes.keys
       else
         Homebrew::API::Formula.all_formulae.keys
       end

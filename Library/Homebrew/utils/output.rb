@@ -235,6 +235,24 @@ module Utils
       end
 
       sig { params(string: String).returns(String) }
+      def pretty_deprecated(string)
+        if $stdout.tty?
+          "#{string} #{Formatter.warning("(deprecated)")}"
+        else
+          string
+        end
+      end
+
+      sig { params(string: String).returns(String) }
+      def pretty_disabled(string)
+        if $stdout.tty?
+          "#{string} #{Formatter.error("(disabled)")}"
+        else
+          string
+        end
+      end
+
+      sig { params(string: String).returns(String) }
       def pretty_uninstalled(string)
         if !$stdout.tty?
           string

@@ -234,8 +234,10 @@ module Homebrew
         else
           # If our bottle is coming from a mirror, we need to recompute the expected
           # non-mirror URL to make the hash match.
+          checksum = bottle.resource.checksum
+          odie "#{bottle.resource.name} checksum is nil" if checksum.nil?
           path, = Utils::Bottles.path_resolved_basename HOMEBREW_BOTTLE_DEFAULT_DOMAIN, bottle.name,
-                                                        bottle.resource.checksum, bottle.filename
+                                                        checksum, bottle.filename
           url = "#{HOMEBREW_BOTTLE_DEFAULT_DOMAIN}/#{path}"
 
           Digest::SHA256.hexdigest(url)

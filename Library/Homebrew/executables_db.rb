@@ -252,7 +252,7 @@ module Homebrew
 
         # ignore symlink targets
         line = line.chomp.sub(/\s+->.+$/, "")
-        path = line.split(/\s+/).last
+        path = line.split(/\s+/).fetch(-1)
         next unless binpath_re.match?(path)
 
         binaries << Pathname.new(path).basename.to_s

@@ -93,7 +93,7 @@ module Homebrew
 
             if verbose?
               outdated_kegs = f.outdated_kegs(fetch_head: args.fetch_HEAD?)
-              latest_formula = f.latest_formula(prefer_stub: true)
+              latest_formula = f.latest_formula
 
               current_version = if f.alias_changed? && !latest_formula.latest_version_installed?
                 "#{latest_formula.name} (#{latest_formula.pkg_version})"

@@ -107,7 +107,7 @@ class AbstractDownloadStrategy
   # directory.
   #
   # @api public
-  sig { overridable.params(block: T.untyped).void }
+  sig { overridable.params(block: T.nilable(T.proc.void)).void }
   def stage(&block)
     UnpackStrategy.detect(cached_location,
                           prioritize_extension: true,
@@ -118,7 +118,7 @@ class AbstractDownloadStrategy
     chdir(&block) if block
   end
 
-  sig { params(block: T.untyped).void }
+  sig { params(block: T.proc.void).void }
   def chdir(&block)
     entries = Dir["*"]
     raise "Empty archive" if entries.empty?
@@ -129,7 +129,9 @@ class AbstractDownloadStrategy
     end
 
     if File.directory? entries.fetch(0)
-      Dir.chdir(entries.fetch(0), &block)
+      # chdir yields the directory name as an argument, which is unused in our case
+      # However, sorbet requires us to pass a block with matching arity, so we use T.unsafe here
+      Dir.chdir(entries.fetch(0), &T.unsafe(block))
     else
       yield
     end
@@ -832,7 +834,7 @@ end
 #
 # @api public
 class NoUnzipCurlDownloadStrategy < CurlDownloadStrategy
-  sig { override.params(_block: T.untyped).void }
+  sig { override.params(_block: T.nilable(T.proc.void)).void }
   def stage(&_block)
     UnpackStrategy::Uncompressed.new(cached_location)
                                 .extract(basename:,

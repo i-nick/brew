@@ -590,33 +590,11 @@ class Formula
   # @see .loaded_from_api?
   delegate loaded_from_api?: :"self.class"
 
-  # Whether this formula was loaded using the formulae.brew.sh API.
-  # @!method loaded_from_stub?
-  # @see .loaded_from_stub?
-  delegate loaded_from_stub?: :"self.class"
-
   # The API source data used to load this formula.
   # Returns `nil` if the formula was not loaded from the API.
   # @!method api_source
   # @see .api_source
   delegate api_source: :"self.class"
-
-  sig { returns(Formula) }
-  def fully_loaded_formula
-    @fully_loaded_formula ||= if loaded_from_stub?
-      json_contents = Homebrew::API::Formula.formula_json(name)
-      Formulary.from_json_contents(name, json_contents)
-    else
-      self
-    end
-  end
-
-  sig { params(download_queue: T.nilable(Homebrew::DownloadQueue)).void }
-  def fetch_fully_loaded_formula!(download_queue: nil)
-    return unless loaded_from_stub?
-
-    Homebrew::API::Formula.fetch_formula_json!(name, download_queue:)
-  end
 
   sig { void }
   def update_head_version
@@ -1758,11 +1736,7 @@ class Formula
     Formula.cache[:outdated_kegs][cache_key] ||= begin
       all_kegs = []
       current_version = T.let(false, T::Boolean)
-      latest = if core_formula? && Homebrew::EnvConfig.use_internal_api? && Homebrew::API.formula_names.include?(full_name)
-        Homebrew::API::Internal.formula_stub(full_name)
-      else
-        latest_formula
-      end
+      latest = latest_formula
 
       installed_kegs.each do |keg|
         all_kegs << keg
@@ -1795,7 +1769,7 @@ class Formula
 
   sig { returns(T::Boolean) }
   def new_formula_available?
-    installed_alias_target_changed? && !latest_formula(prefer_stub: true).latest_version_installed?
+    installed_alias_target_changed? && !latest_formula.latest_version_installed?
   end
 
   sig { returns(T.nilable(Formula)) }
@@ -1826,17 +1800,9 @@ class Formula
 
   # If the alias has changed value, return the new formula.
   # Otherwise, return the latest version of the current formula.
-  # Optionally, return only a formula stub to avoid fetching a new formula file.
-  sig { params(prefer_stub: T::Boolean).returns(Formula) }
-  def latest_formula(prefer_stub: false)
-    return T.must(current_installed_alias_target) if installed_alias_target_changed?
-    return self if !core_formula? || !Homebrew::EnvConfig.use_internal_api?
-
-    if prefer_stub
-      Formulary.factory_stub(full_name, active_spec_sym, force_bottle:, flags: self.class.build_flags)
-    else
-      Formulary.factory(full_name, active_spec_sym, force_bottle:, flags: self.class.build_flags)
-    end
+  sig { returns(Formula) }
+  def latest_formula
+    installed_alias_target_changed? ? T.must(current_installed_alias_target) : self
   end
 
   sig { returns(T::Array[Formula]) }
@@ -2876,6 +2842,8 @@ class Formula
 
     bottle_spec.collector.each_tag do |tag|
       tag_spec = bottle_spec.collector.specification_for(tag, no_older_versions: true)
+      odie "Specification for tag #{tag} is nil" if tag_spec.nil?
+
       os_cellar = tag_spec.cellar
       os_cellar = os_cellar.inspect if os_cellar.is_a?(Symbol)
       checksum = tag_spec.checksum.hexdigest
@@ -3573,7 +3541,6 @@ class Formula
         @skip_clean_paths = T.let(Set.new, T.nilable(T::Set[T.any(String, Symbol)]))
         @link_overwrite_paths = T.let(Set.new, T.nilable(T::Set[String]))
         @loaded_from_api = T.let(false, T.nilable(T::Boolean))
-        @loaded_from_stub = T.let(false, T.nilable(T::Boolean))
         @api_source = T.let(nil, T.nilable(T::Hash[String, T.untyped]))
         @on_system_blocks_exist = T.let(false, T.nilable(T::Boolean))
         @network_access_allowed = T.let(SUPPORTED_NETWORK_ACCESS_PHASES.to_h do |phase|
@@ -3601,10 +3568,6 @@ class Formula
     # Whether this formula was loaded using the formulae.brew.sh API.
     sig { returns(T::Boolean) }
     def loaded_from_api? = !!@loaded_from_api
-
-    # Whether this formula was loaded using the internal formulae.brew.sh API.
-    sig { returns(T::Boolean) }
-    def loaded_from_stub? = !!@loaded_from_stub
 
     # Whether this formula was loaded using the formulae.brew.sh API.
     sig { returns(T.nilable(T::Hash[String, T.untyped])) }

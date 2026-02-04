@@ -172,7 +172,7 @@ module Homebrew
           raise UsageError, "This command does not take more than 1 subcommand argument."
         end
 
-        if args.check? && !ENV["HOMEBREW_BUNDLE_NO_CHECK"] && BUNDLE_EXEC_COMMANDS.exclude?(subcommand)
+        if args.check? && !ENV["HOMEBREW_BUNDLE_CHECK"] && BUNDLE_EXEC_COMMANDS.exclude?(subcommand)
           raise UsageError, "`--check` can be used only with #{BUNDLE_EXEC_COMMANDS.join(", ")}."
         end
 

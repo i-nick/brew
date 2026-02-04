@@ -560,27 +560,34 @@ module Utils
       etag = headers["etag"][ETAG_VALUE_REGEX, 1] if headers["etag"].present?
       content_length = headers["content-length"]
 
-      if status.success?
-        open_args = {}
-        content_type = headers["content-type"]
+      if status.success? && (file_path = file.path)
+        file_hash = Digest::SHA256.file(file_path).hexdigest if hash_needed
 
-        # Use the last `Content-Type` header if there is more than one instance
-        # in the response
-        content_type = content_type.last if content_type.is_a?(Array)
+        # Only load file contents for text-based content comparison on small files.
+        # Large binary files don't benefit from content comparison.
+        max_read_size = 100 * 1024 * 1024
+        if File.size(file_path) <= max_read_size
+          open_args = {}
+          content_type = headers["content-type"]
 
-        # Try to get encoding from Content-Type header
-        # TODO: add guessing encoding by <meta http-equiv="Content-Type" ...> tag
-        if content_type &&
-           (match = content_type.match(/;\s*charset\s*=\s*([^\s]+)/)) &&
-           (charset = match[1])
-          begin
-            open_args[:encoding] = Encoding.find(charset)
-          rescue ArgumentError
-            # Unknown charset in Content-Type header
+          # Use the last `Content-Type` header if there is more than one instance
+          # in the response
+          content_type = content_type.last if content_type.is_a?(Array)
+
+          # Try to get encoding from Content-Type header
+          # TODO: add guessing encoding by <meta http-equiv="Content-Type" ...> tag
+          if content_type &&
+             (match = content_type.match(/;\s*charset\s*=\s*([^\s]+)/)) &&
+             (charset = match[1])
+            begin
+              open_args[:encoding] = Encoding.find(charset)
+            rescue ArgumentError
+              # Unknown charset in Content-Type header
+            end
           end
+
+          file_contents = File.read(file_path, **open_args)
         end
-        file_contents = File.read(T.must(file.path), **open_args)
-        file_hash = Digest::SHA256.hexdigest(file_contents) if hash_needed
       end
 
       {

@@ -5,7 +5,6 @@ require "cachable"
 require "api"
 require "api/source_download"
 require "download_queue"
-require "formula_stub"
 
 module Homebrew
   module API
@@ -25,35 +24,19 @@ module Homebrew
         "internal/cask.#{SimulateSystem.current_tag}.jws.json"
       end
 
-      sig { params(name: String).returns(Homebrew::FormulaStub) }
-      def self.formula_stub(name)
-        return cache["formula_stubs"][name] if cache.key?("formula_stubs") && cache["formula_stubs"].key?(name)
+      sig { params(name: String).returns(Homebrew::API::FormulaStruct) }
+      def self.formula_struct(name)
+        return cache["formula_structs"][name] if cache.key?("formula_structs") && cache["formula_structs"].key?(name)
 
-        stub_array = formula_arrays[name]
-        raise "No formula stub found for #{name}" unless stub_array
+        hash = formula_hashes[name]
+        raise "No formula found for #{name}" unless hash
 
-        aliases = formula_aliases.filter_map do |alias_name, original_name|
-          alias_name if original_name == name
-        end
+        struct = Homebrew::API::FormulaStruct.deserialize(hash, bottle_tag: SimulateSystem.current_tag)
 
-        oldnames = formula_renames.filter_map do |oldname, newname|
-          oldname if newname == name
-        end
+        cache["formula_structs"] ||= {}
+        cache["formula_structs"][name] = struct
 
-        stub = Homebrew::FormulaStub.new(
-          name:           name,
-          pkg_version:    PkgVersion.parse(stub_array[0]),
-          version_scheme: stub_array[1],
-          rebuild:        stub_array[2],
-          sha256:         stub_array[3],
-          aliases:,
-          oldnames:,
-        )
-
-        cache["formula_stubs"] ||= {}
-        cache["formula_stubs"][name] = stub
-
-        stub
+        struct
       end
 
       sig { returns(Pathname) }
@@ -87,11 +70,12 @@ module Homebrew
       sig { returns(T::Boolean) }
       def self.download_and_cache_formula_data!
         json_contents, updated = fetch_formula_api!
-        cache["formula_stubs"] = {}
+        cache["formula_structs"] = {}
         cache["formula_aliases"] = json_contents["aliases"]
         cache["formula_renames"] = json_contents["renames"]
+        cache["formula_tap_git_head"] = json_contents["tap_git_head"]
         cache["formula_tap_migrations"] = json_contents["tap_migrations"]
-        cache["formula_arrays"] = json_contents["formulae"]
+        cache["formula_hashes"] = json_contents["formulae"]
 
         updated
       end
@@ -111,9 +95,9 @@ module Homebrew
 
       sig { params(regenerate: T::Boolean).void }
       def self.write_formula_names_and_aliases(regenerate: false)
-        download_and_cache_formula_data! unless cache.key?("formula_arrays")
+        download_and_cache_formula_data! unless cache.key?("formula_hashes")
 
-        Homebrew::API.write_names_file!(formula_arrays.keys, "formula", regenerate:)
+        Homebrew::API.write_names_file!(formula_hashes.keys, "formula", regenerate:)
         Homebrew::API.write_aliases_file!(formula_aliases, "formula", regenerate:)
       end
 
@@ -124,14 +108,14 @@ module Homebrew
         Homebrew::API.write_names_file!(cask_hashes.keys, "cask", regenerate:)
       end
 
-      sig { returns(T::Hash[String, [String, Integer, Integer, T.nilable(String)]]) }
-      def self.formula_arrays
-        unless cache.key?("formula_arrays")
+      sig { returns(T::Hash[String, T::Hash[String, T.untyped]]) }
+      def self.formula_hashes
+        unless cache.key?("formula_hashes")
           updated = download_and_cache_formula_data!
           write_formula_names_and_aliases(regenerate: updated)
         end
 
-        cache["formula_arrays"]
+        cache["formula_hashes"]
       end
 
       sig { returns(T::Hash[String, String]) }
@@ -162,6 +146,16 @@ module Homebrew
         end
 
         cache["formula_tap_migrations"]
+      end
+
+      sig { returns(String) }
+      def self.formula_tap_git_head
+        unless cache.key?("formula_tap_git_head")
+          updated = download_and_cache_formula_data!
+          write_formula_names_and_aliases(regenerate: updated)
+        end
+
+        cache["formula_tap_git_head"]
       end
 
       sig { returns(T::Hash[String, T::Hash[String, T.untyped]]) }

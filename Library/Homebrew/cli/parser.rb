@@ -753,7 +753,7 @@ module Homebrew
           next if arg.match?(HOMEBREW_CASK_TAP_CASK_REGEX)
 
           begin
-            Formulary.factory_stub(arg, spec, flags: argv.select { |a| a.start_with?("--") })
+            Formulary.factory(arg, spec, flags: argv.select { |a| a.start_with?("--") })
           rescue FormulaUnavailableError, FormulaSpecificationError
             nil
           end

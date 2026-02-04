@@ -100,6 +100,37 @@ module Homebrew
           return
         end
 
+        # Not actually useless, needed for Sorbet.
+        # rubocop:disable Lint/UselessAssignment
+        e = T.let(nil, T.nilable(Exception))
+        # rubocop:enable Lint/UselessAssignment
+
+        existing_releases = begin
+          matching_releases(new_version)
+        rescue *GitHub::API::ERRORS => e
+          odie "Unable to check existing releases: #{e.message}!"
+        end
+
+        if existing_releases.present?
+          draft_releases, published_releases = existing_releases.partition { |release| release["draft"] }
+          error_message = +""
+
+          if draft_releases.present?
+            error_message << "Draft releases already exist for #{new_version}. " \
+                             "Delete them in the web interface first:\n"
+            error_message << release_urls(draft_releases).join("\n")
+          end
+
+          if published_releases.present?
+            error_message << "\n" if error_message.present?
+            error_message << "Published releases already exist for #{new_version}. " \
+                             "Run `brew update` instead:\n"
+            error_message << release_urls(published_releases).join("\n")
+          end
+
+          odie error_message
+        end
+
         # Get the current commit SHA
         current_sha = Utils.safe_popen_read("git", "-C", HOMEBREW_REPOSITORY, "rev-parse", "origin/main").strip
         release_workflow = "release.yml"
@@ -162,9 +193,50 @@ module Homebrew
 
         puts
         ohai "Release created at:"
-        release_url = "https://github.com/Homebrew/brew/releases"
+        releases_page_url = "https://github.com/Homebrew/brew/releases"
+        release_url = begin
+          latest_matching_release(new_version)&.fetch("html_url", nil) || releases_page_url
+        rescue *GitHub::API::ERRORS => e
+          opoo "Unable to locate created release: #{e.message}"
+          releases_page_url
+        end
         puts "  #{Formatter.url(release_url)}"
         exec_browser release_url
+      end
+
+      private
+
+      sig { params(name: String).returns(T::Array[T::Hash[String, T.untyped]]) }
+      def matching_releases(name)
+        releases_url = "#{GitHub::API_URL}/repos/Homebrew/brew/releases?per_page=#{GitHub::MAX_PER_PAGE}"
+        releases = T.cast(GitHub::API.open_rest(releases_url,
+                                                request_method: :GET,
+                                                scopes:         GitHub::CREATE_ISSUE_FORK_OR_PR_SCOPES),
+                          T::Array[T::Hash[String, T.untyped]])
+        releases.select do |release|
+          release_name = release["name"].to_s
+          release_name = release.fetch("tag_name", "").to_s if release_name.blank?
+          release_name == name
+        end
+      end
+
+      sig { params(name: String).returns(T.nilable(T::Hash[String, T.untyped])) }
+      def latest_matching_release(name)
+        matching_releases(name).max_by do |release|
+          Time.parse(release.fetch("created_at", ""))
+        rescue ArgumentError, TypeError
+          Time.at(0)
+        end
+      end
+
+      sig { params(releases: T::Array[T::Hash[String, T.untyped]]).returns(T::Array[String]) }
+      def release_urls(releases)
+        releases.filter_map do |release|
+          url = release["html_url"].to_s
+          next if url.blank?
+
+          "  #{Formatter.url(url)}"
+        end
       end
     end
   end

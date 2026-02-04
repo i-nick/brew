@@ -684,6 +684,8 @@ module Homebrew
 
     sig { returns(T::Boolean) }
     def use_internal_api?
+      return true if ENV["HOMEBREW_REALLY_USE_INTERNAL_API"].present?
+
       # TODO: re-enable this when the internal API is ready again.
       false
     end

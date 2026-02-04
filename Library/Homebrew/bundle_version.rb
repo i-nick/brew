@@ -116,5 +116,13 @@ module Homebrew
       [short_version, version].compact
     end
     private :nice_parts
+
+    sig { returns(T::Hash[Symbol, String]) }
+    def to_h
+      {
+        short_version:,
+        version:,
+      }.compact
+    end
   end
 end

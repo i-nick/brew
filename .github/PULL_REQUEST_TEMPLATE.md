@@ -5,3 +5,7 @@
 - [ ] Have you successfully run `brew lgtm` (style, typechecking and tests) with your changes locally?
 
 -----
+
+- [ ] AI was used to generate or assist with generating this PR. *Please specify below how you used AI to help you, and what steps you have taken to manually verify the changes*.
+
+-----

@@ -71,7 +71,7 @@ module Homebrew
         install_target = "#{existing_tap}/#{versioned_name}" if existing_tap
 
         versioned_formula = begin
-          Formulary.factory(versioned_ref, warn: false, prefer_stub: true)
+          Formulary.factory(versioned_ref, warn: false)
         rescue TapFormulaAmbiguityError, FormulaUnavailableError, TapFormulaUnavailableError,
                TapFormulaUnreadableError
           nil
@@ -82,7 +82,7 @@ module Homebrew
             versioned_formula.full_name
           else
             current_formula = begin
-              Formulary.factory(formula_input, warn: false, prefer_stub: true)
+              Formulary.factory(formula_input, warn: false)
             rescue FormulaUnavailableError, TapFormulaUnavailableError, TapFormulaUnreadableError
               nil
             end

@@ -799,7 +799,7 @@ module Cask
       bundle_min_os = cask_bundle_min_os
       sparkle_min_os = cask_sparkle_min_os
 
-      app_min_os = bundle_min_os || sparkle_min_os
+      app_min_os = [bundle_min_os, sparkle_min_os].compact.max
       debug_messages = []
       debug_messages << "from artifact: #{bundle_min_os.to_sym}" if bundle_min_os
       debug_messages << "from upstream: #{sparkle_min_os.to_sym}" if sparkle_min_os
@@ -888,7 +888,7 @@ module Cask
           if artifact.is_a?(Artifact::Pkg)
             pkg_expanded_dir = tmpdir/"pkg-expanded"
             begin
-              system_command!("pkgutil", args: ["--expand-full", path.to_s, pkg_expanded_dir.to_s])
+              system_command!("pkgutil", args: ["--expand", path.to_s, pkg_expanded_dir.to_s])
 
               distribution_file = pkg_expanded_dir/"Distribution"
               if File.exist?(distribution_file)
@@ -900,8 +900,6 @@ module Cask
               end
             rescue
               break
-            ensure
-              FileUtils.remove_entry(pkg_expanded_dir) if pkg_expanded_dir.exist?
             end
           end
 
@@ -1083,7 +1081,8 @@ module Cask
 
       odebug "Auditing GitHub repo"
 
-      error = SharedAudits.github(user, repo)
+      self_submission = self_submission?(user)
+      error = SharedAudits.github(user, repo, self_submission:)
       add_error error, location: url.location if error
     end
 
@@ -1097,7 +1096,8 @@ module Cask
 
       odebug "Auditing GitLab repo"
 
-      error = SharedAudits.gitlab(user, repo)
+      self_submission = self_submission?(user)
+      error = SharedAudits.gitlab(user, repo, self_submission:)
       add_error error, location: url.location if error
     end
 
@@ -1111,7 +1111,8 @@ module Cask
 
       odebug "Auditing Bitbucket repo"
 
-      error = SharedAudits.bitbucket(user, repo)
+      self_submission = self_submission?(user)
+      error = SharedAudits.bitbucket(user, repo, self_submission:)
       add_error error, location: url.location if error
     end
 
@@ -1125,7 +1126,8 @@ module Cask
 
       odebug "Auditing Forgejo repo"
 
-      error = SharedAudits.forgejo(user, repo)
+      self_submission = self_submission?(user)
+      error = SharedAudits.forgejo(user, repo, self_submission:)
       add_error error, location: url.location if error
     end
 
@@ -1275,6 +1277,13 @@ module Cask
       repo.gsub!(/.git$/, "")
 
       [user, repo]
+    end
+
+    sig { params(repo_owner: String).returns(T::Boolean) }
+    def self_submission?(repo_owner)
+      return false if repo_owner.empty?
+
+      SharedAudits.self_submission_for_repo_owner?(repo_owner)
     end
 
     sig {

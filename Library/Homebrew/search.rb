@@ -124,10 +124,20 @@ module Homebrew
         # Ignore aliases from results when the full name was also found
         next if aliases.include?(name) && results.include?(canonical_full_name)
 
-        if formula&.any_version_installed?
+        display_name = if formula&.any_version_installed?
           pretty_installed(name)
         elsif formula.nil? || formula.valid_platform?
           name
+        end
+
+        next if display_name.nil?
+
+        if formula&.deprecated?
+          pretty_deprecated(display_name)
+        elsif formula&.disabled?
+          pretty_disabled(display_name)
+        else
+          display_name
         end
       end
     end
@@ -159,10 +169,18 @@ module Homebrew
 
       results.sort.map do |name|
         cask = Cask::CaskLoader.load(name)
-        if cask.installed?
+        display_name = if cask.installed?
           pretty_installed(cask.full_name)
         else
           cask.full_name
+        end
+
+        if cask.deprecated?
+          pretty_deprecated(display_name)
+        elsif cask.disabled?
+          pretty_disabled(display_name)
+        else
+          display_name
         end
       end.uniq
     end

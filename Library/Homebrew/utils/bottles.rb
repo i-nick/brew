@@ -105,7 +105,7 @@ module Utils
 
       sig {
         params(root_url: String, name: String, checksum: T.any(Checksum, String),
-               filename: T.nilable(Bottle::Filename)).returns(T.any([String, T.nilable(String)], String))
+               filename: T.nilable(Bottle::Filename)).returns(T.nilable(T.any([String, T.nilable(String)], String)))
       }
       def path_resolved_basename(root_url, name, checksum, filename)
         if root_url.match?(GitHubPackages::URL_REGEX)

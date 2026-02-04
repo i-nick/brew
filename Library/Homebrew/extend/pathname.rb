@@ -490,7 +490,7 @@ class Pathname
     @which_install_info ||=
       if File.executable?("/usr/bin/install-info")
         "/usr/bin/install-info"
-      elsif (texinfo_formula = Formulary.factory_stub("texinfo")).any_version_installed?
+      elsif (texinfo_formula = Formula["texinfo"]).any_version_installed?
         (texinfo_formula.opt_bin/"install-info").to_s
       end
   end

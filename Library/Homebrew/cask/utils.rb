@@ -104,7 +104,7 @@ module Cask
           #       before using `sudo` and `chown`.
           ohai "Using sudo to gain ownership of path '#{path}'"
           command.run("chown",
-                      args: command_args + ["--", User.current, path],
+                      args: command_args + ["--", User.current.to_s, path],
                       sudo: true)
           tried_ownership = true
           # retry chflags/chmod after chown

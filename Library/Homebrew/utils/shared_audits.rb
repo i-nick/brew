@@ -7,6 +7,55 @@ require "utils/github/api"
 # Auditing functions for rules common to both casks and formulae.
 module SharedAudits
   URL_TYPE_HOMEPAGE = "homepage URL"
+  SELF_SUBMISSION_THRESHOLD_MULTIPLIER = 3
+  GITHUB_NOTABILITY_THRESHOLDS = T.let({ forks: 30, watchers: 30, stars: 75 }.freeze, T::Hash[Symbol, Integer])
+  GITLAB_NOTABILITY_THRESHOLDS = T.let({ forks: 30, stars: 75 }.freeze, T::Hash[Symbol, Integer])
+  BITBUCKET_NOTABILITY_THRESHOLDS = T.let({ forks: 30, watchers: 75 }.freeze, T::Hash[Symbol, Integer])
+  FORGEJO_NOTABILITY_THRESHOLDS = T.let({ forks: 30, watchers: 30, stars: 75 }.freeze, T::Hash[Symbol, Integer])
+  @pull_request_author = T.let(nil, T.nilable(String))
+  @pull_request_author_computed = T.let(false, T::Boolean)
+  @self_submission_cache = T.let({}, T::Hash[String, T::Boolean])
+
+  sig { returns(T.nilable(String)) }
+  def self.pull_request_author
+    return @pull_request_author if @pull_request_author_computed
+
+    @pull_request_author_computed = true
+    github_event_path = ENV.fetch("GITHUB_EVENT_PATH", nil)
+    return @pull_request_author = nil if github_event_path.blank?
+
+    @pull_request_author = JSON.parse(File.read(github_event_path)).dig("pull_request", "user", "login")
+  rescue Errno::ENOENT, JSON::ParserError
+    @pull_request_author = nil
+  end
+
+  sig { params(submitter: T.nilable(String), repo_owner: String).returns(T::Boolean) }
+  def self.self_submission?(submitter, repo_owner)
+    return false if submitter.blank?
+    return false if repo_owner.empty?
+
+    submitter.casecmp?(repo_owner)
+  end
+
+  sig { params(repo_owner: String).returns(T::Boolean) }
+  def self.self_submission_for_repo_owner?(repo_owner)
+    return false if repo_owner.blank?
+
+    submitter = pull_request_author
+    return false if submitter.blank?
+
+    key = repo_owner.downcase
+    return @self_submission_cache.fetch(key) if @self_submission_cache.key?(key)
+
+    @self_submission_cache[key] = self_submission?(submitter, repo_owner)
+  end
+
+  sig { params(thresholds: T::Hash[Symbol, Integer], self_submission: T::Boolean).returns(T::Hash[Symbol, Integer]) }
+  def self.notability_thresholds_for(thresholds, self_submission)
+    return thresholds unless self_submission
+
+    thresholds.transform_values { |value| value * SELF_SUBMISSION_THRESHOLD_MULTIPLIER }
+  end
 
   sig { params(product: String, cycle: String).returns(T.nilable(T::Hash[String, T.untyped])) }
   def self.eol_data(product, cycle)
@@ -169,17 +218,26 @@ module SharedAudits
     "#{tag} is a Forgejo pre-release."
   end
 
-  sig { params(user: String, repo: String).returns(T.nilable(String)) }
-  def self.github(user, repo)
+  sig { params(user: String, repo: String, self_submission: T::Boolean).returns(T.nilable(String)) }
+  def self.github(user, repo, self_submission: false)
     metadata = github_repo_data(user, repo)
 
     return if metadata.nil?
 
     return "GitHub fork (not canonical repository)" if metadata["fork"]
 
-    if (metadata["forks_count"] < 30) && (metadata["subscribers_count"] < 30) &&
-       (metadata["stargazers_count"] < 75)
-      return "GitHub repository not notable enough (<30 forks, <30 watchers and <75 stars)"
+    notability_thresholds = notability_thresholds_for(GITHUB_NOTABILITY_THRESHOLDS, self_submission)
+    notability_prefix = if self_submission
+      "Self-submitted GitHub repository not notable enough"
+    else
+      "GitHub repository not notable enough"
+    end
+    if (metadata["forks_count"] < notability_thresholds.fetch(:forks)) &&
+       (metadata["subscribers_count"] < notability_thresholds.fetch(:watchers)) &&
+       (metadata["stargazers_count"] < notability_thresholds.fetch(:stars))
+      return "#{notability_prefix} (<#{notability_thresholds.fetch(:forks)} forks, " \
+             "<#{notability_thresholds.fetch(:watchers)} watchers and " \
+             "<#{notability_thresholds.fetch(:stars)} stars)"
     end
 
     return if Date.parse(metadata["created_at"]) <= (Date.today - 30)
@@ -187,15 +245,24 @@ module SharedAudits
     "GitHub repository too new (<30 days old)"
   end
 
-  sig { params(user: String, repo: String).returns(T.nilable(String)) }
-  def self.gitlab(user, repo)
+  sig { params(user: String, repo: String, self_submission: T::Boolean).returns(T.nilable(String)) }
+  def self.gitlab(user, repo, self_submission: false)
     metadata = gitlab_repo_data(user, repo)
 
     return if metadata.nil?
 
     return "GitLab fork (not canonical repository)" if metadata["fork"]
-    if (metadata["forks_count"] < 30) && (metadata["star_count"] < 75)
-      return "GitLab repository not notable enough (<30 forks and <75 stars)"
+
+    notability_thresholds = notability_thresholds_for(GITLAB_NOTABILITY_THRESHOLDS, self_submission)
+    notability_prefix = if self_submission
+      "Self-submitted GitLab repository not notable enough"
+    else
+      "GitLab repository not notable enough"
+    end
+    if (metadata["forks_count"] < notability_thresholds.fetch(:forks)) &&
+       (metadata["star_count"] < notability_thresholds.fetch(:stars))
+      return "#{notability_prefix} (<#{notability_thresholds.fetch(:forks)} forks and " \
+             "<#{notability_thresholds.fetch(:stars)} stars)"
     end
 
     return if Date.parse(metadata["created_at"]) <= (Date.today - 30)
@@ -203,8 +270,8 @@ module SharedAudits
     "GitLab repository too new (<30 days old)"
   end
 
-  sig { params(user: String, repo: String).returns(T.nilable(String)) }
-  def self.bitbucket(user, repo)
+  sig { params(user: String, repo: String, self_submission: T::Boolean).returns(T.nilable(String)) }
+  def self.bitbucket(user, repo, self_submission: false)
     api_url = "https://api.bitbucket.org/2.0/repositories/#{user}/#{repo}"
     result = Utils::Curl.curl_output("--request", "GET", api_url)
     return unless result.status.success?
@@ -230,21 +297,38 @@ module SharedAudits
     watcher_metadata = JSON.parse(watcher_result.stdout)
     return if watcher_metadata.nil?
 
-    return if forks_metadata["size"] >= 30 || watcher_metadata["size"] >= 75
+    notability_thresholds = notability_thresholds_for(BITBUCKET_NOTABILITY_THRESHOLDS, self_submission)
+    return if forks_metadata["size"] >= notability_thresholds.fetch(:forks) ||
+              watcher_metadata["size"] >= notability_thresholds.fetch(:watchers)
 
-    "Bitbucket repository not notable enough (<30 forks and <75 watchers)"
+    notability_prefix = if self_submission
+      "Self-submitted Bitbucket repository not notable enough"
+    else
+      "Bitbucket repository not notable enough"
+    end
+    "#{notability_prefix} (<#{notability_thresholds.fetch(:forks)} forks and " \
+      "<#{notability_thresholds.fetch(:watchers)} watchers)"
   end
 
-  sig { params(user: String, repo: String).returns(T.nilable(String)) }
-  def self.forgejo(user, repo)
+  sig { params(user: String, repo: String, self_submission: T::Boolean).returns(T.nilable(String)) }
+  def self.forgejo(user, repo, self_submission: false)
     metadata = forgejo_repo_data(user, repo)
     return if metadata.nil?
 
     return "Forgejo fork (not canonical repository)" if metadata["fork"]
 
-    if (metadata["forks_count"] < 30) && (metadata["watchers_count"] < 30) &&
-       (metadata["stars_count"] < 75)
-      return "Forgejo repository not notable enough (<30 forks, <30 watchers and <75 stars)"
+    notability_thresholds = notability_thresholds_for(FORGEJO_NOTABILITY_THRESHOLDS, self_submission)
+    notability_prefix = if self_submission
+      "Self-submitted Forgejo repository not notable enough"
+    else
+      "Forgejo repository not notable enough"
+    end
+    if (metadata["forks_count"] < notability_thresholds.fetch(:forks)) &&
+       (metadata["watchers_count"] < notability_thresholds.fetch(:watchers)) &&
+       (metadata["stars_count"] < notability_thresholds.fetch(:stars))
+      return "#{notability_prefix} (<#{notability_thresholds.fetch(:forks)} forks, " \
+             "<#{notability_thresholds.fetch(:watchers)} watchers and " \
+             "<#{notability_thresholds.fetch(:stars)} stars)"
     end
 
     return if Date.parse(metadata["created_at"]) <= (Date.today - 30)

@@ -210,6 +210,8 @@ module Homebrew
 
         old_bottle_spec.collector.each_tag do |tag|
           old_tag_spec = old_bottle_spec.collector.specification_for(tag)
+          odie "Specification for tag #{tag} is nil" if old_tag_spec.nil?
+
           old_hexdigest = old_tag_spec.checksum.hexdigest
           old_cellar = old_tag_spec.cellar
           new_value = new_bottle_hash.dig("tags", tag.to_s)

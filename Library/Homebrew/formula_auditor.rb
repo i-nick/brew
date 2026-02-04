@@ -673,7 +673,8 @@ module Homebrew
 
       return if user.blank?
 
-      warning = SharedAudits.github(user, repo)
+      self_submission = self_submission?(user)
+      warning = SharedAudits.github(user, repo, self_submission:)
       return if warning.nil?
 
       new_formula_problem warning
@@ -683,7 +684,8 @@ module Homebrew
       user, repo = get_repo_data(%r{https?://gitlab\.com/([^/]+)/([^/]+)/?.*}) if @new_formula
       return if user.blank?
 
-      warning = SharedAudits.gitlab(user, repo)
+      self_submission = self_submission?(user)
+      warning = SharedAudits.gitlab(user, repo, self_submission:)
       return if warning.nil?
 
       new_formula_problem warning
@@ -693,7 +695,8 @@ module Homebrew
       user, repo = get_repo_data(%r{https?://bitbucket\.org/([^/]+)/([^/]+)/?.*}) if @new_formula
       return if user.blank?
 
-      warning = SharedAudits.bitbucket(user, repo)
+      self_submission = self_submission?(user)
+      warning = SharedAudits.bitbucket(user, repo, self_submission:)
       return if warning.nil?
 
       new_formula_problem warning
@@ -704,7 +707,8 @@ module Homebrew
       user, repo = get_repo_data(%r{https?://codeberg\.org/([^/]+)/([^/]+)/?.*}) if @new_formula
       return if user.blank?
 
-      warning = SharedAudits.forgejo(user, repo)
+      self_submission = self_submission?(user)
+      warning = SharedAudits.forgejo(user, repo, self_submission:)
       return if warning.nil?
 
       new_formula_problem warning
@@ -913,13 +917,21 @@ module Homebrew
 
       missing_compatibility_bumps = changed_dependency_paths.filter_map do |path|
         changed_formula = Formulary.factory(path)
-        # Each changed dependency must raise its compatibility_version by exactly one.
+        # Each changed dependency that updates its version must raise its compatibility_version by exactly one.
         _, origin_head_dependency_version_info = committed_version_info(formula: changed_formula)
+        previous_dependency_version = origin_head_dependency_version_info[:version]
+        current_dependency_version = changed_formula.stable&.version
+        if previous_dependency_version.present? && current_dependency_version.present? &&
+           current_dependency_version == previous_dependency_version
+          next
+        end
+
         previous_compatibility_version = origin_head_dependency_version_info[:compatibility_version] || 0
         current_compatibility_version = changed_formula.compatibility_version || 0
         next if current_compatibility_version == previous_compatibility_version + 1
 
-        "#{changed_formula.name} (#{previous_compatibility_version} to #{current_compatibility_version})"
+        expected_compatibility_version = previous_compatibility_version + 1
+        "#{changed_formula.name} (#{previous_compatibility_version} to #{expected_compatibility_version})"
       end
       return if missing_compatibility_bumps.empty? || !formula.core_formula?
 
@@ -1106,6 +1118,12 @@ module Homebrew
       @new_formula_problems << ({ message:, location:, corrected: })
     end
 
+    def self_submission?(repo_owner)
+      return false if repo_owner.blank?
+
+      SharedAudits.self_submission_for_repo_owner?(repo_owner)
+    end
+
     def head_only?(formula)
       formula.head && formula.stable.nil?
     end
@@ -1156,10 +1174,9 @@ module Homebrew
       return changed_paths if only_names.blank?
 
       expected_paths = only_names.filter_map do |name|
-        relative_path = Pathname(name.to_s.delete_prefix("#{tap.name}/"))
-        relative_path = relative_path.sub_ext(".rb") if relative_path.extname.empty?
-        absolute_path = tap.formula_dir/relative_path
-        absolute_path.expand_path if absolute_path.exist?
+        formula_name = name.to_s.delete_prefix("#{tap.name}/")
+        formula_name = formula_name.delete_suffix(".rb")
+        tap.formula_files_by_name[formula_name]&.expand_path
       end.map(&:to_s)
 
       changed_paths.select { |path| expected_paths.include?(path.expand_path.to_s) }

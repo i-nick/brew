@@ -9,6 +9,10 @@ RSpec.shared_examples "#uninstall_phase or #zap_phase" do
   let(:artifact) { cask.artifacts.find { |a| a.is_a?(described_class) } }
   let(:fake_system_command) { class_double(SystemCommand) }
 
+  before do
+    allow(fake_system_command).to receive(:is_a?) { |val| SystemCommand.is_a?(val) }
+  end
+
   context "when using :launchctl" do
     let(:cask) { Cask::CaskLoader.load(cask_path("with-#{artifact_dsl_key}-launchctl")) }
     let(:launchctl_list_cmd) { %w[/bin/launchctl list my.fancy.package.service] }

@@ -470,8 +470,8 @@ RSpec.describe Cask::DSL, :cask, :no_api do
       Cask::CaskLoader.load(cask_path("with-conflicts-with"))
     end
 
-    it "installs the dependency of a Cask and the Cask itself" do
-      Cask::Installer.new(local_caffeine).install
+    it "raises an error when a conflicting cask is already installed" do
+      InstallHelper.stub_cask_installation(local_caffeine)
 
       expect(local_caffeine).to be_installed
 

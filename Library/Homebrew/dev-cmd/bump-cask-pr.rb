@@ -167,7 +167,7 @@ module Homebrew
                                          silent:        args.quiet?)
 
         audit_exceptions = []
-        audit_exceptions << "min_os" if ENV["HOMEBREW_TEST_BOT_AUTOBUMP"].present?
+        audit_exceptions << ["min_os", "rosetta", "signing"] if ENV["HOMEBREW_TEST_BOT_AUTOBUMP"].present?
         run_cask_audit(cask, old_contents, audit_exceptions)
         run_cask_style(cask, old_contents)
 
