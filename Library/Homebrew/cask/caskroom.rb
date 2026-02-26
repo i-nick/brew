@@ -71,7 +71,7 @@ module Cask
       rescue
         # Don't blow up because of a single unavailable cask.
         nil
-      end
+      end.select(&:installed?)
     end
   end
 end

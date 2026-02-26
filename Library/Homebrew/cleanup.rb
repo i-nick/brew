@@ -549,12 +549,15 @@ module Homebrew
 
       lockfiles.each do |file|
         next unless file.readable?
-        next unless file.open(File::RDWR).flock(File::LOCK_EX | File::LOCK_NB)
 
-        begin
-          file.unlink
-        ensure
-          file.open(File::RDWR).flock(File::LOCK_UN) if file.exist?
+        file.open(File::RDWR) do |lockfile|
+          next unless lockfile.flock(File::LOCK_EX | File::LOCK_NB)
+
+          begin
+            file.unlink
+          ensure
+            lockfile.flock(File::LOCK_UN) if file.exist?
+          end
         end
       end
     end

@@ -14,6 +14,7 @@ FORMULA_COMPONENT_PRECEDENCE_LIST = T.let([
   [{ name: :license, type: :method_call }],
   [{ name: :revision, type: :method_call }],
   [{ name: :version_scheme, type: :method_call }],
+  [{ name: :compatibility_version, type: :method_call }],
   [{ name: :head,      type: :method_call }],
   [{ name: :stable,    type: :block_call }],
   [{ name: :livecheck, type: :block_call }],

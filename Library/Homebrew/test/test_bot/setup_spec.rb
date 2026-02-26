@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require "test_bot"
-require "ostruct"
 
 RSpec.describe Homebrew::TestBot::Setup do
   subject(:setup) { described_class.new }

@@ -87,6 +87,23 @@ module Homebrew
         @entries << Entry.new(:cargo, name)
       end
 
+      sig { params(name: String, options: T::Hash[Symbol, T.untyped]).void }
+      def uv(name, options = {})
+        unknown_options = options.keys - [:with]
+        raise "unknown options(#{unknown_options.inspect}) for uv" if unknown_options.present?
+
+        with = options[:with]
+        if with && (!with.is_a?(Array) || with.any? { |requirement| !requirement.is_a?(String) })
+          raise "options[:with](#{with.inspect}) should be an Array of String objects"
+        end
+
+        normalized_options = {}
+        normalized_with = Array(with).map(&:strip).reject(&:empty?).uniq.sort
+        normalized_options[:with] = normalized_with if normalized_with.present?
+
+        @entries << Entry.new(:uv, name, normalized_options)
+      end
+
       sig { params(name: String, options: T::Hash[Symbol, String]).void }
       def flatpak(name, options = {})
         # Validate: url: can only be used with a named remote (not a URL remote)

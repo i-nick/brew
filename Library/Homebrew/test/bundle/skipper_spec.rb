@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "ostruct"
 require "bundle"
 require "bundle/skipper"
 require "bundle/dsl"

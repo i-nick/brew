@@ -130,17 +130,43 @@ module Homebrew
           raise ArgumentError, "`--build-from-source` requires at least one formula"
         end
 
-        formulae, casks = args.named.to_resolved_formulae_to_casks
+        formulae = T.let([], T::Array[Formula])
+        casks = T.let([], T::Array[Cask::Cask])
+        unavailable_errors = T.let(
+          [],
+          T::Array[T.any(FormulaOrCaskUnavailableError, NoSuchKegError)],
+        )
+
+        if args.named.present?
+          args.named.to_formulae_and_casks_and_unavailable(method: :resolve).each do |item|
+            case item
+            when FormulaOrCaskUnavailableError, NoSuchKegError
+              unavailable_errors << item
+            when Formula
+              formulae << item
+            when Cask::Cask
+              casks << item
+            end
+          end
+        end
+
         # If one or more formulae are specified, but no casks were
         # specified, we want to make note of that so we don't
         # try to upgrade all outdated casks.
-        only_upgrade_formulae = formulae.present? && casks.blank?
-        only_upgrade_casks = casks.present? && formulae.blank?
+        #
+        # When names were given, we must also prevent empty resolved lists
+        # from triggering the "upgrade all" path (which happens when all
+        # names failed resolution).
+        named_given = args.named.present?
+        only_upgrade_formulae = (named_given && casks.blank?) || (formulae.present? && casks.blank?)
+        only_upgrade_casks = (named_given && formulae.blank?) || (casks.present? && formulae.blank?)
 
         formulae = Homebrew::Attestation.sort_formulae_for_install(formulae) if Homebrew::Attestation.enabled?
 
         upgrade_outdated_formulae!(formulae) unless only_upgrade_casks
         upgrade_outdated_casks!(casks) unless only_upgrade_formulae
+
+        unavailable_errors.each { |e| ofail e }
 
         Cleanup.periodic_clean!(dry_run: args.dry_run?)
 
@@ -307,6 +333,9 @@ module Homebrew
           quiet:               args.quiet?,
           args:,
         )
+      rescue => e
+        ofail e
+        false
       end
     end
   end

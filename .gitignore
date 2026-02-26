@@ -179,7 +179,6 @@
 /docs/_site
 /docs/.jekyll-metadata
 /docs/vendor
-/docs/Gemfile.lock
 /docs/rubydoc
 
 # Unignore our root-level metadata files.

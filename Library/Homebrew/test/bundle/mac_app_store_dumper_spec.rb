@@ -24,7 +24,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
   context "when there is no apps" do
     before do
       described_class.reset!
-      allow(Homebrew::Bundle).to receive(:mas_installed?).and_return(true)
+      allow(Homebrew::Bundle).to receive_messages(mas_installed?: true, which_mas: Pathname.new("mas"))
       allow(described_class).to receive(:`).and_return("")
     end
 
@@ -40,7 +40,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
   context "when apps `foo`, `bar` and `baz` are installed" do
     before do
       described_class.reset!
-      allow(Homebrew::Bundle).to receive(:mas_installed?).and_return(true)
+      allow(Homebrew::Bundle).to receive_messages(mas_installed?: true, which_mas: Pathname.new("mas"))
       allow(described_class).to receive(:`).and_return("123 foo (1.0)\n456 bar (2.0)\n789 baz (3.0)")
     end
 
@@ -52,7 +52,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
   context "when apps `foo`, `bar`, `baz` and `qux` are installed including right-justified IDs" do
     before do
       described_class.reset!
-      allow(Homebrew::Bundle).to receive(:mas_installed?).and_return(true)
+      allow(Homebrew::Bundle).to receive_messages(mas_installed?: true, which_mas: Pathname.new("mas"))
       allow(described_class).to receive(:`).and_return("123 foo (1.0)\n456 bar (2.0)\n789 baz (3.0)")
       allow(described_class).to receive(:`).and_return("123 foo (1.0)\n456 bar (2.0)\n789 baz (3.0)\n 10 qux (4.0)")
     end
@@ -137,7 +137,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
 
     before do
       described_class.reset!
-      allow(Homebrew::Bundle).to receive(:mas_installed?).and_return(true)
+      allow(Homebrew::Bundle).to receive_messages(mas_installed?: true, which_mas: Pathname.new("mas"))
       allow(described_class).to receive(:`).and_return(invalid_mas_output)
     end
 
@@ -169,7 +169,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreDumper do
 
     before do
       described_class.reset!
-      allow(Homebrew::Bundle).to receive(:mas_installed?).and_return(true)
+      allow(Homebrew::Bundle).to receive_messages(mas_installed?: true, which_mas: Pathname.new("mas"))
       allow(described_class).to receive(:`).and_return(new_mas_output)
     end
 

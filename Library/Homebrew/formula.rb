@@ -1881,10 +1881,16 @@ class Formula
   #
   # @api public
   sig {
-    params(root: T.any(String, Pathname), path: T.any(String, Pathname)).returns(T::Array[String])
+    params(
+      root:     T.any(String, Pathname),
+      path:     T.any(String, Pathname),
+      features: T.nilable(T.any(String, T::Array[String])),
+    ).returns(T::Array[String])
   }
-  def std_cargo_args(root: prefix, path: ".")
-    ["--jobs", ENV.make_jobs.to_s, "--locked", "--root=#{root}", "--path=#{path}"]
+  def std_cargo_args(root: prefix, path: ".", features: nil)
+    args = ["--jobs", ENV.make_jobs.to_s, "--locked", "--root=#{root}", "--path=#{path}"]
+    args += ["--features=#{Array(features).join(",")}"] if features
+    args
   end
 
   # Standard parameters for CMake builds.

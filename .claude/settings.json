@@ -6,11 +6,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "brew style --changed --fix"
+            "command": "./bin/brew style --changed --fix"
           },
           {
             "type": "command",
-            "command": "brew typecheck"
+            "command": "./bin/brew typecheck"
           }
         ]
       }
@@ -20,7 +20,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "brew tests --changed",
+            "command": "./bin/brew tests --changed",
             "timeout": 360
           }
         ]

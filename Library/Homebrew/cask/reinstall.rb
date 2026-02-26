@@ -44,7 +44,20 @@ module Cask
 
       exit 1 if Homebrew.failed?
 
-      cask_installers.each(&:install)
+      caught_exceptions = []
+
+      cask_installers.each do |installer|
+        installer.install
+      rescue => e
+        caught_exceptions << e
+        next
+      end
+
+      return if caught_exceptions.empty?
+
+      raise MultipleCaskErrors, caught_exceptions if caught_exceptions.count > 1
+
+      raise caught_exceptions.fetch(0)
     end
   end
 end

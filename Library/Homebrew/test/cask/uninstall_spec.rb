@@ -75,6 +75,30 @@ RSpec.describe Cask::Uninstall, :cask do
       expect(cask).not_to be_installed
     end
 
+    it "continues uninstalling remaining casks when one fails" do
+      caffeine = Cask::CaskLoader.load(cask_path("local-caffeine"))
+      transmission = Cask::CaskLoader.load(cask_path("local-transmission-zip"))
+
+      Cask::Installer.new(caffeine).install
+      Cask::Installer.new(transmission).install
+
+      expect(caffeine).to be_installed
+      expect(transmission).to be_installed
+
+      allow(Cask::Installer).to receive(:new).and_call_original
+      allow(Cask::Installer).to receive(:new).with(caffeine, anything).and_wrap_original do |_m, *_args, **_kwargs|
+        instance = instance_double(Cask::Installer)
+        allow(instance).to receive(:uninstall).and_raise(Cask::CaskError.new("caffeine uninstall failed"))
+        instance
+      end
+
+      expect { described_class.uninstall_casks(caffeine, transmission) }
+        .to raise_error(Cask::CaskError, /caffeine uninstall failed/)
+
+      expect(caffeine).to be_installed
+      expect(transmission).not_to be_installed
+    end
+
     describe "when multiple versions of a cask are installed" do
       let(:token) { "versioned-cask" }
       let(:first_installed_version) { "1.2.3" }

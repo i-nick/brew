@@ -41,7 +41,12 @@ module Homebrew
 
       sig { returns(T::Boolean) }
       def mas_installed?
-        @mas_installed ||= which_formula?("mas")
+        @mas_installed ||= which_mas.present?
+      end
+
+      sig { returns(T.nilable(Pathname)) }
+      def which_mas
+        @which_mas ||= which("mas", ORIGINAL_PATHS)
       end
 
       sig { returns(T::Boolean) }
@@ -75,6 +80,16 @@ module Homebrew
       sig { returns(T::Boolean) }
       def cargo_installed?
         @cargo_installed ||= which_cargo.present?
+      end
+
+      sig { returns(T.nilable(Pathname)) }
+      def which_uv
+        @which_uv ||= which("uv", ORIGINAL_PATHS)
+      end
+
+      sig { returns(T::Boolean) }
+      def uv_installed?
+        @uv_installed ||= which_uv.present?
       end
 
       sig { returns(T.nilable(Pathname)) }
@@ -160,6 +175,7 @@ module Homebrew
 
       sig { void }
       def reset!
+        @which_mas = T.let(nil, T.nilable(Pathname))
         @mas_installed = T.let(nil, T.nilable(T::Boolean))
         @vscode_installed = T.let(nil, T.nilable(T::Boolean))
         @which_vscode = T.let(nil, T.nilable(Pathname))
@@ -167,6 +183,8 @@ module Homebrew
         @go_installed = T.let(nil, T.nilable(T::Boolean))
         @which_cargo = T.let(nil, T.nilable(Pathname))
         @cargo_installed = T.let(nil, T.nilable(T::Boolean))
+        @which_uv = T.let(nil, T.nilable(Pathname))
+        @uv_installed = T.let(nil, T.nilable(T::Boolean))
         @which_flatpak = T.let(nil, T.nilable(Pathname))
         @flatpak_installed = T.let(nil, T.nilable(T::Boolean))
         @cask_installed = T.let(nil, T.nilable(T::Boolean))

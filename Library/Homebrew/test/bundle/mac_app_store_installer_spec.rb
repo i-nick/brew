@@ -44,7 +44,7 @@ RSpec.describe Homebrew::Bundle::MacAppStoreInstaller do
 
   context "when mas is installed" do
     before do
-      allow(Homebrew::Bundle).to receive(:mas_installed?).and_return(true)
+      allow(Homebrew::Bundle).to receive_messages(mas_installed?: true, which_mas: Pathname.new("mas"))
     end
 
     describe ".outdated_app_ids" do
@@ -72,7 +72,8 @@ RSpec.describe Homebrew::Bundle::MacAppStoreInstaller do
       end
 
       it "upgrades" do
-        expect(Homebrew::Bundle).to receive(:system).with("mas", "upgrade", "123", verbose: false).and_return(true)
+        expect(Homebrew::Bundle).to receive(:system).with(Pathname("mas"), "upgrade", "123", verbose: false)
+                                                    .and_return(true)
         expect(described_class.preinstall!("foo", 123)).to be(true)
         expect(described_class.install!("foo", 123)).to be(true)
       end
@@ -84,7 +85,8 @@ RSpec.describe Homebrew::Bundle::MacAppStoreInstaller do
       end
 
       it "installs app" do
-        expect(Homebrew::Bundle).to receive(:system).with("mas", "install", "123", verbose: false).and_return(true)
+        expect(Homebrew::Bundle).to receive(:system).with(Pathname("mas"), "get", "123", verbose: false)
+                                                    .and_return(true)
         expect(described_class.preinstall!("foo", 123)).to be(true)
         expect(described_class.install!("foo", 123)).to be(true)
       end

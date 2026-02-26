@@ -7,11 +7,9 @@ RSpec.describe Language::Python::Virtualenv, :needs_python do
   describe "#virtualenv_install_with_resources" do
     let(:venv) { instance_double(Language::Python::Virtualenv::Virtualenv) }
     let(:f) do
+      virtualenv_module = described_class
       formula "foo" do
-        # Couldn't find a way to get described_class to work inside formula do
-        # rubocop:disable RSpec/DescribedClass
-        include Language::Python::Virtualenv
-        # rubocop:enable RSpec/DescribedClass
+        include virtualenv_module
 
         url "https://brew.sh/foo-1.0.tgz"
 

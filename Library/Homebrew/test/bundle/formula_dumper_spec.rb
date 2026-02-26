@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "ostruct"
 require "bundle"
 require "bundle/formula_dumper"
 require "tsort"
@@ -8,8 +7,6 @@ require "formula"
 require "tab"
 require "utils/bottles"
 
-# TODO: remove OpenStruct usage
-# rubocop:todo Style/OpenStructUse
 RSpec.describe Homebrew::Bundle::FormulaDumper do
   subject(:dumper) { described_class }
 
@@ -29,8 +26,8 @@ RSpec.describe Homebrew::Bundle::FormulaDumper do
                     keg_only?:              true,
                     pinned?:                false,
                     outdated?:              false,
-                    stable:                 OpenStruct.new(bottle_defined?: false, bottled?: false),
-                    tap:                    OpenStruct.new(official?: false))
+                    stable:                 instance_double(SoftwareSpec, bottle_defined?: false, bottled?: false),
+                    tap:                    instance_double(Tap, official?: false))
   end
   let(:foo_hash) do
     {
@@ -74,8 +71,8 @@ RSpec.describe Homebrew::Bundle::FormulaDumper do
                     pinned?:                true,
                     outdated?:              true,
                     linked_keg:,
-                    stable:                 OpenStruct.new(bottle_defined?: true, bottled?: true),
-                    tap:                    OpenStruct.new(official?: true),
+                    stable:                 instance_double(SoftwareSpec, bottle_defined?: true, bottled?: true),
+                    tap:                    instance_double(Tap, official?: true),
                     bottle_hash:            {
                       cellar: ":any",
                       files:  {
@@ -126,16 +123,16 @@ RSpec.describe Homebrew::Bundle::FormulaDumper do
                     full_name:              "bazzles/bizzles/baz",
                     any_version_installed?: true,
                     aliases:                [],
-                    runtime_dependencies:   [OpenStruct.new(name: "bar")],
-                    deps:                   [OpenStruct.new(name: "bar", build?: true)],
+                    runtime_dependencies:   [instance_double(Dependency, name: "bar")],
+                    deps:                   [instance_double(Dependency, name: "bar", build?: true)],
                     conflicts:              [],
                     any_installed_prefix:   nil,
                     linked?:                false,
                     keg_only?:              false,
                     pinned?:                false,
                     outdated?:              false,
-                    stable:                 OpenStruct.new(bottle_defined?: false, bottled?: false),
-                    tap:                    OpenStruct.new(official?: false))
+                    stable:                 instance_double(SoftwareSpec, bottle_defined?: false, bottled?: false),
+                    tap:                    instance_double(Tap, official?: false))
   end
   let(:baz_hash) do
     {
@@ -198,7 +195,7 @@ RSpec.describe Homebrew::Bundle::FormulaDumper do
 
     it "returns an array for all formulae" do
       expect(Formula).to receive(:installed).and_return([foo, bar, baz])
-      expect(bar.linked_keg).to receive(:realpath).and_return(OpenStruct.new(basename: "1.0"))
+      expect(bar.linked_keg).to receive(:realpath).and_return(instance_double(Pathname, basename: "1.0"))
       expect(Tab).to receive(:for_keg).with(bar.linked_keg).and_return(
         instance_double(Tab,
                         installed_as_dependency: false,
@@ -265,4 +262,3 @@ RSpec.describe Homebrew::Bundle::FormulaDumper do
     end
   end
 end
-# rubocop:enable Style/OpenStructUse

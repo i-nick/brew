@@ -159,12 +159,12 @@ module Homebrew
 
           if !args.cask? && HOMEBREW_CELLAR.exist? && HOMEBREW_CELLAR.children.any?
             ohai "Formulae" if $stdout.tty? && !args.formula?
-            safe_system "ls", *ls_args, HOMEBREW_CELLAR
+            system_command! "ls", args: [*ls_args, HOMEBREW_CELLAR], print_stdout: true
             puts if $stdout.tty? && !args.formula?
           end
           if !args.formula? && Cask::Caskroom.any_casks_installed?
             ohai "Casks" if $stdout.tty? && !args.cask?
-            safe_system "ls", *ls_args, Cask::Caskroom.path
+            system_command! "ls", args: [*ls_args, Cask::Caskroom.path], print_stdout: true
           end
         else
           kegs, casks = args.named.to_kegs_to_casks

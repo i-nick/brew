@@ -41,9 +41,14 @@ RSpec.describe Homebrew::Bundle do
   end
 
   context "when checking for mas", :needs_macos do
+    before do
+      described_class.instance_variable_set(:@mas_installed, nil)
+      described_class.instance_variable_set(:@which_mas, nil)
+    end
+
     it "finds it when present" do
-      stub_formula_loader formula("mas") { url "mas-1.0" }
-      allow(described_class).to receive(:which).and_return(true)
+      allow(described_class).to receive(:which).with("mas",
+                                                     ORIGINAL_PATHS).and_return(Pathname("/opt/homebrew/bin/mas"))
       expect(described_class.mas_installed?).to be(true)
     end
   end

@@ -523,10 +523,26 @@ RSpec.describe Cask::Audit, :cask do
       end
     end
 
-    describe "livecheck should be skipped", :no_api do
+    describe "livecheck version validation", :no_api do
       let(:only) { ["livecheck_version"] }
       let(:online) { true }
       let(:message) { /Version '[^']*' differs from '[^']*' retrieved by livecheck\./ }
+
+      context "when `@livecheck_result` is already set" do
+        let(:cask_token) { "basic-cask" }
+
+        it "returns existing `@livecheck_result` value" do
+          audit.instance_variable_set(:@livecheck_result, :auto_detected)
+          expect(run).not_to error_with(message)
+          audit.instance_variable_set(:@livecheck_result, nil)
+        end
+      end
+
+      context "when `cask.version` is not set" do
+        let(:cask_token) { "missing-version" }
+
+        it { is_expected.not_to error_with(message) }
+      end
 
       context "when the Cask has a `livecheck` block using skip" do
         let(:cask_token) { "livecheck-skip" }
@@ -586,6 +602,50 @@ RSpec.describe Cask::Audit, :cask do
         let(:cask_token) { "livecheck-url-unversioned-reference" }
 
         it { is_expected.not_to error_with(message) }
+      end
+
+      context "when `latest_version` returns `nil`" do
+        let(:cask_token) { "basic-cask" }
+
+        it do
+          allow(Homebrew::Livecheck).to receive(:latest_version).and_return(nil)
+          expect(run).to error_with(message)
+        end
+      end
+
+      context "when the Cask is not throttled" do
+        let(:cask_token) { "basic-cask" }
+
+        it do
+          allow(Homebrew::Livecheck).to receive(:latest_version).and_return({
+            latest: Version.new("1.2.3"),
+          })
+          expect(run).not_to error_with(message)
+        end
+      end
+
+      context "when the Cask has a `livecheck` block using `throttle`" do
+        let(:cask_token) { "livecheck-throttle" }
+
+        it do
+          allow(Homebrew::Livecheck).to receive(:latest_version).and_return({
+            latest:           Version.new("1.2.6"),
+            latest_throttled: Version.new("1.2.5"),
+          })
+          expect(run).not_to error_with(message)
+        end
+      end
+
+      context "when the Cask has a `livecheck` block referencing a Cask that uses `throttle`" do
+        let(:cask_token) { "livecheck-throttle-reference" }
+
+        it do
+          allow(Homebrew::Livecheck).to receive(:latest_version).and_return({
+            latest:           Version.new("1.2.6"),
+            latest_throttled: Version.new("1.2.5"),
+          })
+          expect(run).not_to error_with(message)
+        end
       end
     end
 

@@ -116,7 +116,23 @@ module Homebrew
 
       sig { override.void }
       def run
-        formulae, casks = args.named.to_resolved_formulae_to_casks
+        formulae = T.let([], T::Array[Formula])
+        casks = T.let([], T::Array[Cask::Cask])
+        unavailable_errors = T.let(
+          [],
+          T::Array[T.any(FormulaOrCaskUnavailableError, NoSuchKegError)],
+        )
+
+        args.named.to_formulae_and_casks_and_unavailable(method: :resolve).each do |item|
+          case item
+          when FormulaOrCaskUnavailableError, NoSuchKegError
+            unavailable_errors << item
+          when Formula
+            formulae << item
+          when Cask::Cask
+            casks << item
+          end
+        end
 
         if args.build_from_source?
           unless DevelopmentTools.installed?
@@ -204,17 +220,23 @@ module Homebrew
 
         if casks.any?
           Install.ask_casks casks if args.ask?
-          Cask::Reinstall.reinstall_casks(
-            *casks,
-            binaries:       args.binaries?,
-            verbose:        args.verbose?,
-            force:          args.force?,
-            require_sha:    args.require_sha?,
-            skip_cask_deps: args.skip_cask_deps?,
-            quarantine:     args.quarantine?,
-            zap:            args.zap?,
-          )
+          begin
+            Cask::Reinstall.reinstall_casks(
+              *casks,
+              binaries:       args.binaries?,
+              verbose:        args.verbose?,
+              force:          args.force?,
+              require_sha:    args.require_sha?,
+              skip_cask_deps: args.skip_cask_deps?,
+              quarantine:     args.quarantine?,
+              zap:            args.zap?,
+            )
+          rescue => e
+            ofail e
+          end
         end
+
+        unavailable_errors.each { |e| ofail e }
 
         Cleanup.periodic_clean!
 

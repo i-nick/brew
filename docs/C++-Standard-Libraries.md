@@ -1,5 +1,7 @@
 ---
 last_review_date: "1970-01-01"
+redirect_from:
+  - /C++-Standard-Libraries.md
 ---
 
 # C++ Standard Libraries

@@ -108,18 +108,22 @@ class BottleSpecification
   #  sha256 cellar: :any_skip_relocation, big_sur: "69489ae397e4645..."
   #  sha256 cellar: :any, catalina: "449de5ea35d0e94..."
   # end
-  sig { params(hash: T::Hash[Symbol, T.any(String, Symbol)]).void }
+  sig { params(hash: T::Hash[T.any(Symbol, String), T.any(String, Symbol)]).void }
   def sha256(hash)
     sha256_regex = /^[a-f0-9]{64}$/i
 
     # find new `sha256 big_sur: "69489ae397e4645..."` format
     tag, digest = hash.find do |key, value|
+      # Don't use `odie` in this case. We want to be able to catch this exception
+      # in runtime when getting committed version info in formula auditor
+      raise LegacyDSLError.new(:sha256, hash) if key.is_a?(String) && key.match?(sha256_regex) && value.is_a?(Symbol)
+
       key.is_a?(Symbol) && value.is_a?(String) && value.match?(sha256_regex)
     end
 
     odie "Invalid sha256 hash: #{digest}" if !tag || !digest
 
-    tag = Utils::Bottles::Tag.from_symbol(tag)
+    tag = Utils::Bottles::Tag.from_symbol(T.cast(tag, Symbol))
 
     cellar = hash[:cellar] || tag.default_cellar
 

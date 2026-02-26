@@ -59,7 +59,8 @@ module Utils
             # do nothing
           end
         end
-        formulae - formulae_to_keep
+        names_to_keep = formulae_to_keep.to_set(&:name)
+        formulae.reject { |f| names_to_keep.include?(f.name) }
       end
 
       # Recursive function that returns an array of {Formula} without

@@ -90,7 +90,7 @@ jobs:
 
   issue:
     needs: spdx
-    if: always() && github.event_name == 'schedule'
+    if: always() && github.event_name == 'schedule' && github.repository == 'Homebrew/brew'
     runs-on: ubuntu-slim
     env:
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

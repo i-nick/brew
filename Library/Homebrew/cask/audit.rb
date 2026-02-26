@@ -775,10 +775,15 @@ module Cask
         return @livecheck_result
       end
 
-      latest_version = Homebrew::Livecheck.latest_version(
+      result = Homebrew::Livecheck.latest_version(
         cask,
         referenced_formula_or_cask: referenced_cask,
-      )&.fetch(:latest, nil)
+      )
+      if result
+        throttle = cask.livecheck.throttle
+        throttle ||= referenced_cask.livecheck.throttle if referenced_cask
+        latest_version = throttle ? result[:latest_throttled] : result[:latest]
+      end
 
       if latest_version && (cask.version.to_s == latest_version.to_s)
         @livecheck_result = :auto_detected

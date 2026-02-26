@@ -13,13 +13,24 @@ module Cask
     def self.uninstall_casks(*casks, binaries: false, force: false, verbose: false)
       require "cask/installer"
 
+      caught_exceptions = []
+
       casks.each do |cask|
         odebug "Uninstalling Cask #{cask}"
 
         raise CaskNotInstalledError, cask if !cask.installed? && !force
 
         Installer.new(cask, binaries:, force:, verbose:).uninstall
+      rescue => e
+        caught_exceptions << e
+        next
       end
+
+      return if caught_exceptions.empty?
+
+      raise MultipleCaskErrors, caught_exceptions if caught_exceptions.count > 1
+
+      raise caught_exceptions.fetch(0)
     end
 
     sig { params(casks: ::Cask::Cask, named_args: T::Array[String]).void }

@@ -123,6 +123,7 @@ module Homebrew
           raise UsageError, "No `--version`, `--url` or `--sha256` argument specified!"
         end
 
+        check_throttle(cask, new_version:)
         check_pull_requests(cask, new_version:) unless args.write_only?
 
         replacement_pairs ||= []
@@ -303,6 +304,22 @@ module Homebrew
           end
         end
         replacement_pairs
+      end
+
+      sig { params(cask: Cask::Cask, new_version: BumpVersionParser).void }
+      def check_throttle(cask, new_version:)
+        return unless cask.tap
+
+        throttle_rate = cask.livecheck.throttle
+        return unless throttle_rate
+
+        version = new_version.arm || new_version.general || new_version.intel
+        return unless version.is_a?(Cask::DSL::Version)
+
+        version_patch = version.patch.to_i
+        return if version_patch.modulo(throttle_rate).zero?
+
+        odie "#{cask.token} should only be updated every #{throttle_rate} releases on multiples of #{throttle_rate}"
       end
 
       sig { params(cask: Cask::Cask, new_version: BumpVersionParser).void }

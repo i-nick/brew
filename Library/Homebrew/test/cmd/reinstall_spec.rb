@@ -7,6 +7,22 @@ require "cmd/shared_examples/args_parse"
 RSpec.describe Homebrew::Cmd::Reinstall do
   it_behaves_like "parseable arguments"
 
+  it "reports unavailable names via ofail and continues reinstalling" do
+    error = FormulaOrCaskUnavailableError.new("nonexistent")
+    formula = instance_double(Formula, full_name: "testball", pinned?: false)
+    allow(formula).to receive(:latest_formula).and_return(formula)
+
+    cmd = described_class.new(["testball", "nonexistent"])
+    allow(cmd.args.named).to receive(:to_formulae_and_casks_and_unavailable)
+      .with(method: :resolve)
+      .and_return([formula, error])
+
+    expect { cmd.run }
+      .to output(/nonexistent/).to_stderr
+
+    expect(Homebrew).to have_failed
+  end
+
   it "reinstalls a Formula", :aggregate_failures, :integration_test do
     formula_name = "testball_bottle"
     formula_prefix = HOMEBREW_CELLAR/formula_name/"0.1"

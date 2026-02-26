@@ -128,6 +128,25 @@ module OS
         end
 
         sig { returns(T.nilable(String)) }
+        def check_glibc_next_version
+          return if OS::LINUX_GLIBC_NEXT_CI_VERSION.blank?
+          return if OS::Linux::Glibc.below_ci_version?
+          return if OS::Linux::Glibc.system_version >= OS::LINUX_GLIBC_NEXT_CI_VERSION
+
+          # We want to bypass this check in some tests.
+          return if ENV["HOMEBREW_GLIBC_TESTING"] || ENV["CI"] || ENV["HOMEBREW_TEST_BOT"].present?
+
+          <<~EOS
+            Your system glibc #{OS::Linux::Glibc.system_version} is older than #{OS::LINUX_GLIBC_NEXT_CI_VERSION}.
+            An upcoming brew release will automatically install a newer version.
+
+            We recommend updating to a newer version via your distribution's
+            package manager, upgrading your distribution to the latest version,
+            or changing distributions.
+          EOS
+        end
+
+        sig { returns(T.nilable(String)) }
         def check_kernel_minimum_version
           return unless OS::Linux::Kernel.below_minimum_version?
 

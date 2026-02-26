@@ -77,6 +77,15 @@ class FormulaValidationError < StandardError
   end
 end
 
+class LegacyDSLError < StandardError
+  attr_reader :attr
+
+  def initialize(attr, value)
+    @attr = attr
+    super "A legacy DSL was used: #{attr} (#{value.inspect})"
+  end
+end
+
 class FormulaSpecificationError < StandardError; end
 
 # Raised when a deprecated method is used.

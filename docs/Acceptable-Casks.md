@@ -109,6 +109,7 @@ Common reasons to reject a cask entirely:
 * App fails with GateKeeper enabled on Homebrew supported macOS versions and platforms (e.g. unsigned apps will not launch on Apple Silicon Macs).
 * App is too obscure. Examples:
   * An app from a code repository that is not notable enough (under 30 forks, 30 watchers, 75 stars).
+  * For self-submitted casks where the PR author is the owner of the repository, higher thresholds apply (under 90 forks, 90 watchers, 225 stars).
   * [Electronic Identification (eID) software](https://github.com/Homebrew/homebrew-cask/issues/59021).
 * App requires [SIP to be disabled](https://github.com/Homebrew/homebrew-cask/pull/41890) to be installed and/or used.
 * App installer is a `pkg` that requires [`allow_untrusted: true`](Cask-Cookbook.md#pkg-allow_untrusted).

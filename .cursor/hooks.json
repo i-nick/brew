@@ -3,15 +3,15 @@
   "hooks": {
     "afterFileEdit": [
       {
-        "command": "brew style --changed --fix"
+        "command": "./bin/brew style --changed --fix"
       },
       {
-        "command": "brew typecheck"
+        "command": "./bin/brew typecheck"
       }
     ],
     "stop": [
       {
-        "command": "brew tests --changed"
+        "command": "./bin/brew tests --changed"
       }
     ]
   }

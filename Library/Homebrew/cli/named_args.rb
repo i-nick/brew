@@ -141,19 +141,21 @@ module Homebrew
 
       sig {
         params(only: T.nilable(Symbol), method: T.nilable(Symbol))
-          .returns(T::Array[T.any(Formula, Keg, Cask::Cask, T::Array[Keg], FormulaOrCaskUnavailableError)])
+          .returns(T::Array[T.any(Formula, Keg, Cask::Cask, T::Array[Keg],
+                                  FormulaOrCaskUnavailableError, NoSuchKegError)])
       }
       def to_formulae_and_casks_and_unavailable(only: parent.only_formula_or_cask, method: nil)
         @to_formulae_casks_unknowns ||= T.let(
           {},
           T.nilable(T::Hash[
             T.nilable(Symbol),
-            T::Array[T.any(Formula, Keg, Cask::Cask, T::Array[Keg], FormulaOrCaskUnavailableError)],
+            T::Array[T.any(Formula, Keg, Cask::Cask, T::Array[Keg],
+                           FormulaOrCaskUnavailableError, NoSuchKegError)],
           ]),
         )
         @to_formulae_casks_unknowns[method] = downcased_unique_named.map do |name|
           load_formula_or_cask(name, only:, method:)
-        rescue FormulaOrCaskUnavailableError => e
+        rescue FormulaOrCaskUnavailableError, NoSuchKegError => e
           e
         end.uniq.freeze
       end

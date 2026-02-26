@@ -186,6 +186,9 @@ module Homebrew
         <% if @mode == :cabal %>
           depends_on "cabal-install" => :build
           depends_on "ghc" => :build
+          depends_on "gmp"
+
+          uses_from_macos "libffi"
         <% elsif @mode == :cmake %>
           depends_on "cmake" => :build
         <% elsif @mode == :crystal %>

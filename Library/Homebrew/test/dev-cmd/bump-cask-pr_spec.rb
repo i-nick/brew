@@ -2,6 +2,7 @@
 
 require "cmd/shared_examples/args_parse"
 require "dev-cmd/bump-cask-pr"
+require "bump_version_parser"
 
 RSpec.describe Homebrew::DevCmd::BumpCaskPr do
   subject(:bump_cask_pr) { described_class.new(["test"]) }
@@ -136,6 +137,76 @@ RSpec.describe Homebrew::DevCmd::BumpCaskPr do
               [:linux, :intel],
             ])
         end
+      end
+    end
+  end
+
+  describe "::check_throttle" do
+    let(:c_throttle) do
+      Cask::Cask.new("throttle-test") do
+        version "1.2.3"
+
+        url "https://brew.sh/test-#{version}.dmg"
+        name "Test"
+        desc "Test cask"
+        homepage "https://brew.sh"
+
+        livecheck do
+          throttle 5
+        end
+      end
+    end
+    let(:new_version) { Homebrew::BumpVersionParser.new(general: "1.2.5") }
+    let(:throttle_error) { "Error: throttle-test should only be updated every 5 releases on multiples of 5\n" }
+    let(:tap) { Tap.fetch("test", "tap") }
+
+    context "when cask is not in a tap" do
+      it "outputs nothing" do
+        expect { bump_cask_pr.send(:check_throttle, c, new_version:) }.not_to output.to_stderr
+      end
+    end
+
+    context "when a livecheck throttle value isn't present" do
+      it "does not throttle" do
+        allow(c).to receive(:tap).and_return(tap)
+        expect { bump_cask_pr.send(:check_throttle, c, new_version:) }.not_to output.to_stderr
+      end
+    end
+
+    context "when new_version has no version values" do
+      let(:empty_version) do
+        version = new_version.clone
+        version.remove_instance_variable(:@general)
+        version
+      end
+
+      it "does not throttle" do
+        allow(c_throttle).to receive(:tap).and_return(tap)
+        expect do
+          bump_cask_pr.send(:check_throttle, c_throttle, new_version: empty_version)
+        end.not_to output.to_stderr
+      end
+    end
+
+    context "when patch version is a multiple of throttle_rate" do
+      it "does not throttle" do
+        allow(c_throttle).to receive(:tap).and_return(tap)
+        expect do
+          bump_cask_pr.send(:check_throttle, c_throttle, new_version:)
+        end.not_to output.to_stderr
+      end
+    end
+
+    context "when patch version is not a multiple of throttle_rate" do
+      let(:new_version_indivisible) { Homebrew::BumpVersionParser.new(general: "1.2.4") }
+
+      it "throttles version" do
+        allow(c_throttle).to receive(:tap).and_return(tap)
+        expect do
+          bump_cask_pr.send(:check_throttle, c_throttle, new_version: new_version_indivisible)
+        rescue SystemExit
+          next
+        end.to output(throttle_error).to_stderr
       end
     end
   end

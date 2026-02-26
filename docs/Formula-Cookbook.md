@@ -313,7 +313,7 @@ assert_equal "mylist=A:C; export mylist", shell_output("#{bin}/envv del mylist B
 You can also check that an output file was created:
 
 ```ruby
-assert_predicate testpath/"output.txt", :exist?
+assert_path_exists testpath/"output.txt"
 ```
 
 Some advice for specific cases:

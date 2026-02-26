@@ -16,4 +16,20 @@ RSpec.describe Homebrew::Cmd::UninstallCmd do
       .and be_a_success
     expect(HOMEBREW_CELLAR/"testball").not_to exist
   end
+
+  it "catches cask uninstall errors and sets Homebrew.failed" do
+    allow(Cask::Uninstall).to receive(:uninstall_casks).and_raise(Cask::CaskError.new("test cask error"))
+    allow(Cask::Uninstall).to receive(:check_dependent_casks)
+    allow(Homebrew::Uninstall).to receive(:uninstall_kegs)
+    allow(Homebrew::Cleanup).to receive(:autoremove)
+
+    cask = Cask::Cask.new("test-cask")
+    cmd = described_class.new(["test-cask"])
+    allow(cmd.args.named).to receive(:to_formulae_and_casks_and_unavailable).and_return([cask])
+
+    expect { cmd.run }
+      .to output(/test cask error/).to_stderr
+
+    expect(Homebrew).to have_failed
+  end
 end

@@ -41,15 +41,27 @@ module Homebrew
 
       sig { override.void }
       def run
-        all_kegs, casks = args.named.to_kegs_to_casks(
-          ignore_unavailable: args.force?,
-          all_kegs:           args.force?,
-        )
+        method = args.force? ? :kegs : :default_kegs
+        results = args.named.to_formulae_and_casks_and_unavailable(method:)
 
-        # If ignore_unavailable is true and the named args
-        # are a series of invalid kegs and casks,
-        # #to_kegs_to_casks will return empty arrays.
-        return if all_kegs.blank? && casks.blank?
+        unavailable_errors = T.let([], T::Array[T.any(FormulaOrCaskUnavailableError, NoSuchKegError)])
+        all_kegs = T.let([], T::Array[Keg])
+        casks = T.let([], T::Array[Cask::Cask])
+
+        results.each do |item|
+          case item
+          when FormulaOrCaskUnavailableError, NoSuchKegError
+            unavailable_errors << item
+          when Cask::Cask
+            casks << item
+          when Keg
+            all_kegs << item
+          when Array
+            all_kegs += item
+          end
+        end
+
+        return if all_kegs.blank? && casks.blank? && unavailable_errors.blank?
 
         kegs_by_rack = all_kegs.group_by(&:rack)
 
@@ -62,22 +74,38 @@ module Homebrew
         )
 
         Cask::Uninstall.check_dependent_casks(*casks, named_args: args.named) unless args.ignore_dependencies?
+
         return if Homebrew.failed?
 
-        if args.zap?
-          casks.each do |cask|
-            odebug "Zapping Cask #{cask}"
+        begin
+          if args.zap?
+            caught_exceptions = []
 
-            raise Cask::CaskNotInstalledError, cask if !cask.installed? && !args.force?
+            casks.each do |cask|
+              odebug "Zapping Cask #{cask}"
 
-            Cask::Installer.new(cask, verbose: args.verbose?, force: args.force?).zap
+              raise Cask::CaskNotInstalledError, cask if !cask.installed? && !args.force?
+
+              Cask::Installer.new(cask, verbose: args.verbose?, force: args.force?).zap
+            rescue => e
+              caught_exceptions << e
+              next
+            end
+
+            if caught_exceptions.count > 1
+              raise Cask::MultipleCaskErrors, caught_exceptions
+            elsif caught_exceptions.one?
+              raise caught_exceptions.fetch(0)
+            end
+          else
+            Cask::Uninstall.uninstall_casks(
+              *casks,
+              verbose: args.verbose?,
+              force:   args.force?,
+            )
           end
-        else
-          Cask::Uninstall.uninstall_casks(
-            *casks,
-            verbose: args.verbose?,
-            force:   args.force?,
-          )
+        rescue => e
+          ofail e
         end
 
         if ENV["HOMEBREW_AUTOREMOVE"].present?
@@ -85,6 +113,8 @@ module Homebrew
                "Set `HOMEBREW_NO_AUTOREMOVE=1` to disable it."
         end
         Cleanup.autoremove unless Homebrew::EnvConfig.no_autoremove?
+
+        unavailable_errors.each { |e| ofail e } unless args.force?
       end
     end
   end

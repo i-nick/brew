@@ -1218,7 +1218,7 @@ module Homebrew
             origin_head_version_info[:version_scheme] ||= previous_version_info[:version_scheme]
             origin_head_version_info[:compatibility_version] ||= previous_version_info[:compatibility_version]
           end
-        rescue MacOSVersion::Error
+        rescue MacOSVersion::Error, LegacyDSLError
           break
         end
 

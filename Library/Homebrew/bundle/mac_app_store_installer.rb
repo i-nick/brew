@@ -44,14 +44,16 @@ module Homebrew
 
         if app_id_installed?(id)
           puts "Upgrading #{name} app. It is installed but not up-to-date." if verbose
-          return false unless Bundle.system "mas", "upgrade", id.to_s, verbose: verbose
+          mas = T.must(Bundle.which_mas)
+          return false unless Bundle.system mas, "upgrade", id.to_s, verbose: verbose
 
           return true
         end
 
         puts "Installing #{name} app. It is not currently installed." if verbose
 
-        return false unless Bundle.system "mas", "install", id.to_s, verbose: verbose
+        mas = T.must(Bundle.which_mas)
+        return false unless Bundle.system mas, "get", id.to_s, verbose: verbose
 
         installed_app_ids << id
         true
@@ -85,7 +87,8 @@ module Homebrew
       def self.outdated_app_ids
         @outdated_app_ids ||= T.let(
           if Bundle.mas_installed?
-            `mas outdated 2>/dev/null`.split("\n").map do |app|
+            mas = T.must(Bundle.which_mas)
+            `#{mas} outdated 2>/dev/null`.split("\n").map do |app|
               app.split(" ", 2).first.to_i
             end
           else

@@ -605,7 +605,7 @@ module Homebrew
 
       hash[:run] =
         case api_hash["run"]
-        when String
+        when String, Pathname
           replace_placeholders(api_hash["run"])
         when Array
           api_hash["run"].map { replace_placeholders(it) }
@@ -662,9 +662,10 @@ module Homebrew
     end
 
     # Replace API path placeholders with local paths.
-    sig { params(string: String).returns(String) }
+    sig { params(string: T.any(String, Pathname)).returns(String) }
     def self.replace_placeholders(string)
-      string.gsub(HOMEBREW_PREFIX_PLACEHOLDER, HOMEBREW_PREFIX)
+      string.to_s
+            .gsub(HOMEBREW_PREFIX_PLACEHOLDER, HOMEBREW_PREFIX)
             .gsub(HOMEBREW_CELLAR_PLACEHOLDER, HOMEBREW_CELLAR)
             .gsub(HOMEBREW_HOME_PLACEHOLDER, Dir.home)
     end

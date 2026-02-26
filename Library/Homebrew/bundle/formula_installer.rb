@@ -242,7 +242,7 @@ module Homebrew
       end
 
       def upgradable?
-        FormulaInstaller.formula_upgradable?(@name)
+        FormulaInstaller.formula_upgradable?(@full_name)
       end
 
       def conflicts_with

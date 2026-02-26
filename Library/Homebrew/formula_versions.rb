@@ -12,7 +12,7 @@ class FormulaVersions
   include Utils::Output::Mixin
 
   IGNORED_EXCEPTIONS = [
-    ArgumentError, NameError, SyntaxError, TypeError,
+    ArgumentError, NameError, SyntaxError, TypeError, LegacyDSLError,
     FormulaSpecificationError, FormulaValidationError,
     ErrorDuringExecution, LoadError, MethodDeprecatedError
   ].freeze
