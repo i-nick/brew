@@ -1,0 +1,9 @@
+[package]
+name = "brew_core"
+version = "0.2.1"
+edition = "2024"
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

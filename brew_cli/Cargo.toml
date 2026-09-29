@@ -1,0 +1,30 @@
+[package]
+name = "brew_cli"
+version = "0.2.1"
+edition = "2024"
+rust-version.workspace = true
+
+
+[dependencies]
+clap = { workspace = true, features = ["derive"] }
+clap_complete = { workspace = true, features = ["unstable-dynamic"] }
+tokio = { workspace = true, features = ["full"] }
+indicatif.workspace = true
+console.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+libc.workspace = true
+brew_core = { path = "../brew_core" }
+brew_io = { path = "../brew_io" }
+chrono = "0.4.45"
+
+[dev-dependencies]
+tempfile.workspace = true
+wiremock.workspace = true
+tar.workspace = true
+flate2.workspace = true
+sha2.workspace = true
+hex.workspace = true
+walkdir.workspace = true

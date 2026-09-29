@@ -1,0 +1,756 @@
+use brew_core::Error;
+use std::fs;
+use std::path::{Path, PathBuf};
+use tracing::warn;
+
+const HOMEBREW_PREFIXES: &[&str] = &[
+    "/opt/homebrew",
+    "/usr/local/Homebrew",
+    "/usr/local",
+    "/home/linuxbrew/.linuxbrew",
+];
+
+/// Check whether a file starts with a Mach-O (or universal binary) magic
+/// number, reading only the first four bytes.
+fn is_macho_file(path: &Path) -> bool {
+    let mut file = match fs::File::open(path) {
+        Ok(f) => f,
+        Err(_) => return false,
+    };
+    let mut magic_bytes = [0u8; 4];
+    if std::io::Read::read_exact(&mut file, &mut magic_bytes).is_err() {
+        return false;
+    }
+    let magic = u32::from_be_bytes(magic_bytes);
+    matches!(
+        magic,
+        0xfeedface | 0xfeedfacf | 0xcafebabe | 0xcefaedfe | 0xcffaedfe
+    )
+}
+
+/// Patch hardcoded Homebrew paths in text files.
+fn patch_text_file_strings(path: &Path, new_prefix: &str, new_cellar: &str) -> Result<(), Error> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mut file = match fs::File::open(path) {
+        Ok(f) => f,
+        Err(_) => return Ok(()),
+    };
+
+    let mut buf = [0u8; 8192];
+    let n = match std::io::Read::read(&mut file, &mut buf) {
+        Ok(n) => n,
+        Err(_) => return Ok(()),
+    };
+
+    if buf[..n].contains(&0) {
+        return Ok(());
+    }
+
+    let content = match fs::read_to_string(path) {
+        Ok(c) => c,
+        Err(_) => return Ok(()),
+    };
+
+    if !content.contains("@@HOMEBREW_")
+        && !content.contains("/opt/homebrew")
+        && !content.contains("/usr/local")
+        && !content.contains("/home/linuxbrew")
+    {
+        return Ok(());
+    }
+
+    let mut new_content = content.clone();
+    let mut changed = false;
+
+    new_content = new_content
+        .replace("@@HOMEBREW_PREFIX@@", new_prefix)
+        .replace("@@HOMEBREW_CELLAR@@", new_cellar)
+        .replace("@@HOMEBREW_REPOSITORY@@", new_prefix)
+        .replace("@@HOMEBREW_LIBRARY@@", &format!("{}/Library", new_prefix))
+        .replace("@@HOMEBREW_PERL@@", "/usr/bin/perl")
+        .replace("@@HOMEBREW_JAVA@@", "/usr/bin/java");
+
+    if new_content != content {
+        changed = true;
+    }
+
+    for old_prefix in HOMEBREW_PREFIXES {
+        if old_prefix == &new_prefix {
+            continue;
+        }
+        let replaced = new_content.replace(old_prefix, new_prefix);
+        if replaced != new_content {
+            new_content = replaced;
+            changed = true;
+        }
+    }
+
+    if !changed {
+        return Ok(());
+    }
+
+    let metadata = fs::metadata(path).map_err(Error::store("failed to read metadata"))?;
+    let original_mode = metadata.permissions().mode();
+    let is_readonly = original_mode & 0o200 == 0;
+
+    if is_readonly {
+        let mut perms = metadata.permissions();
+        perms.set_mode(original_mode | 0o200);
+        fs::set_permissions(path, perms).map_err(Error::store("failed to make writable"))?;
+    }
+
+    fs::write(path, new_content).map_err(Error::store("failed to write file"))?;
+
+    if is_readonly {
+        let mut perms = metadata.permissions();
+        perms.set_mode(original_mode);
+        fs::set_permissions(path, perms).map_err(Error::store("failed to restore permissions"))?;
+    }
+
+    Ok(())
+}
+
+/// Patch hardcoded Homebrew paths in Mach-O binary data sections.
+/// This handles paths like /opt/homebrew/opt/git/libexec/git-core that are baked into binaries.
+fn patch_macho_binary_strings(path: &Path, new_prefix: &str) -> Result<(), Error> {
+    use std::io::{Read as _, Write as _};
+    use std::os::unix::fs::PermissionsExt;
+
+    let metadata = fs::metadata(path).map_err(Error::store("failed to read metadata"))?;
+    let original_mode = metadata.permissions().mode();
+    let is_readonly = original_mode & 0o200 == 0;
+
+    if is_readonly {
+        let mut perms = metadata.permissions();
+        perms.set_mode(original_mode | 0o200);
+        fs::set_permissions(path, perms).map_err(Error::store("failed to make writable"))?;
+    }
+
+    let mut file = fs::File::open(path).map_err(Error::store("failed to open file"))?;
+    let mut contents = Vec::new();
+    file.read_to_end(&mut contents)
+        .map_err(Error::store("failed to read file"))?;
+    drop(file);
+
+    let original_contents = contents.clone();
+    let mut patched = false;
+
+    for old_prefix in HOMEBREW_PREFIXES {
+        if old_prefix == &new_prefix {
+            continue;
+        }
+
+        let old_bytes = old_prefix.as_bytes();
+        let new_bytes = new_prefix.as_bytes();
+
+        if new_bytes.len() > old_bytes.len() {
+            // Cannot expand shorter paths in-place in Mach-O binaries.
+            // Skip this prefix — the install_name_tool pass handles load
+            // command changes regardless of length, and many binaries
+            // legitimately reference shorter prefixes like /usr/local for
+            // system libraries (not Homebrew paths).
+            //
+            // See: https://github.com/i-nick/brew/issues/286
+            let has_old_paths = contains_homebrew_owned_path(&contents, old_prefix);
+            if has_old_paths {
+                warn!(
+                    path = %path.display(),
+                    old_prefix = %old_prefix,
+                    new_prefix = %new_prefix,
+                    "binary contains hardcoded paths under {old_prefix} that \
+                    could not be rewritten to {new_prefix} (new path is longer). \
+                    this package may not work correctly
+                    tracking issue: https://github.com/i-nick/brew/issues/286
+                    ",
+                );
+            }
+            continue;
+        }
+
+        let mut i = 0;
+        while i + old_bytes.len() <= contents.len() {
+            if contents[i..i + old_bytes.len()] == *old_bytes
+                && matches!(
+                    contents.get(i + old_bytes.len()).copied(),
+                    None | Some(0) | Some(b'/')
+                )
+            {
+                contents[i..i + new_bytes.len()].copy_from_slice(new_bytes);
+                contents[i + new_bytes.len()..i + old_bytes.len()].fill(0);
+                patched = true;
+            }
+            i += 1;
+        }
+    }
+
+    if patched && contents != original_contents {
+        let parent = path.parent().unwrap_or_else(|| Path::new("."));
+        let mut temp_file = tempfile::NamedTempFile::new_in(parent)
+            .map_err(Error::store("failed to create temp file"))?;
+        temp_file
+            .write_all(&contents)
+            .map_err(Error::store("failed to write temp file"))?;
+        temp_file
+            .persist(path)
+            .map_err(|err| Error::StoreCorruption {
+                message: format!("failed to rename temp file: {}", err.error),
+            })?;
+
+        // Restore original permissions — fs::File::create uses 0644 by default,
+        // which drops the execute bit from patched binaries.
+        fs::set_permissions(path, metadata.permissions())
+            .map_err(Error::store("failed to restore permissions after patching"))?;
+
+        match std::process::Command::new("codesign")
+            .args(["--force", "--sign", "-", &path.to_string_lossy()])
+            .output()
+        {
+            Ok(output) if !output.status.success() => {
+                warn!(
+                    path = %path.display(),
+                    error = %String::from_utf8_lossy(&output.stderr),
+                    "failed to re-sign patched file"
+                );
+            }
+            Err(e) => {
+                warn!(
+                    path = %path.display(),
+                    error = %e,
+                    "failed to execute codesign for patched file"
+                );
+            }
+            _ => {}
+        }
+    }
+
+    if is_readonly {
+        let mut perms = metadata.permissions();
+        perms.set_mode(original_mode);
+        let _ = fs::set_permissions(path, perms);
+    }
+
+    Ok(())
+}
+
+fn contains_homebrew_owned_path(contents: &[u8], old_prefix: &str) -> bool {
+    let old_bytes = old_prefix.as_bytes();
+    let owned_segments: &[&[u8]] = if old_prefix == "/usr/local" {
+        &[b"/Cellar", b"/opt", b"/Homebrew"]
+    } else {
+        &[
+            b"/Cellar",
+            b"/opt",
+            b"/Homebrew",
+            b"/bin",
+            b"/lib",
+            b"/include",
+        ]
+    };
+
+    let mut i = 0;
+    while i + old_bytes.len() <= contents.len() {
+        if contents[i..i + old_bytes.len()] == *old_bytes {
+            let suffix = &contents[i + old_bytes.len()..];
+            if owned_segments
+                .iter()
+                .any(|segment| suffix.starts_with(segment))
+            {
+                return true;
+            }
+        }
+        i += 1;
+    }
+
+    false
+}
+
+/// Patch @@HOMEBREW_CELLAR@@ and @@HOMEBREW_PREFIX@@ placeholders in Mach-O binaries.
+/// Also fixes version mismatches where a bottle references a different version of itself.
+/// Additionally patches hardcoded Homebrew paths in binary data sections and text files.
+/// Uses rayon for parallel processing.
+pub fn patch_homebrew_placeholders(
+    keg_path: &Path,
+    cellar_dir: &Path,
+    pkg_name: &str,
+    pkg_version: &str,
+) -> Result<(), Error> {
+    use rayon::prelude::*;
+    use regex::Regex;
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    // Derive prefix from cellar (cellar_dir is typically prefix/Cellar)
+    let prefix = cellar_dir.parent().unwrap_or(Path::new("/opt/homebrew"));
+
+    let cellar_str = cellar_dir.to_string_lossy().to_string();
+    let prefix_str = prefix.to_string_lossy().to_string();
+
+    let version_pattern = format!(r"(/Cellar/{}/)([^/]+)(/)", regex::escape(pkg_name));
+    let version_regex = Regex::new(&version_pattern).ok();
+
+    // Walk the keg once (skip symlinks to avoid double-processing) and
+    // classify files by their magic bytes.
+    let all_files: Vec<PathBuf> = walkdir::WalkDir::new(keg_path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .map(|e| e.path().to_path_buf())
+        .collect();
+
+    let macho_files: Vec<PathBuf> = all_files
+        .iter()
+        .filter(|path| is_macho_file(path))
+        .cloned()
+        .collect();
+
+    let patch_failures = AtomicUsize::new(0);
+    let first_patch_error: Arc<Mutex<Option<Error>>> = Arc::new(Mutex::new(None));
+
+    // First pass: patch binary strings in Mach-O files
+    macho_files.par_iter().for_each(|path| {
+        if let Err(e) = patch_macho_binary_strings(path, &prefix_str) {
+            patch_failures.fetch_add(1, Ordering::Relaxed);
+            if let Ok(mut guard) = first_patch_error.lock()
+                && guard.is_none()
+            {
+                *guard = Some(e);
+            }
+        }
+    });
+
+    if let Ok(mut guard) = first_patch_error.lock()
+        && let Some(e) = guard.take()
+    {
+        return Err(e);
+    }
+
+    // Second pass: patch text files
+    all_files.par_iter().for_each(|path| {
+        let _ = patch_text_file_strings(path, &prefix_str, &cellar_str);
+    });
+
+    // Helper to patch a single path reference
+    let patch_path = |old_path: &str| -> Option<String> {
+        let mut new_path = old_path.to_string();
+        let mut changed = false;
+
+        // Replace Homebrew placeholders
+        if old_path.contains("@@HOMEBREW_CELLAR@@") || old_path.contains("@@HOMEBREW_PREFIX@@") {
+            new_path = new_path
+                .replace("@@HOMEBREW_CELLAR@@", &cellar_str)
+                .replace("@@HOMEBREW_PREFIX@@", &prefix_str);
+            changed = true;
+        }
+
+        // Fix version mismatches for this package
+        if let Some(re) = &version_regex
+            && re.is_match(&new_path)
+        {
+            let replacement = format!("/Cellar/{}/{}/", pkg_name, pkg_version);
+            let fixed = re.replace(&new_path, |caps: &regex::Captures| {
+                let matched_version = &caps[2];
+                if matched_version != pkg_version {
+                    replacement.clone()
+                } else {
+                    caps[0].to_string()
+                }
+            });
+            if fixed != new_path {
+                new_path = fixed.to_string();
+                changed = true;
+            }
+        }
+
+        if changed && new_path != old_path {
+            Some(new_path)
+        } else {
+            None
+        }
+    };
+
+    // Third pass: Process Mach-O files for install_name_tool patching
+    macho_files.par_iter().for_each(|path| {
+        // Get file permissions and make writable if needed
+        let metadata = match fs::metadata(path) {
+            Ok(m) => m,
+            Err(_) => return,
+        };
+        let original_mode = metadata.permissions().mode();
+        let is_readonly = original_mode & 0o200 == 0;
+
+        // Make writable for patching
+        if is_readonly {
+            let mut perms = metadata.permissions();
+            perms.set_mode(original_mode | 0o200);
+            if fs::set_permissions(path, perms).is_err() {
+                patch_failures.fetch_add(1, Ordering::Relaxed);
+                return;
+            }
+        }
+
+        // Collect all load command edits so install_name_tool runs at most
+        // once per file instead of once per dependency.
+        let mut tool_args: Vec<String> = Vec::new();
+
+        // Library dependencies (-L); the first line is the file name itself.
+        if let Ok(output) = Command::new("otool")
+            .args(["-L", &path.to_string_lossy()])
+            .output()
+            && output.status.success()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines().skip(1) {
+                if let Some(old_path) = line.split_whitespace().next()
+                    && let Some(new_path) = patch_path(old_path)
+                {
+                    tool_args.push("-change".to_string());
+                    tool_args.push(old_path.to_string());
+                    tool_args.push(new_path);
+                }
+            }
+        }
+
+        // Install name ID (-D); the first line is the file name itself.
+        if let Ok(output) = Command::new("otool")
+            .args(["-D", &path.to_string_lossy()])
+            .output()
+            && output.status.success()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines().skip(1) {
+                let line = line.trim();
+                if line.is_empty() {
+                    continue;
+                }
+                if let Some(new_id) = patch_path(line) {
+                    tool_args.push("-id".to_string());
+                    tool_args.push(new_id);
+                }
+            }
+        }
+
+        if !tool_args.is_empty() {
+            let patched = match Command::new("install_name_tool")
+                .args(&tool_args)
+                .arg(path)
+                .output()
+            {
+                Ok(output) if output.status.success() => true,
+                Ok(output) => {
+                    warn!(
+                        path = %path.display(),
+                        error = %String::from_utf8_lossy(&output.stderr),
+                        "install_name_tool failed to patch load commands"
+                    );
+                    patch_failures.fetch_add(1, Ordering::Relaxed);
+                    false
+                }
+                Err(e) => {
+                    warn!(path = %path.display(), error = %e, "failed to run install_name_tool");
+                    patch_failures.fetch_add(1, Ordering::Relaxed);
+                    false
+                }
+            };
+
+            // Re-sign if we patched anything (patching invalidates code signature)
+            if patched {
+                let _ = Command::new("codesign")
+                    .args(["--force", "--sign", "-", &path.to_string_lossy()])
+                    .output();
+            }
+        }
+
+        // Restore original permissions
+        if is_readonly {
+            let mut perms = metadata.permissions();
+            perms.set_mode(original_mode);
+            let _ = fs::set_permissions(path, perms);
+        }
+    });
+
+    let failures = patch_failures.load(Ordering::Relaxed);
+    if failures > 0 {
+        return Err(Error::StoreCorruption {
+            message: format!(
+                "failed to patch {} Mach-O files in {}",
+                failures,
+                keg_path.display()
+            ),
+        });
+    }
+
+    Ok(())
+}
+
+/// Strip quarantine extended attributes and ad-hoc sign unsigned Mach-O binaries.
+/// Homebrew bottles from ghcr.io are already adhoc signed, so this is mostly a no-op.
+/// We use a fast heuristic: only process binaries that fail signature verification.
+pub fn codesign_and_strip_xattrs(keg_path: &Path) -> Result<(), Error> {
+    use rayon::prelude::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Command;
+
+    // First, do a quick recursive xattr strip (single command, very fast)
+    let _ = Command::new("xattr")
+        .args(["-rd", "com.apple.quarantine", &keg_path.to_string_lossy()])
+        .stderr(std::process::Stdio::null())
+        .output();
+    let _ = Command::new("xattr")
+        .args(["-rd", "com.apple.provenance", &keg_path.to_string_lossy()])
+        .stderr(std::process::Stdio::null())
+        .output();
+
+    // Find executables in bin/ directories only (where signing matters)
+    // Skip dylibs and other Mach-O files - they inherit signing from their loader
+    let bin_files: Vec<PathBuf> = walkdir::WalkDir::new(keg_path)
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            let path = e.path();
+            path.is_file() && path.to_string_lossy().contains("/bin/")
+        })
+        .map(|e| e.path().to_path_buf())
+        .collect();
+
+    // Only process files that need signing
+    bin_files.par_iter().for_each(|path| {
+        if !is_macho_file(path) {
+            return;
+        }
+
+        // Verify signature - if valid, skip
+        let verify = Command::new("codesign")
+            .args(["-v", &path.to_string_lossy()])
+            .stderr(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .status();
+
+        if verify.map(|s| s.success()).unwrap_or(false) {
+            return; // Already signed
+        }
+
+        // Get permissions and make writable
+        let metadata = match fs::metadata(path) {
+            Ok(m) => m,
+            Err(_) => return,
+        };
+        let original_mode = metadata.permissions().mode();
+        let is_readonly = original_mode & 0o200 == 0;
+
+        if is_readonly {
+            let mut perms = metadata.permissions();
+            perms.set_mode(original_mode | 0o200);
+            let _ = fs::set_permissions(path, perms);
+        }
+
+        // Sign the binary
+        let _ = Command::new("codesign")
+            .args(["--force", "--sign", "-", &path.to_string_lossy()])
+            .output();
+
+        // Restore permissions
+        if is_readonly {
+            let mut perms = metadata.permissions();
+            perms.set_mode(original_mode);
+            let _ = fs::set_permissions(path, perms);
+        }
+    });
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::os::unix::fs::PermissionsExt;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_patch_macho_preserves_execute_bit() {
+        let tmp = TempDir::new().unwrap();
+        let test_file = tmp.path().join("test_binary");
+
+        let old_prefix = "/home/linuxbrew/.linuxbrew";
+        let new_prefix = "/opt/brew/prefix";
+
+        let mut contents = Vec::new();
+        contents.extend_from_slice(b"\xfe\xed\xfa\xcf");
+        contents.extend_from_slice(old_prefix.as_bytes());
+        contents.extend_from_slice(b"/bin/hello\0");
+
+        fs::write(&test_file, &contents).unwrap();
+
+        // Set executable permissions (0755)
+        let mut perms = fs::metadata(&test_file).unwrap().permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&test_file, perms).unwrap();
+
+        patch_macho_binary_strings(&test_file, new_prefix).unwrap();
+
+        let mode = fs::metadata(&test_file).unwrap().permissions().mode();
+        assert!(
+            mode & 0o111 != 0,
+            "execute bit lost after patching: mode = {:#o}",
+            mode
+        );
+    }
+
+    #[test]
+    fn test_patch_macho_binary_strings() {
+        let tmp = TempDir::new().unwrap();
+        let test_file = tmp.path().join("test_binary");
+
+        let old_prefix = "/home/linuxbrew/.linuxbrew";
+        let new_prefix = "/opt/brew/prefix";
+
+        let mut contents = Vec::new();
+        contents.extend_from_slice(b"\xfe\xed\xfa\xcf");
+        contents.extend_from_slice(b"some random data\0");
+        contents.extend_from_slice(old_prefix.as_bytes());
+        contents.extend_from_slice(b"/opt/git/libexec/git-core\0");
+        contents.extend_from_slice(b"more data\0");
+        contents.extend_from_slice(old_prefix.as_bytes());
+        contents.extend_from_slice(b"/lib/libfoo.dylib\0");
+        contents.extend_from_slice(b"end\0");
+
+        fs::write(&test_file, &contents).unwrap();
+
+        let result = patch_macho_binary_strings(&test_file, new_prefix);
+        assert!(result.is_ok());
+
+        let patched = fs::read(&test_file).unwrap();
+        let patched_str = String::from_utf8_lossy(&patched);
+
+        assert!(patched_str.contains(new_prefix));
+        assert!(!patched_str.contains(old_prefix));
+    }
+
+    #[test]
+    fn test_patch_macho_skips_when_new_prefix_longer() {
+        let tmp = TempDir::new().unwrap();
+        let test_file = tmp.path().join("test_binary");
+
+        let old_prefix = "/opt/homebrew";
+        let new_prefix = "/opt/brew/prefix";
+
+        let mut contents = Vec::new();
+        contents.extend_from_slice(b"\xfe\xed\xfa\xcf");
+        contents.extend_from_slice(b"some random data\0");
+        contents.extend_from_slice(old_prefix.as_bytes());
+        contents.extend_from_slice(b"/opt/git/libexec/git-core\0");
+        contents.extend_from_slice(b"more data\0");
+
+        let original = contents.clone();
+        fs::write(&test_file, &contents).unwrap();
+
+        // Should succeed (skip) rather than error when the new prefix is
+        // longer than the old one — install_name_tool handles load command
+        // changes regardless of length.
+        let result = patch_macho_binary_strings(&test_file, new_prefix);
+        assert!(
+            result.is_ok(),
+            "should skip when new prefix is longer than old prefix"
+        );
+
+        let unchanged = fs::read(&test_file).unwrap();
+        assert_eq!(
+            unchanged, original,
+            "binary must be unchanged when prefix cannot be expanded in-place"
+        );
+    }
+
+    #[test]
+    fn hardcoded_path_warning_ignores_plain_usr_local_lib() {
+        assert!(!contains_homebrew_owned_path(
+            b"DYLD_FALLBACK_LIBRARY_PATH\0/usr/local/lib\0",
+            "/usr/local"
+        ));
+        assert!(contains_homebrew_owned_path(
+            b"/usr/local/Cellar/foo/1.0/bin/foo\0",
+            "/usr/local"
+        ));
+        assert!(contains_homebrew_owned_path(
+            b"/usr/local/opt/foo/lib/libfoo.dylib\0",
+            "/usr/local"
+        ));
+    }
+
+    #[test]
+    fn test_version_regex_only_matches_cellar_paths() {
+        use regex::Regex;
+
+        let pkg_name = "mpdecimal";
+        let pkg_version = "4.0.1";
+        let pattern = format!(r"(/Cellar/{}/)([^/]+)(/)", regex::escape(pkg_name));
+        let re = Regex::new(&pattern).expect("version regex should compile");
+
+        let cellar_path = "/opt/brew/Cellar/mpdecimal/3.9.0/lib/libmpdec.4.dylib";
+        assert!(re.is_match(cellar_path));
+
+        let replacement = format!("/Cellar/{}/{}/", pkg_name, pkg_version);
+        let fixed = re.replace(cellar_path, |caps: &regex::Captures| {
+            let matched_version = &caps[2];
+            if matched_version != pkg_version {
+                replacement.clone()
+            } else {
+                caps[0].to_string()
+            }
+        });
+        assert_eq!(
+            fixed,
+            "/opt/brew/Cellar/mpdecimal/4.0.1/lib/libmpdec.4.dylib"
+        );
+
+        let opt_path = "/opt/brew/opt/mpdecimal/lib/libmpdec.4.dylib";
+        assert!(!re.is_match(opt_path));
+
+        let cellar_same_version = "/opt/brew/Cellar/mpdecimal/4.0.1/lib/libmpdec.4.dylib";
+        let unchanged = re.replace(cellar_same_version, |caps: &regex::Captures| {
+            let matched_version = &caps[2];
+            if matched_version != pkg_version {
+                replacement.clone()
+            } else {
+                caps[0].to_string()
+            }
+        });
+        assert_eq!(unchanged, cellar_same_version);
+    }
+
+    #[test]
+    fn test_patch_text_file_strings() {
+        let tmp = TempDir::new().unwrap();
+        let test_file = tmp.path().join("test_script.sh");
+
+        let content = r#"#!/bin/bash
+export GIT_EXEC_PATH=/opt/homebrew/opt/git/libexec/git-core
+export PREFIX=@@HOMEBREW_PREFIX@@
+export CELLAR=@@HOMEBREW_CELLAR@@
+export LIBRARY=@@HOMEBREW_LIBRARY@@
+export PERL=@@HOMEBREW_PERL@@
+echo "Hello from $PREFIX"
+"#;
+
+        fs::write(&test_file, content).unwrap();
+
+        let new_prefix = "/opt/brew/prefix";
+        let new_cellar = format!("{}/Cellar", new_prefix);
+
+        let result = patch_text_file_strings(&test_file, new_prefix, &new_cellar);
+        assert!(result.is_ok());
+
+        let patched = fs::read_to_string(&test_file).unwrap();
+        assert!(patched.contains(new_prefix));
+        assert!(!patched.contains("/opt/homebrew"));
+        assert!(!patched.contains("@@HOMEBREW_"));
+        assert!(patched.contains("/opt/brew/prefix/opt/git/libexec/git-core"));
+        assert!(patched.contains("/opt/brew/prefix/Cellar"));
+        assert!(patched.contains("/opt/brew/prefix/Library"));
+        assert!(patched.contains("/usr/bin/perl"));
+    }
+}

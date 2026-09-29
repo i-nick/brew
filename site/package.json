@@ -1,0 +1,20 @@
+{
+  "name": "site",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "eleventy",
+    "dev": "eleventy --serve",
+    "deploy": "wrangler pages deploy _site --project-name brew-site"
+  },
+  "packageManager": "pnpm@10.29.1",
+  "dependencies": {
+    "@11ty/eleventy": "^3.1.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "workerd"]
+  }
+}

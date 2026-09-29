@@ -1,0 +1,18 @@
+{
+  "title": "brew",
+  "description": "A fast, experimental package manager for Apple Silicon Macs.",
+  "nav": [
+    {
+      "label": "Install",
+      "href": "#install"
+    },
+    {
+      "label": "GitHub",
+      "href": "/github"
+    },
+    {
+      "label": "Discord",
+      "href": "/discord"
+    }
+  ]
+}

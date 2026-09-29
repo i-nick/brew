@@ -1,0 +1,95 @@
+name: release
+
+# Every merge to main (a push to main) publishes a new release.
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  attestations: write
+  id-token: write
+
+# Releases run one at a time so each computes its version after the last tag exists.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  release:
+    needs: ci
+    runs-on: macos-latest
+    if: github.repository == 'i-nick/brew'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Compute version
+        id: version
+        run: |
+          set -euo pipefail
+          base=$(sed -n 's/^version = "\(.*\)"/\1/p' brew_cli/Cargo.toml | head -1)
+          if ! git rev-parse -q --verify "refs/tags/v$base" >/dev/null; then
+            version="$base"
+          else
+            latest=$(git tag -l 'v*' --sort=-v:refname | head -1)
+            IFS=. read -r major minor patch <<< "${latest#v}"
+            version="$major.$minor.$((patch + 1))"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$version"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release
+
+      - name: Set crate versions
+        run: |
+          sed -i '' 's/^version = ".*"/version = "${{ steps.version.outputs.version }}"/' brew_*/Cargo.toml
+          cargo update --workspace
+
+      - name: Build
+        env:
+          LZMA_API_STATIC: "1"
+        run: cargo build --release --package brew_cli
+
+      - name: Verify no dynamic liblzma dependency
+        run: |
+          otool -L target/release/b
+          if otool -L target/release/b | grep -Eq '/opt/homebrew|/usr/local/opt|liblzma'; then
+            echo "error: unexpected dynamic dependency detected in release binary"
+            exit 1
+          fi
+
+      - name: Package
+        run: |
+          set -euo pipefail
+          mkdir assets
+          cp target/release/b assets/b-darwin-arm64
+          cp target/release/bx assets/bx-darwin-arm64
+          cd assets
+          shasum -a 256 -- * > SHA256SUMS
+
+      - uses: actions/attest-build-provenance@v4
+        with:
+          subject-checksums: assets/SHA256SUMS
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          files: assets/*
+          generate_release_notes: true

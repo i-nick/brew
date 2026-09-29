@@ -1,0 +1,995 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brew Architecture and Flow</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: "base",
+      securityLevel: "loose",
+      flowchart: {
+        curve: "basis",
+        htmlLabels: true,
+        nodeSpacing: 40,
+        rankSpacing: 56
+      },
+      sequence: {
+        mirrorActors: false,
+        rightAngles: false
+      },
+      themeVariables: {
+        fontFamily: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        primaryColor: "#eef6f3",
+        primaryTextColor: "#16211f",
+        primaryBorderColor: "#2c6e63",
+        lineColor: "#62736e",
+        secondaryColor: "#f4f0e7",
+        tertiaryColor: "#edf0f8",
+        noteBkgColor: "#fff8d7",
+        noteTextColor: "#30290d"
+      }
+    });
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f8f5;
+      --ink: #17211f;
+      --muted: #5e6864;
+      --panel: #ffffff;
+      --line: #d8ded8;
+      --accent: #2c6e63;
+      --accent-2: #725b2f;
+      --code: #eef1ed;
+      --warn: #fff5cd;
+      --danger: #ffe1dc;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    header {
+      padding: 34px 32px 26px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfa;
+    }
+
+    main {
+      width: min(1440px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 26px 0 56px;
+    }
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 5vw, 54px);
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 5px;
+      background: var(--code);
+      color: #1b2b28;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.92em;
+    }
+
+    .lede {
+      max-width: 1020px;
+      font-size: 17px;
+      color: #38433f;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      color: #38433f;
+      font-size: 13px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .panel {
+      grid-column: span 12;
+      padding: 22px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 1px 2px rgba(20, 30, 26, 0.04);
+      overflow: hidden;
+    }
+
+    .half {
+      grid-column: span 6;
+    }
+
+    .third {
+      grid-column: span 4;
+    }
+
+    .two-thirds {
+      grid-column: span 8;
+    }
+
+    .diagram {
+      width: 100%;
+      overflow-x: auto;
+      padding: 10px 4px 2px;
+    }
+
+    .mermaid {
+      min-width: 720px;
+    }
+
+    .wide .mermaid {
+      min-width: 1080px;
+    }
+
+    .compact .mermaid {
+      min-width: 620px;
+    }
+
+    .notes {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .note {
+      padding: 12px 13px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      background: #fbfcfa;
+    }
+
+    .note strong {
+      color: var(--ink);
+    }
+
+    .warning {
+      border-left-color: #a06c08;
+      background: var(--warn);
+    }
+
+    .danger {
+      border-left-color: #b84838;
+      background: var(--danger);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 10px 11px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th {
+      background: #f2f5f1;
+      color: #26302d;
+      font-weight: 650;
+    }
+
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+      color: var(--muted);
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .legend-item {
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfa;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .legend-item b {
+      display: block;
+      color: var(--ink);
+      margin-bottom: 2px;
+    }
+
+    @media (max-width: 960px) {
+      main {
+        width: min(100vw - 28px, 760px);
+      }
+
+      header {
+        padding: 28px 18px 22px;
+      }
+
+      .half,
+      .third,
+      .two-thirds {
+        grid-column: span 12;
+      }
+
+      .legend {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      main {
+        width: 100%;
+        padding: 0;
+      }
+
+      .panel {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Brew Architecture and Flow</h1>
+    <p class="lede">
+      Current-state architecture for the Rust workspace after the cleanup, isolated linking, main-only list, upgrade metadata refresh,
+      stricter dependency graph, cask safety, cache validation, and <code>b run</code> behavior changes.
+    </p>
+    <div class="meta">
+      <span class="pill">Workspace: <code>brew_cli</code>, <code>brew_io</code>, <code>brew_core</code></span>
+      <span class="pill">CLI binary: <code>b</code></span>
+      <span class="pill">Run shim: <code>bx</code></span>
+      <span class="pill">DB schema: v3</span>
+      <span class="pill">Default macOS prefix: <code>/opt/brew</code></span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel wide">
+      <h2>1. System Overview</h2>
+      <p>
+        Brew is split into a small CLI crate, a core model crate, and an IO-heavy crate that owns networking, extraction,
+        install state, linking, cask handling, source builds, and cleanup.
+      </p>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  User["User shell<br/>b, bx"] --> CLI["brew_cli<br/>argument parsing, UI, command routing"]
+  CLI --> Init["init and runtime context<br/>root, prefix, concurrency"]
+  CLI --> Installer["brew_io::Installer<br/>orchestrates planning and execution"]
+  CLI --> RunCmd["commands::run<br/>temporary install plus exec"]
+
+  subgraph Core["brew_core"]
+    FormulaTypes["Formula and cask data types"]
+    BottleSelect["Bottle selection"]
+    Closure["Dependency closure resolution"]
+    BuildPlan["Source build plan"]
+    Errors["Shared error model"]
+  end
+
+  subgraph IO["brew_io"]
+    Api["ApiClient<br/>Homebrew JSON, tap Ruby, search, cache"]
+    Downloader["ParallelDownloader<br/>blob cache, chunked, racing, mirrors"]
+    Store["Store<br/>content-addressed extracted entries"]
+    Cellar["Cellar<br/>materialized kegs"]
+    Linker["Linker<br/>shared bin, opt, isolated links"]
+    DB["SQLite DB<br/>installed kegs, refs, files, deps"]
+    Extract["Extraction and patching<br/>tar, zip, Mach-O, ELF/text"]
+    Cask["Cask resolver and installer<br/>apps, binaries, zap metadata"]
+    Build["BuildExecutor<br/>Ruby install shim and env"]
+  end
+
+  Installer --> FormulaTypes
+  Installer --> BottleSelect
+  Installer --> Closure
+  Installer --> BuildPlan
+  Installer --> Api
+  Installer --> Downloader
+  Installer --> Store
+  Installer --> Cellar
+  Installer --> Linker
+  Installer --> DB
+  Installer --> Extract
+  Installer --> Cask
+  Installer --> Build
+  RunCmd --> Installer
+  Api --> FormulaTypes
+
+  classDef user fill:#fff8d7,stroke:#a06c08,color:#231f12
+  classDef cli fill:#edf0f8,stroke:#52659b,color:#171c2b
+  classDef core fill:#eef6f3,stroke:#2c6e63,color:#16211f
+  classDef io fill:#f4f0e7,stroke:#725b2f,color:#241f14
+  class User user
+  class CLI,Init,RunCmd cli
+  class FormulaTypes,BottleSelect,Closure,BuildPlan,Errors core
+  class Api,Downloader,Store,Cellar,Linker,DB,Extract,Cask,Build,Installer io
+        </pre>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><b>User surface</b><code>b</code> commands and <code>bx</code> execution.</div>
+        <div class="legend-item"><b>CLI crate</b>Command parsing, UI text, aliases, and high-level command intent.</div>
+        <div class="legend-item"><b>Core crate</b>Pure-ish package models, closure ordering, bottle choice, build plan shape.</div>
+        <div class="legend-item"><b>IO crate</b>Everything that touches the network, filesystem, DB, store, or prefix.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel half">
+        <h2>Command Router</h2>
+        <table>
+          <thead>
+            <tr><th>Command</th><th>Main path</th><th>Important current behavior</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>b install</code>, <code>b i</code></td><td><code>plan</code> then <code>execute</code></td><td>Requested inputs become main packages. Dependencies are installed as dependency-only.</td></tr>
+            <tr><td><code>b uninstall</code>, <code>b remove</code>, <code>b rm</code></td><td><code>Installer::uninstall</code></td><td>Removes links, DB rows, keg, and cask zap paths unless <code>--keep-data</code> is set.</td></tr>
+            <tr><td><code>b cleanup</code></td><td><code>cleanup_candidates</code> then uninstall and GC</td><td>Uses persisted DB dependency graph, not current upstream metadata.</td></tr>
+            <tr><td><code>b list</code></td><td><code>list_requested_installed</code></td><td>Shows only user-requested packages. <code>--all</code> shows dependencies too.</td></tr>
+            <tr><td><code>b upgrade</code></td><td><code>clear_api_cache</code>, <code>check_outdated</code>, reinstall</td><td>Refreshes metadata first by default.</td></tr>
+            <tr><td><code>b run</code>, <code>bx</code></td><td>Install unrequested if missing, then <code>exec</code></td><td>Status goes to stderr; stdout belongs to the child command.</td></tr>
+          </tbody>
+        </table>
+      </article>
+
+      <article class="panel half">
+        <h2>Runtime Paths</h2>
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Role</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>$BREW_ROOT/cache</code></td><td>API response cache and SHA-addressed downloaded blobs.</td></tr>
+            <tr><td><code>$BREW_ROOT/store</code></td><td>Extracted content-addressed store entries keyed by bottle SHA or source key.</td></tr>
+            <tr><td><code>$BREW_ROOT/Cellar/name/version</code></td><td>Materialized keg tree. Formula-private files live here.</td></tr>
+            <tr><td><code>$BREW_PREFIX/bin</code></td><td>User-facing executable symlinks. Keg-only executables are still exposed here when non-conflicting.</td></tr>
+            <tr><td><code>$BREW_PREFIX/opt/name</code></td><td>Stable active-keg pointer for dependency lookup and runtime paths.</td></tr>
+            <tr><td><code>$BREW_PREFIX/isolated/name</code></td><td>Private support namespace for keg-only or conflicted formula files.</td></tr>
+            <tr><td><code>~/Applications/*.app</code></td><td>Default cask app target on macOS. Existing app bundles are overwritten by default.</td></tr>
+          </tbody>
+        </table>
+      </article>
+    </section>
+
+    <section class="panel wide">
+      <h2>2. Install Planning Flow</h2>
+      <p>
+        Planning is strict. A required runtime dependency must resolve and must have either a usable bottle or a source build plan.
+        Tapped formula dependencies resolve same-tap first for unqualified names, then fall back to core only when same-tap metadata is missing.
+      </p>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart TD
+  Start["Install input names"] --> Normalize["CLI normalizes formula or cask names"]
+  Normalize --> Fetch["fetch_all_formulas(names)"]
+  Fetch --> IsTap{"Formula is tapped?<br/>owner/repo/name"}
+  IsTap -- "no" --> CoreDeps["Keep dependencies as listed"]
+  IsTap -- "yes" --> DepLoop["For each unqualified dependency"]
+  DepLoop --> TrySameTap["Try owner/repo/dependency"]
+  TrySameTap --> SameTapFound{"Found same-tap formula?"}
+  SameTapFound -- "yes" --> UseSameTap["Store resolved dependency as owner/repo/dependency"]
+  SameTapFound -- "404 only" --> UseCore["Fall back to core dependency name"]
+  SameTapFound -- "network or parse error" --> AbortTap["Abort planning"]
+  CoreDeps --> QueueDeps["Queue unresolved dependency names"]
+  UseSameTap --> QueueDeps
+  UseCore --> QueueDeps
+  QueueDeps --> More{"More queued deps?"}
+  More -- "yes" --> Fetch
+  More -- "no" --> Closure["resolve_closure roots plus deps"]
+  Closure --> Missing{"Any dependency node missing?"}
+  Missing -- "yes" --> AbortMissing["Abort with MissingFormula"]
+  Missing -- "no" --> Method["Select install method"]
+  Method --> Bottle{"Bottle available for platform?"}
+  Bottle -- "yes" --> PlanBottle["PlannedInstall::Bottle"]
+  Bottle -- "no" --> Source{"Source URL and checksum usable?"}
+  Source -- "yes" --> PlanSource["PlannedInstall::Source"]
+  Source -- "no" --> AbortUnsupported["Abort with UnsupportedBottle"]
+  PlanBottle --> Requested["Mark requested=true only for original CLI args"]
+  PlanSource --> Requested
+  Requested --> Plan["InstallPlan ordered dependencies first"]
+
+  classDef ok fill:#eef6f3,stroke:#2c6e63,color:#16211f
+  classDef stop fill:#ffe1dc,stroke:#b84838,color:#261513
+  classDef decision fill:#fff8d7,stroke:#a06c08,color:#231f12
+  class IsTap,SameTapFound,More,Missing,Bottle,Source decision
+  class AbortTap,AbortMissing,AbortUnsupported stop
+  class Start,Normalize,Fetch,CoreDeps,DepLoop,TrySameTap,UseSameTap,UseCore,QueueDeps,Closure,Method,PlanBottle,PlanSource,Requested,Plan ok
+        </pre>
+      </div>
+      <div class="notes">
+        <div class="note"><strong>Requested metadata:</strong> A formula is main only when it appears in the user install arguments. If a dependency is installed explicitly later, DB upsert promotes it to requested and never demotes it during later dependency work.</div>
+        <div class="note warning"><strong>Cleanup dependency safety:</strong> Cleanup protects dependencies based on the persisted installed graph recorded at install time, not whatever upstream metadata says today.</div>
+      </div>
+    </section>
+
+    <section class="panel wide">
+      <h2>3. Formula Install Execution</h2>
+      <p>
+        Bottles download in parallel and are processed as soon as each completes. Source builds run after bottle work because they need installed dependency paths.
+      </p>
+      <div class="diagram">
+        <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor U as User
+  participant C as CLI command
+  participant I as Installer
+  participant A as ApiClient
+  participant D as Downloader
+  participant S as Store
+  participant K as Cellar
+  participant L as Linker
+  participant B as Database
+
+  U->>C: b install jq
+  C->>I: plan requested names
+  I->>A: fetch formula and dependencies
+  A-->>I: resolved formula map
+  I->>I: resolve_closure dependencies first
+  I-->>C: install plan
+  C->>I: execute plan with linking
+  I->>I: acquire install.lock
+  I->>D: stream bottle downloads
+  D-->>I: download result as each bottle finishes
+  I->>S: verify and extract store entry
+  S-->>I: extracted store path
+  I->>K: materialize keg
+  I->>L: unlink previous keg links on reinstall
+  I->>B: record install and dependency graph
+  B-->>I: installed state committed
+  I->>L: update opt link
+  I->>L: link shared or isolated files
+  L-->>I: link outcome
+  I->>B: record linked files
+  I->>K: remove old keg after successful upgrade
+  I-->>C: execute result
+  C-->>U: installed count and warnings
+        </pre>
+      </div>
+      <div class="notes">
+        <div class="note"><strong>Retry path:</strong> If store extraction detects corruption, the bad blob is removed and the downloader retries up to the corruption retry limit.</div>
+        <div class="note"><strong>Upgrade lifecycle:</strong> Previous public and isolated links are removed before relinking the new keg, so binaries or completions removed upstream do not stay behind as stale commands.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel two-thirds wide">
+        <h2>4. Linking Decision Flow</h2>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Begin["Keg materialized in Cellar"] --> NoLink{"--no-link?"}
+  NoLink -- "yes" --> NoPublic["Record install only<br/>no shared or isolated links"]
+  NoLink -- "no" --> Opt["Create or update prefix/opt/name"]
+  Opt --> KegOnly{"Formula is keg-only?"}
+  KegOnly -- "yes" --> Iso["Link support files into prefix/isolated/name<br/>link non-conflicting bin entries into prefix/bin"]
+  KegOnly -- "no" --> Shared["Try shared recursive link<br/>bin, lib, include, share, etc"]
+  Shared --> Conflict{"Shared conflict?"}
+  Conflict -- "no" --> SharedOk["LinkOutcome::Shared<br/>record shared files"]
+  Conflict -- "yes" --> IsoConflict["Fallback to isolated namespace<br/>record bin-name conflicts only"]
+  Iso --> BinConflict{"Executable name conflicts in prefix/bin?"}
+  IsoConflict --> BinConflict
+  BinConflict -- "no" --> IsoOk["LinkOutcome::Isolated<br/>quiet for dependency keg-only installs"]
+  BinConflict -- "yes" --> Report["Report executable names left untouched<br/>do not overwrite existing owner"]
+
+  classDef decision fill:#fff8d7,stroke:#a06c08,color:#231f12
+  classDef stop fill:#eef1ed,stroke:#66736e,color:#17211f
+  classDef ok fill:#eef6f3,stroke:#2c6e63,color:#16211f
+  class NoLink,KegOnly,Conflict,BinConflict decision
+  class NoPublic stop
+  class Begin,Opt,Iso,Shared,SharedOk,IsoConflict,IsoOk,Report ok
+          </pre>
+        </div>
+      </article>
+
+      <article class="panel third">
+        <h2>What Linking Means</h2>
+        <div class="notes">
+          <div class="note"><strong>Cellar is truth:</strong> The package files live in <code>Cellar/name/version</code>.</div>
+          <div class="note"><strong>Links expose files:</strong> Prefix files are symlinks pointing back into the active keg.</div>
+          <div class="note"><strong><code>bin</code> is public:</strong> Executables are exposed in <code>prefix/bin</code> whenever their names do not collide.</div>
+          <div class="note"><strong><code>libexec</code> is private:</strong> Vendored runtimes like Python site-packages are not recursively shared into <code>prefix/libexec</code>.</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel wide">
+      <h2>5. Filesystem State</h2>
+      <p>
+        This is the installed-state shape after a normal formula install. Casks add external app bundles and optional wrapper binaries.
+      </p>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  subgraph Root["BREW_ROOT"]
+    ApiCache["cache/api-cache.sqlite<br/>ETag and Last-Modified responses"]
+    Blob["cache/blobs/sha256<br/>downloaded bottles"]
+    Store["store/sha256<br/>verified extracted content"]
+    Cellar["Cellar/name/version<br/>materialized keg"]
+    DBFile["db/brew.sqlite3"]
+    Locks["locks/install.lock"]
+  end
+
+  subgraph Prefix["BREW_PREFIX"]
+    Bin["bin/tool -> Cellar/name/version/bin/tool"]
+    Opt["opt/name -> Cellar/name/version"]
+    SharedLib["lib, include, share, etc<br/>shared safe symlinks"]
+    Isolated["isolated/name/{lib,libexec,include,share,etc}<br/>private support symlinks"]
+  end
+
+  subgraph External["External cask locations"]
+    Apps["~/Applications/App.app"]
+    UserData["~/Library caches, prefs, support<br/>zap paths"]
+  end
+
+  Blob --> Store
+  Store --> Cellar
+  Cellar --> Bin
+  Cellar --> Opt
+  Cellar --> SharedLib
+  Cellar --> Isolated
+  DBFile --> Cellar
+  DBFile --> Bin
+  DBFile --> Store
+  Cellar --> Apps
+  Cellar --> UserData
+        </pre>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel half compact">
+        <h2>DB Schema v3</h2>
+        <div class="diagram">
+          <pre class="mermaid">
+erDiagram
+  installed_kegs {
+    text name PK
+    text version
+    text store_key
+    integer installed_at
+    integer requested
+    integer deps_recorded
+  }
+
+  store_refs {
+    text store_key PK
+    integer refcount
+  }
+
+  keg_files {
+    text name PK
+    text version
+    text linked_path PK
+    text target_path
+  }
+
+  installed_dependencies {
+    text name PK
+    text dependency PK
+  }
+
+  installed_kegs ||--o{ keg_files : "records symlinks"
+  installed_kegs ||--o{ installed_dependencies : "direct runtime deps"
+  installed_kegs }o--|| store_refs : "uses store key"
+          </pre>
+        </div>
+      </article>
+
+      <article class="panel half">
+        <h2>DB Semantics</h2>
+        <table>
+          <thead>
+            <tr><th>Field/table</th><th>Meaning</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>requested</code></td><td>Main package marker. Default <code>b list</code> filters on this field.</td></tr>
+            <tr><td><code>deps_recorded</code></td><td>Whether the installed formula has direct runtime dependency edges recorded.</td></tr>
+            <tr><td><code>installed_dependencies</code></td><td>Direct resolved dependency names at install time. Cleanup walks this graph.</td></tr>
+            <tr><td><code>store_refs</code></td><td>Reference counts for extracted store entries. GC removes entries with refcount <code>&lt;= 0</code> and no installed keg reference.</td></tr>
+            <tr><td><code>keg_files</code></td><td>Absolute linked paths so uninstall can remove shared, isolated, and external cask artifacts.</td></tr>
+          </tbody>
+        </table>
+      </article>
+    </section>
+
+    <section class="panel wide">
+      <h2>6. Cleanup Flow</h2>
+      <p>
+        Cleanup removes dependency-only formulae that are no longer reachable from requested installed formulae.
+        It does not auto-remove casks, and it aborts if a requested root lacks recorded dependency metadata.
+      </p>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart TD
+  Start["b cleanup or uninstall --cleanup"] --> Load["Load all installed_kegs"]
+  Load --> Roots["Protected roots = requested=true formulae<br/>excluding casks"]
+  Roots --> Walk["Walk installed_dependencies graph"]
+  Walk --> Missing{"Protected node has deps_recorded=0?"}
+  Missing -- "yes" --> Abort["Abort before removing anything<br/>ask user to reinstall or reset"]
+  Missing -- "no" --> Protect["Protected set = roots plus reachable deps"]
+  Protect --> Candidate["Candidate = installed formula<br/>requested=false, not cask, not protected"]
+  Candidate --> Dry{"--dry-run?"}
+  Dry -- "yes" --> Print["Print packages that would be removed<br/>do not uninstall, do not GC"]
+  Dry -- "no" --> Remove["Uninstall each candidate<br/>links, DB, keg"]
+  Remove --> GC["Run store GC"]
+  GC --> Done["Print removed dependencies and removed store entries"]
+
+  classDef decision fill:#fff8d7,stroke:#a06c08,color:#231f12
+  classDef stop fill:#ffe1dc,stroke:#b84838,color:#261513
+  class Missing,Dry decision
+  class Abort stop
+        </pre>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel half wide">
+        <h2>7. Upgrade Flow</h2>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Upgrade["b upgrade"] --> Clear["Clear API cache first"]
+  Clear --> Scope{"Explicit names?"}
+  Scope -- "no" --> All["check_outdated for all installed packages"]
+  Scope -- "yes" --> Selected["check each selected package"]
+  All --> Filter{"--casks?"}
+  Filter -- "yes" --> CasksOnly["Keep cask:* packages only"]
+  Filter -- "no" --> Sort["Sort outdated packages"]
+  Selected --> Sort
+  CasksOnly --> Sort
+  Sort --> Each["For each outdated package"]
+  Each --> LinkStatus["Preserve current link intent<br/>shared or isolated linked means relink"]
+  LinkStatus --> Reinstall["install_preserving_request_status"]
+  Reinstall --> OldLinks["Unlink previous shared and isolated links"]
+  OldLinks --> NewKeg["Materialize and link new keg"]
+  NewKeg --> DB["Record new version, store ref, dependency graph"]
+  DB --> RemoveOld["Remove old Cellar keg after success"]
+  RemoveOld --> Summary["Print upgraded count or first error"]
+          </pre>
+        </div>
+      </article>
+
+      <article class="panel half wide">
+        <h2>8. Uninstall Flow</h2>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Start["b uninstall name"] --> Lookup["DB get_installed(name)"]
+  Lookup --> Found{"Installed?"}
+  Found -- "no" --> NotInstalled["Return NotInstalled"]
+  Found -- "yes" --> Records["Load recorded keg_files"]
+  Records --> Zap{"cask and not --keep-data?"}
+  Zap -- "yes" --> ReadZap["Read .brew-cask.json zap paths"]
+  Zap -- "no" --> NoZap["No user data paths"]
+  ReadZap --> Links["unlink_keg and unlink_isolated"]
+  NoZap --> Links
+  Links --> External["Remove recorded paths outside prefix<br/>or under prefix/isolated"]
+  External --> DB["Delete installed_kegs, keg_files, dependencies<br/>decrement store_ref"]
+  DB --> Keg["Remove Cellar keg"]
+  Keg --> UserData["Remove zap paths unless --keep-data"]
+  UserData --> Done["Done"]
+
+  classDef decision fill:#fff8d7,stroke:#a06c08,color:#231f12
+  classDef stop fill:#ffe1dc,stroke:#b84838,color:#261513
+  class Found,Zap decision
+  class NotInstalled stop
+          </pre>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel wide">
+      <h2>9. Cask Install Flow</h2>
+      <p>
+        Casks are handled through the same installer surface but use cask metadata, app/binary staging, and external artifact recording.
+      </p>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart TD
+  Start["b install cask:name"] --> Api["get_cask token JSON"]
+  Api --> Resolve["resolve_cask"]
+  Resolve --> Validate["Validate targets:<br/>one filename component only<br/>app target must end .app<br/>no dot, dotdot, slash, backslash, $, ~"]
+  Validate --> Download["Download cask artifact by SHA"]
+  Download --> Extract["Extract or mount artifact"]
+  Extract --> Apps["Place .app bundle in ~/Applications<br/>overwrite same target by default"]
+  Apps --> Binary{"Has binary artifacts?"}
+  Binary -- "yes" --> Appdir["Resolve binary sources<br/>$APPDIR remainder must stay inside selected app"]
+  Binary -- "no" --> Metadata["Write cask metadata into keg"]
+  Appdir --> Bin["Stage wrapper or binary link into prefix/bin"]
+  Bin --> Metadata
+  Metadata --> DB["Record cask install and linked files"]
+  DB --> Uninstall["Uninstall removes recorded artifacts<br/>and zap paths unless --keep-data"]
+
+  classDef decision fill:#fff8d7,stroke:#a06c08,color:#231f12
+  class Binary decision
+        </pre>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel half wide">
+        <h2>10. Network and Cache Flow</h2>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Request["Need formula, cask, search index, Ruby source, or bottle"] --> Kind{"Request kind"}
+  Kind -- "Formula/cask API JSON" --> Cache["API cache lookup"]
+  Cache --> Conditional["Send ETag / If-Modified-Since when available"]
+  Conditional --> Fresh{"200 fresh response?"}
+  Fresh -- "yes" --> Parse["Parse/validate JSON before cache write"]
+  Parse --> SaveApi["Store valid body with validators"]
+  Fresh -- "304" --> Cached["Use cached body"]
+  Fresh -- "error" --> Fail["Return network error"]
+
+  Kind -- "Tap Ruby source" --> RubyCache{"Expected SHA known?"}
+  RubyCache -- "yes" --> VerifyRuby["Use cached Ruby only if SHA matches"]
+  RubyCache -- "no" --> FetchRuby["Fetch fresh; do not trust stale cache"]
+  VerifyRuby --> FetchRuby
+  FetchRuby --> SaveRuby["Verify network body SHA when provided<br/>then cache and write rb file"]
+
+  Kind -- "Bottle blob" --> Blob["Blob cache path by expected SHA"]
+  Blob --> Exists{"Blob exists?"}
+  Exists -- "yes" --> Hash["Hash existing blob before reuse"]
+  Hash --> Match{"Matches expected SHA?"}
+  Match -- "yes" --> Reuse["Reuse blob"]
+  Match -- "no" --> Delete["Delete corrupt blob"]
+  Exists -- "no" --> Download["Download"]
+  Delete --> Download
+  Download --> Strategy{"Large and range-capable?"}
+  Strategy -- "yes" --> Chunked["Chunked download with global concurrency"]
+  Strategy -- "no" --> Racing["Racing single-connection download<br/>primary plus mirrors"]
+  Chunked --> Verify["Verify SHA and complete blob"]
+  Racing --> Verify
+          </pre>
+        </div>
+      </article>
+
+      <article class="panel half wide">
+        <h2>11. Source Build Flow</h2>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Source["PlannedInstall::Source"] --> RB["Fetch formula Ruby source<br/>cache verified by checksum when available"]
+  RB --> Deps["Collect installed runtime and build deps"]
+  Deps --> Env["Build env includes:<br/>Cellar paths, opt paths, isolated prefixes,<br/>bin, pkgconfig, include, lib"]
+  Env --> Backup["Backup existing same-version source keg if present"]
+  Backup --> Exec["BuildExecutor runs Ruby shim"]
+  Exec --> Success{"Build success?"}
+  Success -- "no" --> Restore["Restore source keg backup and return error"]
+  Success -- "yes" --> RemoveBackup["Remove backup"]
+  RemoveBackup --> DB["Record install and dependency graph"]
+  DB --> Link["link_opt and link_formula_keg"]
+  Link --> Cleanup["Remove old version keg after successful upgrade"]
+
+  classDef decision fill:#fff8d7,stroke:#a06c08,color:#231f12
+  class Success decision
+          </pre>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel wide">
+      <h2>12. Extraction and Patching Safety</h2>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  Archive["Downloaded archive"] --> Type{"Archive type"}
+  Type -- "tar/gzip" --> Tar["Validate entry path<br/>validate symlink and hardlink targets<br/>reject absolute or parent escape"]
+  Type -- "zip" --> Zip["Validate entry path<br/>validate symlink targets"]
+  Type -- "raw binary" --> Raw["Copy raw binary"]
+  Tar --> Patch["Patch extracted files"]
+  Zip --> Patch
+  Raw --> Patch
+  Patch --> Mac{"macOS?"}
+  Mac -- "yes" --> MachO["Mach-O binary string patching<br/>same-directory NamedTempFile<br/>atomic persist"]
+  Mac -- "no" --> Linux["ELF/text patching where applicable"]
+  MachO --> Warn["Warn only for truly Homebrew-owned hardcoded paths<br/>Cellar or opt paths"]
+  Linux --> Done["Store entry ready"]
+  Warn --> Done
+        </pre>
+      </div>
+      <div class="notes">
+        <div class="note warning"><strong>Relocation warning rule:</strong> Plain <code>/usr/local/lib</code> no longer triggers the scary warning. Homebrew-owned paths like <code>/usr/local/Cellar</code>, <code>/usr/local/opt</code>, <code>/opt/homebrew/Cellar</code>, and <code>/opt/homebrew/opt</code> still do.</div>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel half wide">
+        <h2>13. <code>b run</code> and <code>bx</code></h2>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Start["b run formula args<br/>or bx formula args"] --> Normalize["Normalize formula name"]
+  Normalize --> Installed{"Already installed?"}
+  Installed -- "no" --> Temp["Plan unrequested install<br/>execute with link=false"]
+  Installed -- "yes" --> Keg["Find installed keg"]
+  Temp --> Keg
+  Keg --> Preferred["Prefer bin/formula-token"]
+  Preferred --> Exists{"Preferred executable exists?"}
+  Exists -- "yes" --> Exec["exec child process"]
+  Exists -- "no" --> Scan["Scan keg bin for executable files"]
+  Scan --> Count{"Executable count"}
+  Count -- "one" --> Exec
+  Count -- "zero" --> ErrorNone["Error: executable not found"]
+  Count -- "many" --> ErrorMany["Error with candidate names"]
+  Exec --> Stderr["Status banners are stderr"]
+  Exec --> Stdout["stdout is child command only"]
+
+  classDef decision fill:#fff8d7,stroke:#a06c08,color:#231f12
+  classDef stop fill:#ffe1dc,stroke:#b84838,color:#261513
+  class Installed,Exists,Count decision
+  class ErrorNone,ErrorMany stop
+          </pre>
+        </div>
+      </article>
+
+      <article class="panel half">
+        <h2>What Happens When</h2>
+        <table>
+          <thead>
+            <tr><th>Situation</th><th>Outcome</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Dependency remains after root uninstall</td><td>Yes. Normal uninstall removes only the target. Run <code>b cleanup</code> or <code>b uninstall target --cleanup</code> to remove unused dependency-only formulae.</td></tr>
+            <tr><td>Keg-only dependency has executables</td><td>Non-conflicting executable names are linked into <code>prefix/bin</code>; dependency-only keg-only warnings stay quiet unless an executable-name conflict occurs.</td></tr>
+            <tr><td>Two packages ship the same support file</td><td>Private trees like <code>libexec/site-packages</code> are not shared into the prefix, so duplicate support files do not create noisy conflicts.</td></tr>
+            <tr><td>Two packages ship the same executable</td><td>The existing owner stays untouched. The new package still installs, and only the executable-name conflict is reported.</td></tr>
+            <tr><td>API returns bad JSON with HTTP 200</td><td>The body is rejected before it can poison the API cache.</td></tr>
+            <tr><td>Cached bottle blob is corrupted</td><td>The blob is rehashed before reuse, deleted on mismatch, and downloaded again.</td></tr>
+          </tbody>
+        </table>
+      </article>
+    </section>
+
+    <section class="panel wide">
+      <h2>14. Command-To-Module Map</h2>
+      <div class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  subgraph Commands["brew_cli/src/commands"]
+    InstallCmd["install.rs"]
+    UninstallCmd["uninstall.rs"]
+    CleanupCmd["cleanup.rs"]
+    UpgradeCmd["upgrade.rs"]
+    RunCmd["run.rs"]
+    ListCmd["list.rs"]
+    DoctorCmd["doctor.rs"]
+    BundleCmd["bundle.rs"]
+    SearchCmd["search.rs"]
+    UpdateCmd["update.rs"]
+    GcCmd["gc.rs"]
+  end
+
+  subgraph InstallerModules["brew_io/src/installer/install"]
+    Plan["plan.rs"]
+    Bottle["bottle.rs"]
+    Source["source.rs"]
+    Cleanup["cleanup.rs"]
+    Uninstall["uninstall.rs"]
+    Outdated["outdated.rs"]
+    Doctor["doctor.rs"]
+  end
+
+  subgraph Support["brew_io support"]
+    Api["network/api.rs"]
+    Download["network/download/*"]
+    Store["storage/store.rs"]
+    Blob["storage/blob.rs"]
+    DB["storage/db.rs"]
+    Cellar["cellar/materialize.rs"]
+    Link["cellar/link.rs"]
+    Cask["installer/cask.rs"]
+    Extract["extraction/*"]
+    Build["build/*"]
+  end
+
+  InstallCmd --> Plan
+  InstallCmd --> Bottle
+  InstallCmd --> Source
+  UninstallCmd --> Uninstall
+  CleanupCmd --> Cleanup
+  UpgradeCmd --> Outdated
+  UpgradeCmd --> Plan
+  RunCmd --> Plan
+  RunCmd --> Bottle
+  ListCmd --> DB
+  DoctorCmd --> Doctor
+  BundleCmd --> Plan
+  SearchCmd --> Api
+  UpdateCmd --> Api
+  GcCmd --> Uninstall
+
+  Plan --> Api
+  Plan --> DB
+  Bottle --> Download
+  Bottle --> Store
+  Bottle --> Cellar
+  Bottle --> Link
+  Bottle --> DB
+  Bottle --> Extract
+  Bottle --> Cask
+  Source --> Api
+  Source --> Build
+  Source --> Link
+  Source --> DB
+  Cleanup --> DB
+  Cleanup --> Uninstall
+  Uninstall --> Link
+  Uninstall --> Cellar
+  Uninstall --> DB
+        </pre>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

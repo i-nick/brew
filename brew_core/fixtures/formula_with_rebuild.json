@@ -1,0 +1,18 @@
+{
+  "name": "ffmpeg",
+  "versions": {
+    "stable": "8.0.1"
+  },
+  "dependencies": [],
+  "bottle": {
+    "stable": {
+      "rebuild": 1,
+      "files": {
+        "arm64_sonoma": {
+          "url": "https://example.com/ffmpeg-8.0.1_1.arm64_sonoma.bottle.tar.gz",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    }
+  }
+}

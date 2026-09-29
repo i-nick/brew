@@ -1,0 +1,29 @@
+{
+  "hero": {
+    "brand": "brew",
+    "line1Suffix": "is a fast, experimental",
+    "line2Prefix": "package manager for",
+    "line2Highlight": "Apple Silicon",
+    "line3": "Macs."
+  },
+  "sections": {
+    "install": {
+      "eyebrow": "Install",
+      "body": "Install with one command, then run <strong>b install</strong> (or <strong>brew install</strong>) to add packages."
+    },
+    "summaryCards": [
+      {
+        "title": "Why brew",
+        "body": "brew makes installs fast and keeps the overall setup simple to reason about.",
+        "ctaLabel": "See the repository",
+        "href": "/github"
+      },
+      {
+        "title": "Get started",
+        "body": "Join the community if you want help getting set up or figuring out the right brew workflow for your setup.",
+        "ctaLabel": "Join the Discord",
+        "href": "/discord"
+      }
+    ]
+  }
+}
