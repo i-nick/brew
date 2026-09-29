@@ -360,7 +360,7 @@ print_logo() {
     printf "%bStart installing %bPackages%b with %bbrew%b:\n\n" "$MUTED" "$NC" "$MUTED" "$ORANGE" "$NC"
     printf "  b install %bffmpeg%b    # Install a Package%b\n" "$ORANGE" "$MUTED" "$NC"
     printf "  bx %byetris%b           # Single-time Run%b\n\n" "$ORANGE" "$MUTED" "$NC"
-    printf "%bFor more information visit %bhttps://brew.rs/docs\n\n" "$MUTED" "$NC"
+    printf "%bFor more information visit %bhttps://github.com/i-nick/brew#readme\n\n" "$MUTED" "$NC"
 }
 
 while [[ $# -gt 0 ]]; do
