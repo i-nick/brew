@@ -3,11 +3,7 @@
   "tabs": [
     {
       "name": "bash",
-      "command": "curl -fsSL https://brew.rs/install | bash"
-    },
-    {
-      "name": "aur",
-      "command": "yay -S brew-bin"
+      "command": "curl -fsSL https://raw.githubusercontent.com/i-nick/brew/main/install.sh | bash"
     }
   ]
 }
