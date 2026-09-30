@@ -19,12 +19,13 @@ libc.workspace = true
 brew_core = { path = "../brew_core" }
 brew_io = { path = "../brew_io" }
 chrono = "0.4.45"
+reqwest.workspace = true
+sha2.workspace = true
+hex.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
 wiremock.workspace = true
 tar.workspace = true
 flate2.workspace = true
-sha2.workspace = true
-hex.workspace = true
 walkdir.workspace = true

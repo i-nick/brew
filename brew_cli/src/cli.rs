@@ -159,6 +159,24 @@ mod tests {
     }
 
     #[test]
+    fn self_update_accepts_check_and_version() {
+        let cli = Cli::try_parse_from(["b", "self-update", "--check"]).unwrap();
+        assert!(matches!(
+            cli.command,
+            super::Commands::SelfUpdate {
+                check: true,
+                target: None
+            }
+        ));
+
+        let cli = Cli::try_parse_from(["b", "self-update", "0.2.1"]).unwrap();
+        let super::Commands::SelfUpdate { target, .. } = cli.command else {
+            panic!("expected self-update command");
+        };
+        assert_eq!(target.as_deref(), Some("0.2.1"));
+    }
+
+    #[test]
     fn search_accepts_single_term() {
         let cli = Cli::try_parse_from(["b", "search", "code"]).unwrap();
         assert!(matches!(cli.command, super::Commands::Search { .. }));
@@ -245,6 +263,15 @@ pub enum Commands {
         args: Vec<String>,
     },
     Update,
+    /// Update b and bx to the latest release
+    SelfUpdate {
+        /// Only report whether a newer release is available
+        #[arg(long)]
+        check: bool,
+        /// Install this release (e.g. 0.2.1) instead of the latest; allows downgrades
+        #[arg(value_name = "VERSION")]
+        target: Option<String>,
+    },
     Outdated {
         /// Output as JSON
         #[arg(long, conflicts_with_all = ["quiet", "verbose"])]
