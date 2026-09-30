@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "brew_cli"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "brew_core",
  "brew_io",
@@ -176,7 +176,7 @@ dependencies = [
 
 [[package]]
 name = "brew_core"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -184,7 +184,7 @@ dependencies = [
 
 [[package]]
 name = "brew_io"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "brew_core",
  "flate2",
