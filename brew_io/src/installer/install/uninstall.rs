@@ -66,13 +66,35 @@ fn remove_recorded_path(path: &std::path::Path) -> Result<(), Error> {
         }
     };
 
-    if metadata.file_type().is_dir() && !metadata.file_type().is_symlink() {
-        fs::remove_dir_all(path).map_err(Error::store("failed to remove installed directory"))?;
+    let result = if metadata.file_type().is_dir() && !metadata.file_type().is_symlink() {
+        fs::remove_dir_all(path)
     } else {
-        fs::remove_file(path).map_err(Error::store("failed to remove installed file"))?;
+        fs::remove_file(path)
+    };
+    result.map_err(|err| removal_error(path, err))
+}
+
+fn removal_error(path: &Path, err: std::io::Error) -> Error {
+    const EPERM: i32 = 1;
+    let is_app_bundle = path.extension().is_some_and(|ext| ext == "app");
+
+    // macOS App Management (TCC) blocks modifying signed app bundles unless the
+    // calling terminal has been granted that permission; EPERM is the only signal.
+    if cfg!(target_os = "macos") && is_app_bundle && err.raw_os_error() == Some(EPERM) {
+        return Error::FileError {
+            message: format!(
+                "cannot remove '{}': {err}.\n\n\
+                macOS App Management is blocking changes to this app. Allow your terminal in\n  \
+                System Settings > Privacy & Security > App Management\n\
+                then restart the terminal and re-run the command.",
+                path.display()
+            ),
+        };
     }
 
-    Ok(())
+    Error::FileError {
+        message: format!("failed to remove '{}': {err}", path.display()),
+    }
 }
 
 fn remove_zap_paths(paths: &[String]) -> Result<(), Error> {
@@ -124,7 +146,7 @@ mod tests {
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
-    use super::{expand_zap_path, remove_zap_paths};
+    use super::{expand_zap_path, removal_error, remove_zap_paths};
     use crate::cellar::Cellar;
     use crate::installer::install::test_support::*;
     use crate::network::api::ApiClient;
@@ -175,6 +197,20 @@ mod tests {
 
         let result = remove_zap_paths(&["~/does-not-exist".to_string()]);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn removal_error_names_path_and_hints_app_management_for_app_bundles() {
+        let eperm = || std::io::Error::from_raw_os_error(1);
+
+        let err = removal_error(Path::new("/Applications/Foo.app"), eperm()).to_string();
+        assert!(err.contains("/Applications/Foo.app"));
+        assert!(!err.contains("store corruption"));
+        assert_eq!(err.contains("App Management"), cfg!(target_os = "macos"));
+
+        let err = removal_error(Path::new("/tmp/foo"), eperm()).to_string();
+        assert!(err.contains("/tmp/foo"));
+        assert!(!err.contains("App Management"));
     }
 
     #[test]
