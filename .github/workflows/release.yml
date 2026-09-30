@@ -1,13 +1,27 @@
 name: release
 
 # Every merge to main (a push to main) publishes a new release.
+#
+# Version bump: patch by default. Label the PR `release:minor` or
+# `release:major` for a bigger bump, or set brew_cli/Cargo.toml to a higher
+# untagged version by hand (see .github/scripts/next-version.sh).
+#
+# After building, the release version is committed back to main
+# ("chore: release vX.Y.Z") so Cargo.toml always matches the latest release.
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+    inputs:
+      bump:
+        description: Version part to bump
+        type: choice
+        options: [ patch, minor, major ]
+        default: patch
 
 permissions:
   contents: write
+  pull-requests: read
   attestations: write
   id-token: write
 
@@ -29,24 +43,42 @@ jobs:
   release:
     needs: ci
     runs-on: macos-latest
-    if: github.repository == 'i-nick/brew'
+    # The version commit is pushed with GITHUB_TOKEN, which doesn't trigger
+    # workflows; the message check is a second guard against release loops.
+    if: >-
+      github.repository == 'i-nick/brew' &&
+      !startsWith(github.event.head_commit.message, 'chore: release v')
     steps:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
+      - name: Determine bump level
+        id: bump
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            level="${INPUT_BUMP:-patch}"
+          else
+            # Labels of the PR this merge commit came from (none for direct pushes).
+            labels=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+              --jq '.[0].labels[]?.name' || true)
+            level=patch
+            if grep -qx 'release:minor' <<< "$labels"; then level=minor; fi
+            if grep -qx 'release:major' <<< "$labels"; then level=major; fi
+          fi
+          echo "level=$level" >> "$GITHUB_OUTPUT"
+          echo "Bump level: $level"
+
       - name: Compute version
         id: version
         run: |
           set -euo pipefail
-          base=$(sed -n 's/^version = "\(.*\)"/\1/p' brew_cli/Cargo.toml | head -1)
-          if ! git rev-parse -q --verify "refs/tags/v$base" >/dev/null; then
-            version="$base"
-          else
-            latest=$(git tag -l 'v*' --sort=-v:refname | head -1)
-            IFS=. read -r major minor patch <<< "${latest#v}"
-            version="$major.$minor.$((patch + 1))"
-          fi
+          version=$(.github/scripts/next-version.sh "${{ steps.bump.outputs.level }}")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Releasing v$version"
 
@@ -89,9 +121,31 @@ jobs:
         with:
           subject-checksums: dist/SHA256SUMS
 
+      # Tag the exact source that was built (this commit plus the version
+      # bump), then fast-forward main to it. If main moved during the build,
+      # only the tag gets the commit; the next release brings main in sync.
+      - name: Commit and tag release version
+        id: commit
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add brew_*/Cargo.toml Cargo.lock
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: release v$VERSION"
+          fi
+          git tag "v$VERSION"
+          git push origin "refs/tags/v$VERSION"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if ! git push origin HEAD:refs/heads/main; then
+            echo "::warning::main moved during the release, so v$VERSION's version commit is only on the tag. The next release will update Cargo.toml on main."
+          fi
+
       - uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          target_commitish: ${{ github.sha }}
+          target_commitish: ${{ steps.commit.outputs.sha }}
           files: dist/*
           generate_release_notes: true
