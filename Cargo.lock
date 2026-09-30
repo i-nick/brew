@@ -162,6 +162,7 @@ dependencies = [
  "hex",
  "indicatif",
  "libc",
+ "reqwest",
  "serde_json",
  "sha2",
  "tar",

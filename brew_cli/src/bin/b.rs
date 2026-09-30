@@ -2,7 +2,7 @@ use brew_cli::{
     cli::{Cli, Commands},
     commands,
     init::ensure_init,
-    logging,
+    logging, self_update,
     ui::Ui,
     utils::get_root_path,
 };
@@ -15,10 +15,55 @@ async fn main() {
     let cli = Cli::parse();
     logging::init(cli.verbose, cli.quiet);
 
+    let update_check = spawn_update_check(&cli);
+
     if let Err(e) = run(cli).await {
         eprintln!("{} {}", style("error:").red().bold(), e);
         std::process::exit(1);
     }
+
+    if let Some(check) = update_check {
+        print_update_notice(check).await;
+    }
+}
+
+/// Look for a newer release in the background while the command runs.
+/// The network is hit at most once a day (always for `b update`).
+fn spawn_update_check(cli: &Cli) -> Option<tokio::task::JoinHandle<Option<self_update::Version>>> {
+    let skip_command = matches!(
+        cli.command,
+        Commands::SelfUpdate { .. }
+            | Commands::Completion { .. }
+            | Commands::Run { .. }
+            | Commands::Outdated { json: true }
+    );
+    let disabled = std::env::var_os("BREW_NO_UPDATE_CHECK").is_some_and(|v| !v.is_empty());
+    let interactive = std::io::IsTerminal::is_terminal(&std::io::stderr());
+    if skip_command || disabled || cli.quiet || !interactive {
+        return None;
+    }
+
+    let root = get_root_path(cli.root.clone());
+    let force = matches!(cli.command, Commands::Update);
+    Some(tokio::spawn(async move {
+        self_update::newer_release(&root, self_update::releases_url(), force).await
+    }))
+}
+
+async fn print_update_notice(check: tokio::task::JoinHandle<Option<self_update::Version>>) {
+    // Don't hold up a fast command for a slow network; the next run retries.
+    let Ok(Ok(Some(latest))) =
+        tokio::time::timeout(std::time::Duration::from_millis(500), check).await
+    else {
+        return;
+    };
+    eprintln!(
+        "\n{} b {} is available (you have {}). Run {} to update.",
+        style("==>").cyan().bold(),
+        style(latest).green().bold(),
+        self_update::CURRENT_VERSION,
+        style("b self-update").bold()
+    );
 }
 
 async fn run(cli: Cli) -> Result<(), brew_core::Error> {
@@ -32,6 +77,10 @@ async fn run(cli: Cli) -> Result<(), brew_core::Error> {
 
     if let Commands::Search { query } = &cli.command {
         return commands::search::execute(&root, query.clone(), &mut ui).await;
+    }
+
+    if let Commands::SelfUpdate { check, target } = &cli.command {
+        return commands::self_update::execute(&root, *check, target.clone(), &mut ui).await;
     }
 
     if let Commands::Init { no_modify_path } = &cli.command {
@@ -54,6 +103,7 @@ async fn run(cli: Cli) -> Result<(), brew_core::Error> {
         Commands::Init { .. } => unreachable!(),
         Commands::Completion { .. } => unreachable!(),
         Commands::Search { .. } => unreachable!(),
+        Commands::SelfUpdate { .. } => unreachable!(),
         Commands::Install {
             formulas,
             no_link,
@@ -108,6 +158,7 @@ fn requires_init(command: &Commands) -> bool {
             | Commands::Completion { .. }
             | Commands::Reset { .. }
             | Commands::Search { .. }
+            | Commands::SelfUpdate { .. }
     )
 }
 

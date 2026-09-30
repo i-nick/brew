@@ -23,6 +23,19 @@ After install, run the `export` command it prints (or restart your terminal).
 
 The CLI is `b`; `brew` is installed as an alias, so `brew install jq` works too.
 
+### Updating brew itself
+
+```bash
+b self-update            # update b and bx to the latest release
+b self-update --check    # only report whether a newer release exists
+b self-update 0.2.1      # install a specific release (also downgrades)
+```
+
+Downloads are checked against the release's `SHA256SUMS` and the new `b` is
+test-run before the old binaries are atomically replaced. `b` also checks for
+a new release at most once a day and prints a one-line notice; set
+`BREW_NO_UPDATE_CHECK=1` to turn that off.
+
 ## Quick start
 
 ```bash
