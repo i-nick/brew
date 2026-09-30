@@ -3,7 +3,12 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tracing::warn;
 
-const HOMEBREW_PREFIXES: &[&str] = &[
+/// Prefixes that upstream Homebrew builds its bottles with. These are the
+/// strings to *find* inside downloaded bottles, not paths on this machine:
+/// e.g. openssl ships with `OPENSSLDIR: "/opt/homebrew/etc/openssl@3"` baked
+/// in, which is rewritten to our prefix (`/opt/brew`). Do not rename these to
+/// our own prefix, or relocation silently becomes a no-op.
+const UPSTREAM_BOTTLE_PREFIXES: &[&str] = &[
     "/opt/homebrew",
     "/usr/local/Homebrew",
     "/usr/local",
@@ -75,7 +80,7 @@ fn patch_text_file_strings(path: &Path, new_prefix: &str, new_cellar: &str) -> R
         changed = true;
     }
 
-    for old_prefix in HOMEBREW_PREFIXES {
+    for old_prefix in UPSTREAM_BOTTLE_PREFIXES {
         if old_prefix == &new_prefix {
             continue;
         }
@@ -136,7 +141,7 @@ fn patch_macho_binary_strings(path: &Path, new_prefix: &str) -> Result<(), Error
     let original_contents = contents.clone();
     let mut patched = false;
 
-    for old_prefix in HOMEBREW_PREFIXES {
+    for old_prefix in UPSTREAM_BOTTLE_PREFIXES {
         if old_prefix == &new_prefix {
             continue;
         }

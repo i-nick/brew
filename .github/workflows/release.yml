@@ -68,6 +68,8 @@ jobs:
 
       - name: Verify no dynamic liblzma dependency
         run: |
+          # The runner has real Homebrew at /opt/homebrew; fail if the release
+          # binary accidentally links against its libraries.
           otool -L target/release/b
           if otool -L target/release/b | grep -Eq '/opt/homebrew|/usr/local/opt|liblzma'; then
             echo "error: unexpected dynamic dependency detected in release binary"
