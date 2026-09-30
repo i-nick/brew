@@ -2,6 +2,16 @@ use brew_io::Installer;
 use console::style;
 use std::path::PathBuf;
 
+/// Force a name to be interpreted as a cask (used by `install --cask`).
+pub fn as_cask_name(name: &str) -> String {
+    let trimmed = name.trim();
+    if trimmed.starts_with("cask:") {
+        return trimmed.to_string();
+    }
+    let token = trimmed.strip_prefix("homebrew/cask/").unwrap_or(trimmed);
+    format!("cask:{token}")
+}
+
 pub fn normalize_formula_name(name: &str) -> Result<String, brew_core::Error> {
     let trimmed = name.trim();
     if let Some(token) = trimmed.strip_prefix("cask:") {
@@ -107,8 +117,16 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::{
-        format_formula_suggestions, normalize_formula_name, suggest_missing_formula_matches,
+        as_cask_name, format_formula_suggestions, normalize_formula_name,
+        suggest_missing_formula_matches,
     };
+
+    #[test]
+    fn as_cask_name_prefixes_bare_and_tapped_names() {
+        assert_eq!(as_cask_name("zed"), "cask:zed");
+        assert_eq!(as_cask_name("cask:zed"), "cask:zed");
+        assert_eq!(as_cask_name("homebrew/cask/zed"), "cask:zed");
+    }
 
     #[test]
     fn normalize_core_tap_formula() {

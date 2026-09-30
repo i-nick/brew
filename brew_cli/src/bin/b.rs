@@ -4,7 +4,7 @@ use brew_cli::{
     init::ensure_init,
     logging,
     ui::Ui,
-    utils::get_root_path,
+    utils::{as_cask_name, get_root_path},
 };
 use brew_io::create_installer;
 use clap::Parser;
@@ -56,9 +56,15 @@ async fn run(cli: Cli) -> Result<(), brew_core::Error> {
         Commands::Search { .. } => unreachable!(),
         Commands::Install {
             formulas,
+            cask,
             no_link,
             build_from_source,
         } => {
+            let formulas = if cask {
+                formulas.iter().map(|name| as_cask_name(name)).collect()
+            } else {
+                formulas
+            };
             commands::install::execute(
                 &mut installer,
                 formulas,
