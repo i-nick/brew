@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use brew_core::{Error, formula_token};
 
-use crate::storage::db::StoreRef;
+use crate::storage::db::{InstalledKeg, StoreRef};
 
 use super::Installer;
 
@@ -59,7 +59,7 @@ impl Installer {
         let disk_store_entries = self.store.list_entries()?;
         let cellar_kegs = self.cellar.list_kegs()?;
 
-        let installed_by_token: HashMap<&str, &crate::storage::db::InstalledKeg> = installed
+        let installed_by_token: HashMap<&str, &InstalledKeg> = installed
             .iter()
             .map(|k| (formula_token(&k.name), k))
             .collect();
@@ -91,35 +91,30 @@ impl Installer {
 
         let disk_store_set: HashSet<&str> = disk_store_entries.iter().map(String::as_str).collect();
 
-        let store_keys_used: HashMap<&str, i64> = {
-            let mut map = HashMap::new();
-            for keg in &installed {
-                *map.entry(keg.store_key.as_str()).or_insert(0) += 1;
-            }
-            map
-        };
+        let store_keys_used: HashSet<&str> =
+            installed.iter().map(|k| k.store_key.as_str()).collect();
+        let expected_refs = expected_store_refcounts(&installed, &disk_store_set);
 
         for entry in &disk_store_entries {
             if !store_keys_in_db.contains(entry.as_str())
-                && !store_keys_used.contains_key(entry.as_str())
+                && !store_keys_used.contains(entry.as_str())
             {
                 report.orphaned_store_entries.push(entry.clone());
             }
         }
 
         for store_ref in &db_store_refs {
-            let actual_count = store_keys_used
-                .get(store_ref.store_key.as_str())
-                .copied()
-                .unwrap_or(0);
-            let on_disk = disk_store_set.contains(store_ref.store_key.as_str());
+            let key = store_ref.store_key.as_str();
+            let expected = expected_refs.get(key).copied().unwrap_or(0);
+            let on_disk = disk_store_set.contains(key);
+            let missing_on_disk = !on_disk && (expected > 0 || !store_keys_used.contains(key));
 
-            if store_ref.refcount != actual_count || !on_disk {
+            if store_ref.refcount != expected || missing_on_disk {
                 report.stale_store_refs.push(StaleStoreRef {
                     store_key: store_ref.store_key.clone(),
                     refcount: store_ref.refcount,
                     on_disk,
-                    referenced_by_any_keg: actual_count > 0,
+                    referenced_by_any_keg: expected > 0,
                 });
             }
         }
@@ -179,18 +174,18 @@ impl Installer {
 
         if needs_refcount_recompute {
             let installed = self.db.list_installed()?;
-            let mut corrected: HashMap<&str, i64> = HashMap::new();
-            for keg in &installed {
-                *corrected.entry(keg.store_key.as_str()).or_insert(0) += 1;
-            }
+            let disk_store_entries = self.store.list_entries()?;
+            let disk_store_set: HashSet<&str> =
+                disk_store_entries.iter().map(String::as_str).collect();
 
-            let corrected_refs: Vec<StoreRef> = corrected
-                .into_iter()
-                .map(|(store_key, refcount)| StoreRef {
-                    store_key: store_key.to_owned(),
-                    refcount,
-                })
-                .collect();
+            let corrected_refs: Vec<StoreRef> =
+                expected_store_refcounts(&installed, &disk_store_set)
+                    .into_iter()
+                    .map(|(store_key, refcount)| StoreRef {
+                        store_key: store_key.to_owned(),
+                        refcount,
+                    })
+                    .collect();
 
             self.db.replace_store_refs(&corrected_refs)?;
             summary.fixed_store_refs =
@@ -215,6 +210,24 @@ impl Installer {
     }
 }
 
+/// Refcount each store key should have. Formula kegs always hold a ref; cask
+/// kegs only do when they were extracted into the store (DMG and raw-binary
+/// casks record their download sha256 as `store_key` but never populate it).
+fn expected_store_refcounts<'a>(
+    installed: &'a [InstalledKeg],
+    disk_store_set: &HashSet<&str>,
+) -> HashMap<&'a str, i64> {
+    let mut map = HashMap::new();
+    for keg in installed {
+        let key = keg.store_key.as_str();
+        if keg.name.starts_with("cask:") && !disk_store_set.contains(key) {
+            continue;
+        }
+        *map.entry(key).or_insert(0) += 1;
+    }
+    map
+}
+
 #[derive(Debug, Default)]
 pub struct RepairSummary {
     pub removed_orphaned_kegs: usize,
@@ -233,5 +246,93 @@ impl RepairSummary {
             + self.removed_orphaned_store_entries
             + self.removed_broken_symlinks
             + self.pruned_keg_file_records
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use tempfile::TempDir;
+    use wiremock::MockServer;
+
+    use crate::cellar::Cellar;
+    use crate::network::api::ApiClient;
+    use crate::storage::blob::BlobCache;
+    use crate::storage::db::Database;
+    use crate::storage::store::Store;
+    use crate::{Installer, Linker};
+
+    fn make_installer(tmp: &TempDir, server: &MockServer) -> Installer {
+        let root = tmp.path().join("root");
+        let prefix = tmp.path().join("prefix");
+        fs::create_dir_all(root.join("db")).unwrap();
+
+        Installer::new(
+            ApiClient::with_base_url(format!("{}/formula", server.uri())).unwrap(),
+            BlobCache::new(&root.join("cache")).unwrap(),
+            Store::new(&root).unwrap(),
+            Cellar::new(&root).unwrap(),
+            Linker::new(&prefix).unwrap(),
+            Database::open(&root.join("db/brew.sqlite3")).unwrap(),
+            prefix.clone(),
+            root.join("locks"),
+        )
+    }
+
+    fn record(installer: &mut Installer, name: &str, store_key: &str) {
+        let tx = installer.db.transaction().unwrap();
+        tx.record_install_with_requested(name, "1.0.0", store_key, true)
+            .unwrap();
+        tx.commit().unwrap();
+    }
+
+    #[tokio::test]
+    async fn cask_installed_without_store_is_healthy_ref_wise() {
+        let server = MockServer::start().await;
+        let tmp = TempDir::new().unwrap();
+        let mut installer = make_installer(&tmp, &server);
+
+        let tx = installer.db.transaction().unwrap();
+        tx.record_cask_install("cask:zed", "1.0.0", "zed_sha", true, false)
+            .unwrap();
+        tx.commit().unwrap();
+
+        assert!(installer.db.list_store_refs().unwrap().is_empty());
+        let report = installer.doctor().unwrap();
+        assert!(report.stale_store_refs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn repair_drops_legacy_cask_store_ref_without_store_entry() {
+        let server = MockServer::start().await;
+        let tmp = TempDir::new().unwrap();
+        let mut installer = make_installer(&tmp, &server);
+
+        // Older installs took a store ref for every cask.
+        record(&mut installer, "cask:zed", "zed_sha");
+
+        let report = installer.doctor().unwrap();
+        assert_eq!(report.stale_store_refs.len(), 1);
+        assert!(!report.stale_store_refs[0].referenced_by_any_keg);
+
+        installer.repair(&report).unwrap();
+
+        assert!(installer.db.list_store_refs().unwrap().is_empty());
+        let report = installer.doctor().unwrap();
+        assert!(report.stale_store_refs.is_empty());
+    }
+
+    #[tokio::test]
+    async fn formula_store_ref_without_store_entry_is_stale() {
+        let server = MockServer::start().await;
+        let tmp = TempDir::new().unwrap();
+        let mut installer = make_installer(&tmp, &server);
+
+        record(&mut installer, "jq", "jq_sha");
+
+        let report = installer.doctor().unwrap();
+        assert_eq!(report.stale_store_refs.len(), 1);
+        assert!(!report.stale_store_refs[0].on_disk);
     }
 }

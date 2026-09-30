@@ -105,6 +105,26 @@ mod tests {
     }
 
     #[test]
+    fn install_accepts_cask_flag_with_multiple_names() {
+        let cli =
+            Cli::try_parse_from(["b", "install", "--cask", "zed", "visual-studio-code"]).unwrap();
+        let super::Commands::Install { formulas, cask, .. } = cli.command else {
+            panic!("expected install command");
+        };
+        assert!(cask);
+        assert_eq!(
+            formulas,
+            vec!["zed".to_string(), "visual-studio-code".to_string()]
+        );
+    }
+
+    #[test]
+    fn install_cask_conflicts_with_build_from_source() {
+        let result = Cli::try_parse_from(["b", "install", "--cask", "-s", "zed"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn uninstall_accepts_rm_alias() {
         let cli = Cli::try_parse_from(["b", "rm", "jq"]).unwrap();
         assert!(matches!(cli.command, super::Commands::Uninstall { .. }));
@@ -198,6 +218,9 @@ pub enum Commands {
     Install {
         #[arg(required = true, num_args = 1..)]
         formulas: Vec<String>,
+        /// Treat all given names as casks
+        #[arg(long, visible_alias = "casks", conflicts_with = "build_from_source")]
+        cask: bool,
         #[arg(long)]
         no_link: bool,
         #[arg(long, short = 's')]

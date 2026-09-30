@@ -373,6 +373,7 @@ impl Installer {
             link,
         );
 
+        let mut uses_store = false;
         if should_mount_dmg_directly(&cask) {
             let mounted = MountedDmg::attach(&blob_path, &cask)?;
             install_cask_from_root(
@@ -385,6 +386,7 @@ impl Installer {
             )?;
         } else if crate::extraction::is_archive(&blob_path)? {
             let extracted = self.store.ensure_entry(&cask.sha256, &blob_path)?;
+            uses_store = true;
             install_cask_from_root(
                 &extracted,
                 &keg_path,
@@ -421,11 +423,12 @@ impl Installer {
         };
 
         let tx = self.db.transaction()?;
-        tx.record_install_with_requested(
+        tx.record_cask_install(
             &cask.install_name,
             &cask.version,
             &cask.sha256,
             requested,
+            uses_store,
         )?;
         tx.clear_keg_file_records(&cask.install_name)?;
         for linked in &linked_files {
