@@ -461,7 +461,21 @@ impl<'a> InstallTransaction<'a> {
         store_key: &str,
         requested: bool,
     ) -> Result<(), Error> {
-        self.record_install_inner(name, version, store_key, requested, false, &[])
+        self.record_install_inner(name, version, store_key, requested, None, true)
+    }
+
+    /// Record a cask install. `store_key` is always saved (it identifies the
+    /// downloaded artifact), but a store ref is only taken when the cask was
+    /// actually extracted into the store; DMG and raw-binary casks never are.
+    pub fn record_cask_install(
+        &self,
+        name: &str,
+        version: &str,
+        store_key: &str,
+        requested: bool,
+        uses_store: bool,
+    ) -> Result<(), Error> {
+        self.record_install_inner(name, version, store_key, requested, None, uses_store)
     }
 
     pub fn record_formula_install_with_dependencies(
@@ -472,7 +486,14 @@ impl<'a> InstallTransaction<'a> {
         requested: bool,
         dependencies: &[String],
     ) -> Result<(), Error> {
-        self.record_install_inner(name, version, store_key, requested, true, dependencies)
+        self.record_install_inner(
+            name,
+            version,
+            store_key,
+            requested,
+            Some(dependencies),
+            true,
+        )
     }
 
     fn record_install_inner(
@@ -481,9 +502,10 @@ impl<'a> InstallTransaction<'a> {
         version: &str,
         store_key: &str,
         requested: bool,
-        deps_recorded: bool,
-        dependencies: &[String],
+        dependencies: Option<&[String]>,
+        uses_store: bool,
     ) -> Result<(), Error> {
+        let deps_recorded = dependencies.is_some();
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_secs() as i64)
@@ -524,7 +546,7 @@ impl<'a> InstallTransaction<'a> {
             )
             .map_err(Error::store("failed to clear installed dependencies"))?;
 
-        if deps_recorded {
+        if let Some(dependencies) = dependencies {
             for dependency in dependencies {
                 self.tx
                     .execute(
@@ -548,13 +570,15 @@ impl<'a> InstallTransaction<'a> {
                         .map_err(Error::store("failed to decrement previous store ref"))?;
                 }
 
-                self.tx
-                    .execute(
-                        "INSERT INTO store_refs (store_key, refcount) VALUES (?1, 1)
-                         ON CONFLICT(store_key) DO UPDATE SET refcount = refcount + 1",
-                        params![store_key],
-                    )
-                    .map_err(Error::store("failed to increment store ref"))?;
+                if uses_store {
+                    self.tx
+                        .execute(
+                            "INSERT INTO store_refs (store_key, refcount) VALUES (?1, 1)
+                             ON CONFLICT(store_key) DO UPDATE SET refcount = refcount + 1",
+                            params![store_key],
+                        )
+                        .map_err(Error::store("failed to increment store ref"))?;
+                }
             }
         }
 
@@ -967,6 +991,48 @@ mod tests {
         let installed = db.get_installed("foo").unwrap();
         assert_eq!(installed.version, "1.1.0");
         assert_eq!(installed.store_key, "newkey");
+    }
+
+    #[test]
+    fn cask_install_without_store_takes_no_store_ref() {
+        let mut db = Database::in_memory().unwrap();
+
+        {
+            let tx = db.transaction().unwrap();
+            tx.record_cask_install("cask:zed", "1.0.0", "zed_sha", true, false)
+                .unwrap();
+            tx.record_cask_install("cask:foo", "1.0.0", "foo_sha", true, true)
+                .unwrap();
+            tx.commit().unwrap();
+        }
+
+        assert!(db.get_installed("cask:zed").is_some());
+        let refs = db.list_store_refs().unwrap();
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].store_key, "foo_sha");
+        assert_eq!(refs[0].refcount, 1);
+    }
+
+    #[test]
+    fn cask_upgrade_without_store_releases_previous_store_ref() {
+        let mut db = Database::in_memory().unwrap();
+
+        {
+            let tx = db.transaction().unwrap();
+            tx.record_cask_install("cask:foo", "1.0.0", "old_sha", true, true)
+                .unwrap();
+            tx.commit().unwrap();
+        }
+        {
+            let tx = db.transaction().unwrap();
+            tx.record_cask_install("cask:foo", "2.0.0", "new_sha", true, false)
+                .unwrap();
+            tx.commit().unwrap();
+        }
+
+        assert_eq!(db.get_store_refcount("old_sha"), 0);
+        assert_eq!(db.get_store_refcount("new_sha"), 0);
+        assert_eq!(db.get_unreferenced_store_keys().unwrap(), vec!["old_sha"]);
     }
 
     #[test]
