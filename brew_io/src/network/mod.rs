@@ -2,6 +2,7 @@ pub mod api;
 pub mod cache;
 pub mod download;
 pub mod suggest;
+pub mod tap;
 pub mod tap_cask;
 pub mod tap_formula;
 
@@ -13,3 +14,4 @@ pub use cache::{ApiCache, CacheEntry};
 pub use download::{
     DownloadProgressCallback, DownloadRequest, DownloadResult, Downloader, ParallelDownloader,
 };
+pub use tap::{TapIndex, TapName, TapRegistry, installed_tap_of};

@@ -197,6 +197,28 @@ mod tests {
     }
 
     #[test]
+    fn tap_accepts_optional_name() {
+        let cli = Cli::try_parse_from(["b", "tap"]).unwrap();
+        assert!(matches!(cli.command, super::Commands::Tap { name: None }));
+
+        let cli = Cli::try_parse_from(["b", "tap", "hashicorp/tap"]).unwrap();
+        let super::Commands::Tap { name } = cli.command else {
+            panic!("expected tap command");
+        };
+        assert_eq!(name.as_deref(), Some("hashicorp/tap"));
+    }
+
+    #[test]
+    fn untap_requires_name_and_accepts_force() {
+        assert!(Cli::try_parse_from(["b", "untap"]).is_err());
+        let cli = Cli::try_parse_from(["b", "untap", "-f", "hashicorp/tap"]).unwrap();
+        assert!(matches!(
+            cli.command,
+            super::Commands::Untap { force: true, .. }
+        ));
+    }
+
+    #[test]
     fn search_accepts_single_term() {
         let cli = Cli::try_parse_from(["b", "search", "code"]).unwrap();
         assert!(matches!(cli.command, super::Commands::Search { .. }));
@@ -294,6 +316,20 @@ pub enum Commands {
         /// Install this release (e.g. 0.2.1) instead of the latest; allows downgrades
         #[arg(value_name = "VERSION")]
         target: Option<String>,
+    },
+    /// Add a third-party tap (user/repo), or list tapped repositories
+    Tap {
+        /// Tap to add, e.g. hashicorp/tap
+        #[arg(value_name = "USER/REPO")]
+        name: Option<String>,
+    },
+    /// Remove tapped repositories
+    Untap {
+        #[arg(value_name = "USER/REPO", required = true, num_args = 1..)]
+        names: Vec<String>,
+        /// Untap even if packages installed from the tap remain
+        #[arg(long, short = 'f')]
+        force: bool,
     },
     Outdated {
         /// Output as JSON

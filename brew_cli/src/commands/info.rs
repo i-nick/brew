@@ -6,6 +6,7 @@ pub fn execute(
     installer: &mut brew_io::Installer,
     formula: String,
 ) -> Result<(), brew_core::Error> {
+    let formula = crate::utils::resolve_installed_name(installer, &formula)?;
     if let Some(keg) = installer.get_installed(&formula) {
         let fields = installed_keg_fields(&keg);
         print_field("Name:", style(&fields.name).bold());

@@ -17,6 +17,7 @@ use crate::cellar::materialize::Cellar;
 use crate::network::api::ApiClient;
 use crate::network::create_api_client_with_cache;
 use crate::network::download::{DownloadProgressCallback, DownloadRequest, ParallelDownloader};
+use crate::network::tap::TapRegistry;
 use crate::progress::{InstallProgress, ProgressCallback};
 use crate::storage::blob::BlobCache;
 use crate::storage::db::Database;
@@ -41,6 +42,8 @@ pub struct Installer {
     prefix: PathBuf,
     locks_dir: PathBuf,
     appdir: PathBuf,
+    /// Root holding the tap registry; `None` disables tap name resolution.
+    taps_root: Option<PathBuf>,
 }
 
 #[derive(Debug)]
@@ -129,7 +132,35 @@ impl Installer {
             prefix,
             locks_dir,
             appdir: PathBuf::from(DEFAULT_APPDIR),
+            taps_root: None,
         }
+    }
+
+    /// Enables resolving bare names through the taps registered under `root`.
+    pub fn with_taps_root(mut self, root: PathBuf) -> Self {
+        self.taps_root = Some(root);
+        self
+    }
+
+    /// Qualifies bare formula/cask names that only a tapped repository
+    /// provides (e.g. `terraform` -> `hashicorp/tap/terraform`).
+    pub async fn resolve_tapped_names(&self, names: &[String]) -> Result<Vec<String>, Error> {
+        let Some(root) = &self.taps_root else {
+            return Ok(names.to_vec());
+        };
+        let registry = TapRegistry::load(root)?;
+        if registry.is_empty() {
+            return Ok(names.to_vec());
+        }
+        let mut resolved = Vec::with_capacity(names.len());
+        for name in names {
+            resolved.push(registry.resolve(&self.api_client, name).await?);
+        }
+        Ok(resolved)
+    }
+
+    pub fn api_client(&self) -> &ApiClient {
+        &self.api_client
     }
 
     pub fn clear_api_cache(&self) -> Result<usize, Error> {
@@ -443,6 +474,7 @@ pub fn create_installer(
         prefix: prefix.to_path_buf(),
         locks_dir,
         appdir: PathBuf::from(DEFAULT_APPDIR),
+        taps_root: Some(root.to_path_buf()),
     })
 }
 

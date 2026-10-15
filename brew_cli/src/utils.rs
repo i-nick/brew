@@ -44,6 +44,48 @@ pub fn normalize_formula_name(name: &str) -> Result<String, brew_core::Error> {
     Ok(trimmed.to_string())
 }
 
+/// Maps a bare name to the installed tap package it refers to, so
+/// `b uninstall terraform` finds `hashicorp/tap/terraform`. Names that are
+/// installed as given, or match nothing, are returned unchanged.
+pub fn resolve_installed_name(
+    installer: &Installer,
+    name: &str,
+) -> Result<String, brew_core::Error> {
+    let (prefix, token) = match name.strip_prefix("cask:") {
+        Some(token) => ("cask:", token),
+        None => ("", name),
+    };
+    if token.contains('/') || installer.is_installed(name) {
+        return Ok(name.to_string());
+    }
+
+    let matches: Vec<String> = installer
+        .list_installed()?
+        .into_iter()
+        .map(|keg| keg.name)
+        .filter(|installed| {
+            let rest = if prefix.is_empty() {
+                (!installed.starts_with("cask:")).then_some(installed.as_str())
+            } else {
+                installed.strip_prefix(prefix)
+            };
+            rest.and_then(|rest| rest.rsplit_once('/'))
+                .is_some_and(|(_, installed_token)| installed_token == token)
+        })
+        .collect();
+
+    match matches.as_slice() {
+        [] => Ok(name.to_string()),
+        [only] => Ok(only.clone()),
+        _ => Err(brew_core::Error::InvalidArgument {
+            message: format!(
+                "'{name}' matches multiple installed packages; use one of: {}",
+                matches.join(", ")
+            ),
+        }),
+    }
+}
+
 pub fn format_formula_suggestions(requested: &str, suggestions: &[String]) -> Option<String> {
     if suggestions.is_empty() {
         return None;

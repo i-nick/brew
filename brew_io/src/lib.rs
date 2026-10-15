@@ -21,8 +21,8 @@ pub use installer::{
 };
 pub use network::{
     ApiCache, ApiClient, DownloadProgressCallback, DownloadRequest, Downloader, PackageSearchKind,
-    PackageSearchResult, ParallelDownloader, create_api_client_with_cache,
-    create_api_client_with_optional_cache,
+    PackageSearchResult, ParallelDownloader, TapIndex, TapName, TapRegistry,
+    create_api_client_with_cache, create_api_client_with_optional_cache, installed_tap_of,
 };
 pub use path::validate_privileged_path;
 pub use progress::{InstallProgress, ProgressCallback};

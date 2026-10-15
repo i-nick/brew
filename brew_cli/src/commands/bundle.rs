@@ -3,11 +3,12 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use super::install;
+use super::{install, tap};
 use crate::cli::BundleCommands;
 use crate::ui::StdUi;
 
 pub async fn execute(
+    root: &Path,
     installer: &mut brew_io::Installer,
     command: Option<BundleCommands>,
     ui: &mut StdUi,
@@ -17,19 +18,34 @@ pub async fn execute(
         no_link: false,
     }) {
         BundleCommands::Install { file, no_link } => {
-            install_from_file(installer, &file, no_link, ui).await
+            install_from_file(root, installer, &file, no_link, ui).await
         }
-        BundleCommands::Dump { file, force } => dump_to_file(installer, &file, force),
+        BundleCommands::Dump { file, force } => dump_to_file(root, installer, &file, force),
     }
 }
 
 async fn install_from_file(
+    root: &Path,
     installer: &mut brew_io::Installer,
     manifest_path: &Path,
     no_link: bool,
     ui: &mut StdUi,
 ) -> Result<(), brew_core::Error> {
-    let formulas = load_manifest(manifest_path)?;
+    let Manifest {
+        taps,
+        packages: formulas,
+    } = load_manifest(manifest_path)?;
+
+    let tapped = brew_io::TapRegistry::load(root)?;
+    for tap in taps {
+        let already_tapped = brew_io::TapName::parse(&tap)
+            .map(|name| name.is_builtin() || tapped.get(&name).is_some())
+            .unwrap_or(false);
+        if !already_tapped {
+            tap::execute_tap(root, installer, Some(tap), ui).await?;
+        }
+    }
+
     println!(
         "{} Installing {} formulas from {}...",
         style("==>").cyan().bold(),
@@ -51,6 +67,7 @@ async fn install_from_file(
 }
 
 fn dump_to_file(
+    root: &Path,
     installer: &mut brew_io::Installer,
     file_path: &Path,
     force: bool,
@@ -66,6 +83,9 @@ fn dump_to_file(
 
     let installed = installer.list_installed()?;
     let mut content = String::new();
+    for tap in brew_io::TapRegistry::load(root)?.iter() {
+        content.push_str(&format!("tap \"{}\"\n", tap.name));
+    }
     for keg in &installed {
         if let Some(token) = keg.name.strip_prefix("cask:") {
             content.push_str(&format!("cask \"{}\"\n", token));
@@ -88,11 +108,18 @@ fn dump_to_file(
     Ok(())
 }
 
-fn load_manifest(path: &Path) -> Result<Vec<String>, brew_core::Error> {
+#[derive(Debug, Default)]
+struct Manifest {
+    taps: Vec<String>,
+    packages: Vec<String>,
+}
+
+fn load_manifest(path: &Path) -> Result<Manifest, brew_core::Error> {
     let contents = std::fs::read_to_string(path).map_err(|e| brew_core::Error::FileError {
         message: format!("failed to read manifest {}: {}", path.display(), e),
     })?;
 
+    let mut taps = Vec::new();
     let mut formulas = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
 
@@ -104,7 +131,10 @@ fn load_manifest(path: &Path) -> Result<Vec<String>, brew_core::Error> {
         }
 
         if let Some(tap) = parse_quoted_directive(entry, "tap") {
-            return Err(unsupported_tap_directive_error(path, tap));
+            if !taps.iter().any(|t| t == tap) {
+                taps.push(tap.to_string());
+            }
+            continue;
         }
 
         if let Some(parsed) = parse_brewfile_entry(entry)
@@ -114,23 +144,16 @@ fn load_manifest(path: &Path) -> Result<Vec<String>, brew_core::Error> {
         }
     }
 
-    if formulas.is_empty() {
+    if formulas.is_empty() && taps.is_empty() {
         return Err(brew_core::Error::FileError {
             message: format!("manifest {} did not contain any formulas", path.display()),
         });
     }
 
-    Ok(formulas)
-}
-
-fn unsupported_tap_directive_error(path: &Path, tap: &str) -> brew_core::Error {
-    brew_core::Error::FileError {
-        message: format!(
-            "manifest {} uses unsupported tap directive '{}'. brew does not support Brewfile tap directives; replace tapped formulas with explicit refs like brew \"owner/repo/foo\"",
-            path.display(),
-            tap
-        ),
-    }
+    Ok(Manifest {
+        taps,
+        packages: formulas,
+    })
 }
 
 fn parse_brewfile_entry(line: &str) -> Option<String> {
@@ -229,7 +252,7 @@ end
         )
         .unwrap();
 
-        let entries = load_manifest(file.path()).unwrap();
+        let entries = load_manifest(file.path()).unwrap().packages;
         assert_eq!(entries, vec!["jq", "wget", "git"]);
     }
 
@@ -242,7 +265,7 @@ end
         )
         .unwrap();
 
-        let entries = load_manifest(file.path()).unwrap();
+        let entries = load_manifest(file.path()).unwrap().packages;
         assert_eq!(entries, vec!["jq", "wget", "git"]);
     }
 
@@ -283,7 +306,7 @@ end
         )
         .unwrap();
 
-        let entries = load_manifest(file.path()).unwrap();
+        let entries = load_manifest(file.path()).unwrap().packages;
         assert_eq!(
             entries,
             vec!["wget", "cask:docker-desktop", "cask:example/tap/zed"]
@@ -295,24 +318,22 @@ end
         let mut file = tempfile::NamedTempFile::new().unwrap();
         writeln!(file, "brew \"hashicorp/tap/terraform\"\n").unwrap();
 
-        let entries = load_manifest(file.path()).unwrap();
+        let entries = load_manifest(file.path()).unwrap().packages;
         assert_eq!(entries, vec!["hashicorp/tap/terraform"]);
     }
 
     #[test]
-    fn load_manifest_errors_on_tap_directive() {
+    fn load_manifest_collects_tap_directives() {
         let mut file = tempfile::NamedTempFile::new().unwrap();
-        writeln!(file, "tap \"hashicorp/tap\"\nbrew \"terraform\"\n").unwrap();
+        writeln!(
+            file,
+            "tap \"hashicorp/tap\"\ntap \"hashicorp/tap\"\nbrew \"terraform\"\n"
+        )
+        .unwrap();
 
-        let err = load_manifest(file.path()).unwrap_err();
-        match err {
-            brew_core::Error::FileError { message } => {
-                assert!(message.contains("unsupported tap directive"));
-                assert!(message.contains("hashicorp/tap"));
-                assert!(message.contains("brew \"owner/repo/foo\""));
-            }
-            other => panic!("expected file error, got {other:?}"),
-        }
+        let manifest = load_manifest(file.path()).unwrap();
+        assert_eq!(manifest.taps, vec!["hashicorp/tap"]);
+        assert_eq!(manifest.packages, vec!["terraform"]);
     }
 
     #[tokio::test]
@@ -370,7 +391,7 @@ end
             .unwrap();
 
         let dump_path = tmp.path().join("Brewfile");
-        dump_to_file(&mut installer, &dump_path, true).unwrap();
+        dump_to_file(&root, &mut installer, &dump_path, true).unwrap();
 
         let content = fs::read_to_string(dump_path).unwrap();
         assert!(content.contains("brew \"hashicorp/tap/terraform\""));

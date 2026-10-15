@@ -41,7 +41,11 @@ a new release at most once a day and prints a one-line notice; set
 ```bash
 b install jq                   # install one package
 b install wget git             # install multiple
-b install hashicorp/tap/terraform  # install a third-party formula by explicit ref
+b tap hashicorp/tap             # add a third-party tap
+b install terraform            # ...then install from it by name
+b install hashicorp/tap/terraform  # or use an explicit ref (no tap needed)
+b tap                          # list tapped repositories
+b untap hashicorp/tap          # remove a tap
 b bundle                       # install from Brewfile
 b bundle install -f myfile     # install from custom file
 b bundle dump                  # export installed packages to Brewfile
@@ -58,8 +62,12 @@ bx jq --version                # run without linking
 - APFS clonefiles for zero-overhead copying
 - Source build fallback using a Ruby formula DSL shim
 
-brew does not maintain a separate tap registry. Install third-party formulas with explicit
-references such as `owner/repo/formula`, and use the same explicit ref in your Brewfiles.
+Taps are not cloned. `b tap owner/repo` records the formula and cask names the GitHub
+repository `owner/homebrew-repo` provides (refreshed by `b update`), so bare names like
+`terraform` resolve to `hashicorp/tap/terraform`. As in Homebrew, homebrew/core wins when
+both provide a name. Formula sources are fetched on demand, so explicit refs such as
+`owner/repo/formula` work without tapping. Brewfile `tap "owner/repo"` lines are supported.
+Set `HOMEBREW_GITHUB_API_TOKEN` or `GITHUB_TOKEN` if you hit GitHub API rate limits.
 
 Package metadata and bottles come from the Homebrew project; see [LICENSE-HOMEBREW](./LICENSE-HOMEBREW).
 

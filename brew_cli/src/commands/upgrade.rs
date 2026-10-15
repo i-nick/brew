@@ -1,7 +1,7 @@
 use console::style;
 
 use crate::ui::StdUi;
-use crate::utils::normalize_formula_name;
+use crate::utils::{normalize_formula_name, resolve_installed_name};
 
 pub async fn execute(
     installer: &mut brew_io::Installer,
@@ -110,7 +110,7 @@ async fn collect_selected_outdated(
     let mut skipped = Vec::new();
 
     for formula in formulas {
-        let name = normalize_formula_name(&formula)?;
+        let name = resolve_installed_name(installer, &normalize_formula_name(&formula)?)?;
         match installer.is_outdated(&name).await? {
             Some(pkg) => outdated.push(pkg),
             None => skipped.push(name),

@@ -6,7 +6,9 @@ use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use crate::utils::{normalize_formula_name, suggest_missing_formula_matches};
+use crate::utils::{
+    normalize_formula_name, resolve_installed_name, suggest_missing_formula_matches,
+};
 
 /// Prepare a package for execution by ensuring it's installed
 /// Returns the path to the executable
@@ -15,6 +17,15 @@ pub async fn prepare_execution(
     formula: &str,
 ) -> Result<PathBuf, brew_core::Error> {
     let normalized = normalize_formula_name(formula)?;
+    let normalized = resolve_installed_name(installer, &normalized)?;
+    let normalized = if installer.is_installed(&normalized) {
+        normalized
+    } else {
+        installer
+            .resolve_tapped_names(std::slice::from_ref(&normalized))
+            .await?
+            .remove(0)
+    };
 
     let was_installed = installer.is_installed(&normalized);
 

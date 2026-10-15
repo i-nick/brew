@@ -125,7 +125,7 @@ async fn run(cli: Cli) -> Result<(), brew_core::Error> {
             .await
         }
         Commands::Bundle { command } => {
-            commands::bundle::execute(&mut installer, command, &mut ui).await
+            commands::bundle::execute(&root, &mut installer, command, &mut ui).await
         }
         Commands::Upgrade { formulas, casks } => {
             commands::upgrade::execute(&mut installer, formulas, casks, &mut ui).await
@@ -146,7 +146,16 @@ async fn run(cli: Cli) -> Result<(), brew_core::Error> {
         Commands::List { all } => commands::list::execute(&mut installer, all),
         Commands::Info { formula } => commands::info::execute(&mut installer, formula),
         Commands::Gc => commands::gc::execute(&mut installer),
-        Commands::Update => commands::update::execute(&mut installer),
+        Commands::Update => {
+            commands::update::execute(&mut installer)?;
+            commands::tap::refresh_all(&root, &installer, &mut ui).await
+        }
+        Commands::Tap { name } => {
+            commands::tap::execute_tap(&root, &installer, name, &mut ui).await
+        }
+        Commands::Untap { names, force } => {
+            commands::tap::execute_untap(&root, &installer, names, force, &mut ui)
+        }
         Commands::Outdated { json } => {
             commands::outdated::execute(&mut installer, cli.quiet, cli.verbose > 0, json).await
         }

@@ -22,10 +22,15 @@ pub async fn execute(
     ))
     .map_err(ui_error)?;
 
+    let mut names = Vec::with_capacity(formulas.len());
+    for formula in &formulas {
+        names.push(normalize_formula_name(formula)?);
+    }
+    let names = installer.resolve_tapped_names(&names).await?;
+
     let mut normalized_names = Vec::new();
     let mut cask_names = Vec::new();
-    for formula in &formulas {
-        let name = normalize_formula_name(formula)?;
+    for name in names {
         if name.starts_with("cask:") {
             cask_names.push(name);
         } else {

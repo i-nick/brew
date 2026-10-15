@@ -61,11 +61,11 @@ static BOTTLE_SHA_RE: LazyLock<Regex> = LazyLock::new(|| {
 static ON_PLATFORM_RE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"^\s*on_(macos|linux|arm|intel)\s+do\b"#).expect("ON_PLATFORM_RE must compile")
 });
-static HW_CPU_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"^\s*if\s+Hardware::CPU\.(arm|intel)\?"#).expect("HW_CPU_RE must compile")
+static IF_COND_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"^\s*if\s+([^#]+?)\s*(?:#.*)?$"#).expect("IF_COND_RE must compile")
 });
-static ELSIF_HW_CPU_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"^\s*elsif\s+Hardware::CPU\.(arm|intel)\?"#).expect("ELSIF_HW_CPU_RE must compile")
+static ELSIF_COND_RE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"^\s*elsif\s+([^#]+?)\s*(?:#.*)?$"#).expect("ELSIF_COND_RE must compile")
 });
 static ELSE_LINE_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"^\s*else\s*(?:#.*)?$"#).expect("ELSE_LINE_RE must compile"));
@@ -109,20 +109,40 @@ fn platform_block_matches(trimmed: &str) -> Option<bool> {
     Some(matches!(platform, "macos" | "arm"))
 }
 
-/// Returns `Some(true)` when the line is an `if Hardware::CPU.arm?`
-/// conditional, `Some(false)` for `if Hardware::CPU.intel?`, and `None` when
-/// the line is not an arch conditional.
+/// Returns `Some(true)` when the line is an `if` over platform predicates
+/// (e.g. `if Hardware::CPU.arm?` or `if OS.mac? && Hardware::CPU.arm?`) that
+/// holds on macOS Apple Silicon, `Some(false)` when it does not, and `None`
+/// when the line is not a platform conditional.
 fn arch_conditional_matches(trimmed: &str) -> Option<bool> {
-    let cap = HW_CPU_RE.captures(trimmed)?;
-    Some(cap.get(1)?.as_str() == "arm")
+    let cap = IF_COND_RE.captures(trimmed)?;
+    evaluate_platform_condition(cap.get(1)?.as_str())
 }
 
-/// Returns `Some(true)` when the line is an `elsif Hardware::CPU.arm?`
-/// conditional, `Some(false)` for `elsif Hardware::CPU.intel?`, and `None`
-/// when the line is not an elsif arch conditional.
+/// Like [`arch_conditional_matches`], for `elsif` lines.
 fn arch_conditional_matches_elsif(trimmed: &str) -> Option<bool> {
-    let cap = ELSIF_HW_CPU_RE.captures(trimmed)?;
-    Some(cap.get(1)?.as_str() == "arm")
+    let cap = ELSIF_COND_RE.captures(trimmed)?;
+    evaluate_platform_condition(cap.get(1)?.as_str())
+}
+
+/// Evaluates a `&&`-joined, optionally negated list of `OS`/`Hardware::CPU`
+/// predicates for macOS on 64-bit Apple Silicon. Returns `None` for anything
+/// else so unrelated `if` statements are left untouched.
+fn evaluate_platform_condition(condition: &str) -> Option<bool> {
+    let mut result = true;
+    for term in condition.split("&&") {
+        let term = term.trim();
+        let (negated, predicate) = match term.strip_prefix('!') {
+            Some(rest) => (true, rest.trim()),
+            None => (false, term),
+        };
+        let value = match predicate {
+            "OS.mac?" | "Hardware::CPU.arm?" | "Hardware::CPU.is_64_bit?" => true,
+            "OS.linux?" | "Hardware::CPU.intel?" | "Hardware::CPU.is_32_bit?" => false,
+            _ => return None,
+        };
+        result &= value != negated;
+    }
+    Some(result)
 }
 
 /// Counts how many Ruby blocks are opened by a single source line (via `do`
@@ -1329,5 +1349,65 @@ end
 
         assert!(formula.dependencies.contains(&"macos-only-dep".to_string()));
         assert!(!formula.dependencies.contains(&"linux-only-dep".to_string()));
+    }
+
+    #[test]
+    fn evaluates_compound_platform_conditions() {
+        assert_eq!(
+            evaluate_platform_condition("OS.mac? && Hardware::CPU.arm?"),
+            Some(true)
+        );
+        assert_eq!(
+            evaluate_platform_condition("OS.mac? && Hardware::CPU.intel?"),
+            Some(false)
+        );
+        assert_eq!(
+            evaluate_platform_condition(
+                "OS.linux? && Hardware::CPU.arm? && !Hardware::CPU.is_64_bit?"
+            ),
+            Some(false)
+        );
+        assert_eq!(evaluate_platform_condition("build.head?"), None);
+        assert_eq!(evaluate_platform_condition("OS.mac? || OS.linux?"), None);
+    }
+
+    #[test]
+    fn parses_formula_with_compound_os_and_cpu_conditionals() {
+        let spec = TapFormulaRef {
+            owner: "hashicorp".to_string(),
+            repo: "tap".to_string(),
+            formula: "terraform".to_string(),
+        };
+        let rb = r#"
+class Terraform < Formula
+  version "1.16.6"
+
+  if OS.mac? && Hardware::CPU.intel?
+    url "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_darwin_amd64.zip"
+    sha256 "794a36c3f7ebf6c58f2089c226068a539d1705ba358a5679b51671c8dc7ebc7b"
+  end
+
+  if OS.mac? && Hardware::CPU.arm?
+    url "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_darwin_arm64.zip"
+    sha256 "85e1bc78ab45bdc5f82a7bac3929e37d072834a584d22583a2498dc67bb624cd"
+  end
+
+  if OS.linux? && Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
+    url "https://releases.hashicorp.com/terraform/1.16.6/terraform_1.16.6_linux_arm64.zip"
+    sha256 "a750b5a11038f165846b2658c40c88cd7070aa67a61bab431a14ba27928ea9ea"
+  end
+
+  def install
+    bin.install "terraform"
+  end
+end
+"#;
+        let formula = parse_tap_formula_ruby(&spec, rb).unwrap();
+        let stable = formula.urls.unwrap().stable.unwrap();
+        assert!(stable.url.ends_with("darwin_arm64.zip"));
+        assert_eq!(
+            stable.checksum.as_deref(),
+            Some("85e1bc78ab45bdc5f82a7bac3929e37d072834a584d22583a2498dc67bb624cd")
+        );
     }
 }

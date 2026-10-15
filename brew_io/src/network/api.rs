@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 use crate::checksum::verify_sha256_bytes;
 use crate::network::cache::{ApiCache, CacheEntry};
 use crate::network::suggest::rank_formula_suggestions;
+use crate::network::tap::{TapIndex, TapName};
 use crate::network::tap_cask::parse_tap_cask_ruby;
 use crate::network::tap_formula::{parse_tap_formula_ref, parse_tap_formula_ruby};
 use brew_core::{Error, Formula};
@@ -119,6 +120,7 @@ pub struct ApiClient {
     base_url: String,
     cask_base_url: String,
     tap_raw_base_url: String,
+    github_api_base_url: String,
     client: reqwest::Client,
     cache: Option<ApiCache>,
     formula_candidates: RwLock<Option<Arc<[String]>>>,
@@ -281,6 +283,7 @@ impl ApiClient {
             base_url,
             cask_base_url: "https://formulae.brew.sh/api/cask".to_string(),
             tap_raw_base_url: "https://raw.githubusercontent.com".to_string(),
+            github_api_base_url: "https://api.github.com".to_string(),
             client,
             cache: None,
             formula_candidates: RwLock::new(None),
@@ -289,6 +292,11 @@ impl ApiClient {
 
     pub fn with_tap_raw_base_url(mut self, tap_raw_base_url: String) -> Self {
         self.tap_raw_base_url = tap_raw_base_url;
+        self
+    }
+
+    pub fn with_github_api_base_url(mut self, github_api_base_url: String) -> Self {
+        self.github_api_base_url = github_api_base_url;
         self
     }
 
@@ -767,6 +775,101 @@ impl ApiClient {
             .json::<serde_json::Value>()
             .await
             .map_err(Error::network("failed to parse cask JSON"))
+    }
+
+    /// Reads the formula and cask names a tap provides from the GitHub tree
+    /// API. Tries `owner/homebrew-repo` first, then `owner/repo`.
+    pub async fn fetch_tap_index(&self, tap: &TapName) -> Result<TapIndex, Error> {
+        #[derive(serde::Deserialize)]
+        struct Tree {
+            tree: Vec<TreeEntry>,
+            #[serde(default)]
+            truncated: bool,
+        }
+        #[derive(serde::Deserialize)]
+        struct TreeEntry {
+            path: String,
+            #[serde(rename = "type")]
+            kind: String,
+        }
+
+        let token = ["HOMEBREW_GITHUB_API_TOKEN", "GITHUB_TOKEN"]
+            .iter()
+            .find_map(|var| std::env::var(var).ok().filter(|v| !v.is_empty()));
+
+        for repo in tap.candidate_repos() {
+            let url = format!(
+                "{}/repos/{}/{}/git/trees/HEAD?recursive=1",
+                self.github_api_base_url.trim_end_matches('/'),
+                tap.owner,
+                repo
+            );
+            let mut request = self
+                .client
+                .get(&url)
+                .header("Accept", "application/vnd.github+json");
+            if let Some(token) = &token {
+                request = request.bearer_auth(token);
+            }
+            let response = request.send().await.map_err(|e| Error::NetworkFailure {
+                message: e.to_string(),
+            })?;
+
+            let status = response.status();
+            if status == reqwest::StatusCode::NOT_FOUND {
+                continue;
+            }
+            if status == reqwest::StatusCode::FORBIDDEN
+                || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+            {
+                return Err(Error::NetworkFailure {
+                    message: format!(
+                        "GitHub API refused the request for tap '{tap}' (HTTP {status}); \
+                        you may be rate limited. Set HOMEBREW_GITHUB_API_TOKEN or GITHUB_TOKEN and retry"
+                    ),
+                });
+            }
+            if !status.is_success() {
+                return Err(Error::NetworkFailure {
+                    message: format!("failed to fetch tap '{tap}' from GitHub (HTTP {status})"),
+                });
+            }
+
+            let tree: Tree = response
+                .json()
+                .await
+                .map_err(Error::network("failed to parse GitHub tree response"))?;
+            if tree.truncated {
+                tracing::warn!(
+                    "GitHub tree for tap '{tap}' was truncated; index may be incomplete"
+                );
+            }
+            let updated_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_secs() as i64)
+                .unwrap_or(0);
+            let paths = tree
+                .tree
+                .iter()
+                .filter(|entry| entry.kind == "blob")
+                .map(|entry| entry.path.as_str());
+            return Ok(TapIndex::from_repo_paths(
+                tap,
+                format!("{}/{}", tap.owner, repo),
+                paths,
+                updated_at,
+            ));
+        }
+
+        Err(Error::InvalidArgument {
+            message: format!(
+                "tap '{tap}' not found: neither github.com/{}/{} nor github.com/{}/{} exists",
+                tap.owner,
+                tap.candidate_repos()[0],
+                tap.owner,
+                tap.repo
+            ),
+        })
     }
 
     async fn get_tap_cask(
