@@ -455,7 +455,7 @@ pub fn patch_homebrew_placeholders(
             && output.status.success()
         {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            if let Some(new_id) = otool_install_id(&stdout).and_then(&patch_path) {
+            if let Some(new_id) = otool_install_id(&stdout).and_then(patch_path) {
                 tool_args.push("-id".to_string());
                 tool_args.push(new_id);
             }
