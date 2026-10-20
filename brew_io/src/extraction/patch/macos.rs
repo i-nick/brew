@@ -270,6 +270,35 @@ fn contains_homebrew_owned_path(contents: &[u8], old_prefix: &str) -> bool {
     false
 }
 
+/// `otool` prints a `<file>:` header, or `<file> (architecture <arch>):` once per
+/// slice of a universal binary, before each block of output.
+fn is_otool_header(line: &str) -> bool {
+    !line.starts_with(char::is_whitespace) && line.ends_with(':')
+}
+
+/// Unique load command paths from `otool -L` output, across all architectures.
+fn otool_load_paths(stdout: &str) -> Vec<&str> {
+    let mut paths: Vec<&str> = Vec::new();
+    for line in stdout.lines().filter(|line| !is_otool_header(line)) {
+        if let Some(path) = line.split_whitespace().next()
+            && !paths.contains(&path)
+        {
+            paths.push(path);
+        }
+    }
+    paths
+}
+
+/// The install name from `otool -D` output. Every slice of a universal binary
+/// reports its own copy, so the first one is used.
+fn otool_install_id(stdout: &str) -> Option<&str> {
+    stdout
+        .lines()
+        .filter(|line| !is_otool_header(line))
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+}
+
 /// Patch @@HOMEBREW_CELLAR@@ and @@HOMEBREW_PREFIX@@ placeholders in Mach-O binaries.
 /// Also fixes version mismatches where a bottle references a different version of itself.
 /// Additionally patches hardcoded Homebrew paths in binary data sections and text files.
@@ -401,17 +430,16 @@ pub fn patch_homebrew_placeholders(
         // once per file instead of once per dependency.
         let mut tool_args: Vec<String> = Vec::new();
 
-        // Library dependencies (-L); the first line is the file name itself.
+        // Library dependencies (-L). Universal binaries repeat the list once per
+        // architecture; one -change per old path rewrites every slice.
         if let Ok(output) = Command::new("otool")
             .args(["-L", &path.to_string_lossy()])
             .output()
             && output.status.success()
         {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            for line in stdout.lines().skip(1) {
-                if let Some(old_path) = line.split_whitespace().next()
-                    && let Some(new_path) = patch_path(old_path)
-                {
+            for old_path in otool_load_paths(&stdout) {
+                if let Some(new_path) = patch_path(old_path) {
                     tool_args.push("-change".to_string());
                     tool_args.push(old_path.to_string());
                     tool_args.push(new_path);
@@ -419,22 +447,17 @@ pub fn patch_homebrew_placeholders(
             }
         }
 
-        // Install name ID (-D); the first line is the file name itself.
+        // Install name ID (-D). install_name_tool accepts only one -id, which
+        // applies to every architecture slice.
         if let Ok(output) = Command::new("otool")
             .args(["-D", &path.to_string_lossy()])
             .output()
             && output.status.success()
         {
             let stdout = String::from_utf8_lossy(&output.stdout);
-            for line in stdout.lines().skip(1) {
-                let line = line.trim();
-                if line.is_empty() {
-                    continue;
-                }
-                if let Some(new_id) = patch_path(line) {
-                    tool_args.push("-id".to_string());
-                    tool_args.push(new_id);
-                }
+            if let Some(new_id) = otool_install_id(&stdout).and_then(&patch_path) {
+                tool_args.push("-id".to_string());
+                tool_args.push(new_id);
             }
         }
 
@@ -575,6 +598,46 @@ mod tests {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
     use tempfile::TempDir;
+
+    const UNIVERSAL_OTOOL_D: &str = "\
+/x/libfoo.dylib (architecture x86_64):
+@@HOMEBREW_PREFIX@@/opt/foo/lib/libfoo.dylib
+/x/libfoo.dylib (architecture arm64):
+@@HOMEBREW_PREFIX@@/opt/foo/lib/libfoo.dylib
+";
+
+    const UNIVERSAL_OTOOL_L: &str = "\
+/x/libfoo.dylib (architecture x86_64):
+\t@@HOMEBREW_PREFIX@@/opt/foo/lib/libfoo.dylib (compatibility version 0.0.0, current version 0.0.0)
+\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.0.0)
+/x/libfoo.dylib (architecture arm64):
+\t@@HOMEBREW_PREFIX@@/opt/foo/lib/libfoo.dylib (compatibility version 0.0.0, current version 0.0.0)
+\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1359.0.0)
+";
+
+    #[test]
+    fn otool_install_id_returns_single_id_for_universal_binary() {
+        assert_eq!(
+            otool_install_id(UNIVERSAL_OTOOL_D),
+            Some("@@HOMEBREW_PREFIX@@/opt/foo/lib/libfoo.dylib")
+        );
+        assert_eq!(
+            otool_install_id("/x/bin/foo:\n"),
+            None,
+            "executables have no install name"
+        );
+    }
+
+    #[test]
+    fn otool_load_paths_dedupes_across_architectures_and_skips_headers() {
+        assert_eq!(
+            otool_load_paths(UNIVERSAL_OTOOL_L),
+            vec![
+                "@@HOMEBREW_PREFIX@@/opt/foo/lib/libfoo.dylib",
+                "/usr/lib/libSystem.B.dylib",
+            ]
+        );
+    }
 
     #[test]
     fn test_patch_macho_preserves_execute_bit() {
