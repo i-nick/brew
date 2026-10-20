@@ -189,7 +189,9 @@ fn extract_zip_archive(path: &Path, dest_dir: &Path) -> Result<(), Error> {
         {
             use std::os::unix::fs::PermissionsExt;
             if let Some(mode) = entry.unix_mode() {
-                let perms = std::fs::Permissions::from_mode(mode);
+                // Keep only rwx bits: an archive must not create setuid/setgid
+                // or sticky files (RUSTSEC-2026-0367).
+                let perms = std::fs::Permissions::from_mode(mode & 0o777);
                 std::fs::set_permissions(&out_path, perms)
                     .map_err(Error::store("failed to set zip file permissions"))?;
             }
@@ -485,6 +487,44 @@ mod tests {
 
         let content = fs::read_to_string(dest.join("hello.txt")).unwrap();
         assert_eq!(content, "Hello, World!");
+    }
+
+    #[test]
+    fn zip_extraction_strips_setuid_setgid_and_sticky_bits() {
+        use std::os::unix::fs::PermissionsExt;
+        use zip::write::SimpleFileOptions;
+
+        let tmp = TempDir::new().unwrap();
+        let mut zip = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
+        zip.start_file("tool", SimpleFileOptions::default().unix_permissions(0o755))
+            .unwrap();
+        zip.write_all(b"#!/bin/sh\n").unwrap();
+        let mut zip_data = zip.finish().unwrap().into_inner();
+
+        // ZipWriter masks permissions to 0o777, so write the mode a hostile
+        // archive would carry directly into the central directory header's
+        // external attributes (offset 38; the high 16 bits are the Unix mode).
+        // zip >= 9 also clears these bits when reading; this guards the
+        // end-to-end behaviour regardless of the library.
+        let header = zip_data
+            .windows(4)
+            .position(|w| w == b"PK\x01\x02")
+            .unwrap();
+        let attrs = &mut zip_data[header + 38..header + 42];
+        attrs.copy_from_slice(&((0o107755u32 << 16).to_le_bytes()));
+
+        let zip_path = tmp.path().join("test.zip");
+        fs::write(&zip_path, &zip_data).unwrap();
+        let dest = tmp.path().join("extracted");
+        fs::create_dir(&dest).unwrap();
+
+        extract_archive(&zip_path, &dest).unwrap();
+
+        let mode = fs::metadata(dest.join("tool"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o7777, 0o755);
     }
 
     #[test]
