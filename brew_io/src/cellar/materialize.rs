@@ -101,14 +101,23 @@ impl Cellar {
         // Find the source directory to copy from
         let src_path = find_bottle_content(store_entry, name, version)?;
 
-        // Copy the content to the cellar using best available strategy
-        copy_dir_with_fallback(&src_path, &keg_path)?;
+        let result = (|| {
+            // Copy the content to the cellar using best available strategy
+            copy_dir_with_fallback(&src_path, &keg_path)?;
 
-        // Patch Homebrew placeholders in Mach-O binaries
-        patch_homebrew_placeholders(&keg_path, &self.cellar_dir, name, version)?;
+            // Patch Homebrew placeholders in Mach-O binaries
+            patch_homebrew_placeholders(&keg_path, &self.cellar_dir, name, version)?;
 
-        // Strip quarantine xattrs and ad-hoc sign Mach-O binaries
-        codesign_and_strip_xattrs(&keg_path)?;
+            // Strip quarantine xattrs and ad-hoc sign Mach-O binaries
+            codesign_and_strip_xattrs(&keg_path)
+        })();
+
+        // An existing keg is reused as-is above, so never leave a partially
+        // copied or unpatched one behind for the next install to pick up.
+        if let Err(err) = result {
+            let _ = self.remove_keg(name, version);
+            return Err(err);
+        }
 
         Ok(keg_path)
     }
