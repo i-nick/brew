@@ -20,7 +20,7 @@ flate2 = "1.1.10"
 tar = "0.4.46"
 xz2 = "0.1.7"
 zstd = "0.14.0"
-zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 rusqlite = { version = "0.40", features = ["bundled"] }
 futures = "0.3.34"
 futures-util = "0.3.34"
