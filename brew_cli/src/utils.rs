@@ -1,4 +1,4 @@
-use brew_io::Installer;
+use brew_io::{Database, InstalledKeg, Installer};
 use console::style;
 use std::path::PathBuf;
 
@@ -51,16 +51,39 @@ pub fn resolve_installed_name(
     installer: &Installer,
     name: &str,
 ) -> Result<String, brew_core::Error> {
+    resolve_installed_name_with(
+        name,
+        |name| installer.is_installed(name),
+        || installer.list_installed(),
+    )
+}
+
+/// Resolves an installed name using only installation metadata, without an installer.
+pub fn resolve_installed_name_read_only(
+    database: &Database,
+    name: &str,
+) -> Result<String, brew_core::Error> {
+    resolve_installed_name_with(
+        name,
+        |name| database.get_installed(name).is_some(),
+        || database.list_installed(),
+    )
+}
+
+fn resolve_installed_name_with(
+    name: &str,
+    is_installed: impl FnOnce(&str) -> bool,
+    list_installed: impl FnOnce() -> Result<Vec<InstalledKeg>, brew_core::Error>,
+) -> Result<String, brew_core::Error> {
     let (prefix, token) = match name.strip_prefix("cask:") {
         Some(token) => ("cask:", token),
         None => ("", name),
     };
-    if token.contains('/') || installer.is_installed(name) {
+    if token.contains('/') || is_installed(name) {
         return Ok(name.to_string());
     }
 
-    let matches: Vec<String> = installer
-        .list_installed()?
+    let matches: Vec<String> = list_installed()?
         .into_iter()
         .map(|keg| keg.name)
         .filter(|installed| {
@@ -175,6 +198,43 @@ mod tests {
         assert_eq!(
             normalize_formula_name("homebrew/core/wget").unwrap(),
             "wget".to_string()
+        );
+    }
+
+    #[test]
+    fn read_only_name_resolution_preserves_tap_and_cask_matching() {
+        let mut db = Database::in_memory().unwrap();
+        let tx = db.transaction().unwrap();
+        for name in ["hashicorp/tap/terraform", "cask:custom/tap/zed", "zed"] {
+            tx.record_install(name, "1", name).unwrap();
+        }
+        tx.commit().unwrap();
+        assert_eq!(
+            super::resolve_installed_name_read_only(&db, "terraform").unwrap(),
+            "hashicorp/tap/terraform"
+        );
+        assert_eq!(
+            super::resolve_installed_name_read_only(&db, "cask:zed").unwrap(),
+            "cask:custom/tap/zed"
+        );
+        assert_eq!(
+            super::resolve_installed_name_read_only(&db, "zed").unwrap(),
+            "zed"
+        );
+        assert_eq!(
+            super::resolve_installed_name_read_only(&db, "missing").unwrap(),
+            "missing"
+        );
+        let tx = db.transaction().unwrap();
+        tx.record_install("another/tap/terraform", "1", "other-key")
+            .unwrap();
+        tx.commit().unwrap();
+        let error = super::resolve_installed_name_read_only(&db, "terraform")
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("matches multiple installed packages"),
+            "{error}"
         );
     }
 

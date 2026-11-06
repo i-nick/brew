@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use rusqlite::{Connection, OptionalExtension, Transaction, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, params};
 
 use brew_core::Error;
 
@@ -38,6 +38,26 @@ impl Database {
     pub fn open(path: &Path) -> Result<Self, Error> {
         let conn = Connection::open(path).map_err(Error::store("failed to open database"))?;
         Self::migrate(&conn)?;
+        Ok(Self { conn })
+    }
+
+    /// Opens an existing installation database for queries without creating or migrating it.
+    /// Normal SQLite locking stays enabled, so concurrent installers remain visible safely.
+    pub fn open_read_only(path: &Path) -> Result<Self, Error> {
+        let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .map_err(Error::store(
+                "failed to open installation database read-only; initialize brew outside the read-only environment first",
+            ))?;
+        let version = Self::get_schema_version(&conn)?;
+        if version != Self::SCHEMA_VERSION {
+            return Err(Error::StoreCorruption {
+                message: format!(
+                    "database schema version {version} differs from supported version {}. \
+                     Update or initialize brew outside the read-only environment before querying",
+                    Self::SCHEMA_VERSION
+                ),
+            });
+        }
         Ok(Self { conn })
     }
 
@@ -671,6 +691,81 @@ impl<'a> InstallTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn read_only_queries_preserve_database_and_reject_writes() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let path = temp.path().join("brew.sqlite3");
+        {
+            let mut db = Database::open(&path).unwrap();
+            let tx = db.transaction().unwrap();
+            tx.record_install_with_requested("git", "2.50.0", "git-key", true)
+                .unwrap();
+            tx.record_install_with_requested("gettext", "0.24", "gettext-key", false)
+                .unwrap();
+            tx.commit().unwrap();
+        }
+        let before = std::fs::read(&path).unwrap();
+        let modified = std::fs::metadata(&path).unwrap().modified().unwrap();
+        let mut db = Database::open_read_only(&path).unwrap();
+        assert_eq!(db.list_installed().unwrap().len(), 2);
+        assert_eq!(db.list_requested_installed().unwrap()[0].name, "git");
+        assert_eq!(db.get_installed("git").unwrap().version, "2.50.0");
+        {
+            let tx = db.transaction().unwrap();
+            assert!(tx.record_install("unexpected", "1", "new-key").is_err());
+        }
+        drop(db);
+        assert_eq!(std::fs::read(&path).unwrap(), before);
+        assert_eq!(
+            std::fs::metadata(&path).unwrap().modified().unwrap(),
+            modified
+        );
+        assert_eq!(std::fs::read_dir(temp.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn read_only_open_does_not_create_missing_databases() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let path = temp.path().join("missing/db/brew.sqlite3");
+        assert!(Database::open_read_only(&path).is_err());
+        assert!(!temp.path().join("missing").exists());
+        let path = temp.path().join("brew.sqlite3");
+        assert!(Database::open_read_only(&path).is_err());
+        assert!(!path.exists());
+    }
+
+    #[test]
+    fn read_only_open_rejects_old_and_new_schemas_without_migrating() {
+        let temp = tempfile::TempDir::new().unwrap();
+        for version in [0, 2, Database::SCHEMA_VERSION + 1] {
+            let path = temp.path().join(format!("schema-{version}.sqlite3"));
+            let conn = Connection::open(&path).unwrap();
+            conn.pragma_update(None, "user_version", version).unwrap();
+            drop(conn);
+            let before = std::fs::read(&path).unwrap();
+            let error = Database::open_read_only(&path).err().unwrap().to_string();
+            assert!(error.contains("schema version"), "{error}");
+            assert_eq!(std::fs::read(&path).unwrap(), before);
+        }
+    }
+
+    #[test]
+    fn read_only_wal_queries_observe_concurrent_commits() {
+        let temp = tempfile::TempDir::new().unwrap();
+        let path = temp.path().join("brew.sqlite3");
+        let mut writer = Database::open(&path).unwrap();
+        writer
+            .conn
+            .pragma_update(None, "journal_mode", "WAL")
+            .unwrap();
+        let reader = Database::open_read_only(&path).unwrap();
+        assert!(reader.list_installed().unwrap().is_empty());
+        let tx = writer.transaction().unwrap();
+        tx.record_install("git", "2.50.0", "git-key").unwrap();
+        tx.commit().unwrap();
+        assert_eq!(reader.list_installed().unwrap()[0].name, "git");
+    }
 
     #[test]
     fn install_and_list() {

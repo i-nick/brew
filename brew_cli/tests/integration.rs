@@ -211,6 +211,8 @@ fn test_install_uninstall_and_reinstall() {
 fn test_list_installed_formulas() {
     let t = TestEnv::new();
 
+    assert_success(&t.b(&["init"]), "b init");
+
     let output = t.b(&["list"]);
     assert_success(&output, "b list (empty)");
     assert_stdout_contains(&output, "No formulas installed");
@@ -239,6 +241,8 @@ fn test_list_installed_formulas() {
 #[ignore = "integration test"]
 fn test_info_finds_installed_formula() {
     let t = TestEnv::new();
+
+    assert_success(&t.b(&["init"]), "b init");
 
     let output = t.b(&["info", "jq"]);
     assert_success(&output, "b info jq (not installed)");

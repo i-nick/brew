@@ -6,7 +6,7 @@ use brew_cli::{
     ui::Ui,
     utils::{as_cask_name, get_root_path},
 };
-use brew_io::create_installer;
+use brew_io::{Database, create_installer};
 use clap::Parser;
 use console::style;
 
@@ -36,6 +36,8 @@ fn spawn_update_check(cli: &Cli) -> Option<tokio::task::JoinHandle<Option<self_u
             | Commands::Completion { .. }
             | Commands::Run { .. }
             | Commands::Outdated { json: true }
+            | Commands::List { .. }
+            | Commands::Info { .. }
     );
     let disabled = std::env::var_os("BREW_NO_UPDATE_CHECK").is_some_and(|v| !v.is_empty());
     let interactive = std::io::IsTerminal::is_terminal(&std::io::stderr());
@@ -44,6 +46,7 @@ fn spawn_update_check(cli: &Cli) -> Option<tokio::task::JoinHandle<Option<self_u
     }
 
     let root = get_root_path(cli.root.clone());
+
     let force = matches!(cli.command, Commands::Update);
     Some(tokio::spawn(async move {
         self_update::newer_release(&root, self_update::releases_url(), force).await
@@ -74,6 +77,20 @@ async fn run(cli: Cli) -> Result<(), brew_core::Error> {
     }
 
     let root = get_root_path(cli.root.clone());
+
+    // Metadata queries must work on a read-only installation: do not probe writability,
+    // initialize folders, open caches, migrate schemas, or create a full installer.
+    match &cli.command {
+        Commands::List { all } => {
+            let db = Database::open_read_only(&root.join("db/brew.sqlite3"))?;
+            return commands::list::execute(&db, *all);
+        }
+        Commands::Info { formula } => {
+            let db = Database::open_read_only(&root.join("db/brew.sqlite3"))?;
+            return commands::info::execute(&db, formula.clone());
+        }
+        _ => {}
+    }
 
     if let Commands::Search { query } = &cli.command {
         return commands::search::execute(&root, query.clone(), &mut ui).await;
@@ -143,8 +160,7 @@ async fn run(cli: Cli) -> Result<(), brew_core::Error> {
             commands::cleanup::execute(&mut installer, dry_run, &mut ui).await
         }
         Commands::Doctor { repair } => commands::doctor::execute(&mut installer, repair, &mut ui),
-        Commands::List { all } => commands::list::execute(&mut installer, all),
-        Commands::Info { formula } => commands::info::execute(&mut installer, formula),
+        Commands::List { .. } | Commands::Info { .. } => unreachable!(),
         Commands::Gc => commands::gc::execute(&mut installer),
         Commands::Update => {
             commands::update::execute(&mut installer)?;
@@ -174,6 +190,8 @@ fn requires_init(command: &Commands) -> bool {
             | Commands::Reset { .. }
             | Commands::Search { .. }
             | Commands::SelfUpdate { .. }
+            | Commands::List { .. }
+            | Commands::Info { .. }
     )
 }
 
