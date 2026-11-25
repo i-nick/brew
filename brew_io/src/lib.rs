@@ -17,12 +17,14 @@ pub use cellar::{Cellar, LinkedFile, Linker, MaterializedKeg};
 pub use extraction::extract_tarball;
 pub use installer::{
     CleanupCandidate, CleanupResult, DiagnosticReport, ExecuteResult, InstallPlan, Installer,
-    IsolatedLinkReason, LinkOutcome, OutdatedPackage, RepairSummary, create_installer,
+    IsolatedLinkReason, LinkOutcome, OutdatedPackage, PrefetchFailure, RepairSummary,
+    create_installer,
 };
 pub use network::{
-    ApiCache, ApiClient, DownloadProgressCallback, DownloadRequest, Downloader, PackageSearchKind,
-    PackageSearchResult, ParallelDownloader, TapIndex, TapName, TapRegistry,
-    create_api_client_with_cache, create_api_client_with_optional_cache, installed_tap_of,
+    ApiCache, ApiClient, DEFAULT_DOWNLOAD_JOBS, DownloadOutcome, DownloadProgressCallback,
+    DownloadRequest, Downloader, MAX_DOWNLOAD_JOBS, PackageSearchKind, PackageSearchResult,
+    ParallelDownloader, TapIndex, TapName, TapRegistry, create_api_client_with_cache,
+    create_api_client_with_optional_cache, installed_tap_of,
 };
 pub use path::validate_privileged_path;
 pub use progress::{InstallProgress, ProgressCallback};

@@ -12,6 +12,7 @@ pub use api::{
 };
 pub use cache::{ApiCache, CacheEntry};
 pub use download::{
-    DownloadProgressCallback, DownloadRequest, DownloadResult, Downloader, ParallelDownloader,
+    DEFAULT_DOWNLOAD_JOBS, DownloadOutcome, DownloadProgressCallback, DownloadRequest,
+    DownloadResult, Downloader, MAX_DOWNLOAD_JOBS, ParallelDownloader,
 };
 pub use tap::{TapIndex, TapName, TapRegistry, installed_tap_of};

@@ -19,6 +19,17 @@ pub struct Cli {
     )]
     pub concurrency: usize,
 
+    /// Maximum number of packages to download at the same time (1-10)
+    #[arg(
+        long,
+        short = 'j',
+        global = true,
+        env = "BREW_JOBS",
+        default_value_t = brew_io::DEFAULT_DOWNLOAD_JOBS,
+        value_parser = parse_jobs
+    )]
+    pub jobs: usize,
+
     #[arg(long = "auto-init", global = true, env = "BREW_AUTO_INIT")]
     pub auto_init: bool,
 
@@ -42,10 +53,47 @@ fn parse_concurrency(value: &str) -> Result<usize, String> {
     Ok(parsed)
 }
 
+fn parse_jobs(value: &str) -> Result<usize, String> {
+    let max = brew_io::MAX_DOWNLOAD_JOBS;
+    match value.parse::<usize>() {
+        Ok(jobs) if (1..=max).contains(&jobs) => Ok(jobs),
+        _ => Err(format!("expected a whole number from 1 to {max}")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::Cli;
     use clap::Parser;
+
+    #[test]
+    fn jobs_defaults_to_five() {
+        let cli = Cli::try_parse_from(["b", "list"]).unwrap();
+        assert_eq!(cli.jobs, brew_io::DEFAULT_DOWNLOAD_JOBS);
+        assert_eq!(cli.jobs, 5);
+    }
+
+    #[test]
+    fn jobs_accepted_before_or_after_subcommand() {
+        let cli = Cli::try_parse_from(["b", "--jobs", "10", "upgrade"]).unwrap();
+        assert_eq!(cli.jobs, 10);
+
+        let cli = Cli::try_parse_from(["b", "upgrade", "-j", "3", "jq", "wget"]).unwrap();
+        assert_eq!(cli.jobs, 3);
+        let super::Commands::Upgrade { formulas, .. } = cli.command else {
+            panic!("expected upgrade command");
+        };
+        assert_eq!(formulas, vec!["jq".to_string(), "wget".to_string()]);
+    }
+
+    #[test]
+    fn jobs_rejects_values_outside_one_to_ten() {
+        for bad in ["0", "11", "five"] {
+            let result = Cli::try_parse_from(["b", "--jobs", bad, "upgrade"]);
+            let err = result.err().map(|e| e.to_string()).unwrap_or_default();
+            assert!(err.contains("from 1 to 10"), "--jobs {bad}: {err}");
+        }
+    }
 
     #[test]
     fn accepts_positive_concurrency() {

@@ -50,6 +50,8 @@ b bundle                       # install from Brewfile
 b bundle install -f myfile     # install from custom file
 b bundle dump                  # export installed packages to Brewfile
 b bundle dump -f out --force   # dump to custom file (overwrite)
+b upgrade                      # upgrade everything outdated
+b upgrade -j 10 jq wget        # download up to 10 packages at a time (default 5)
 b uninstall jq                 # uninstall one package
 b reset                        # uninstall everything
 b gc                           # garbage collect unused store entries
@@ -61,6 +63,8 @@ bx jq --version                # run without linking
 - Content-addressable storage for deduplication
 - APFS clonefiles for zero-overhead copying
 - Source build fallback using a Ruby formula DSL shim
+- Parallel downloads: `install`, `upgrade` and `bundle` fetch up to 5 packages' bottles at
+  once (`-j`/`--jobs` or `BREW_JOBS`, 1–10), then install them in order
 
 Taps are not cloned. `b tap owner/repo` records the formula and cask names the GitHub
 repository `owner/homebrew-repo` provides (refreshed by `b update`), so bare names like

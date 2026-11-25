@@ -3,9 +3,10 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use super::{install, tap};
+use super::{install, prefetch, tap};
 use crate::cli::BundleCommands;
 use crate::ui::StdUi;
+use crate::utils::normalize_formula_name;
 
 pub async fn execute(
     root: &Path,
@@ -54,6 +55,12 @@ async fn install_from_file(
     );
 
     let start = Instant::now();
+
+    // Formulas are installed one at a time below; download their bottles
+    // concurrently first so those installs find them already cached.
+    let prefetch_names = resolve_for_prefetch(installer, &formulas).await;
+    prefetch::prefetch_bottles(installer, &prefetch_names, ui).await?;
+
     for formula in formulas {
         install::execute(installer, vec![formula], no_link, false, ui).await?;
     }
@@ -64,6 +71,19 @@ async fn install_from_file(
         start.elapsed().as_secs_f64()
     );
     Ok(())
+}
+
+/// Resolves Brewfile entries the way `install` will, so tap formulas are
+/// prefetched too. Entries that fail to resolve are left to `install` to report.
+async fn resolve_for_prefetch(installer: &brew_io::Installer, formulas: &[String]) -> Vec<String> {
+    let names: Vec<String> = formulas
+        .iter()
+        .filter_map(|formula| normalize_formula_name(formula).ok())
+        .collect();
+    match installer.resolve_tapped_names(&names).await {
+        Ok(resolved) => resolved,
+        Err(_) => names,
+    }
 }
 
 fn dump_to_file(
