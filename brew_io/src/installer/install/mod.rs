@@ -3,6 +3,7 @@ mod cleanup;
 pub mod doctor;
 mod outdated;
 mod plan;
+mod prefetch;
 mod source;
 mod uninstall;
 
@@ -26,6 +27,8 @@ use crate::storage::store::Store;
 use brew_core::{ConflictedLink, Error, Formula, InstallMethod};
 
 use bottle::{LinkFormulaRequest, dependency_cellar_path};
+
+pub use prefetch::PrefetchFailure;
 
 const MAX_CORRUPTION_RETRIES: usize = 3;
 
@@ -421,10 +424,15 @@ impl Installer {
     }
 }
 
+/// Creates an installer rooted at `root` that links into `prefix`.
+///
+/// Downloads run at most `download_jobs` packages at a time, over at most
+/// `concurrency` HTTP connections in total.
 pub fn create_installer(
     root: &Path,
     prefix: &Path,
     concurrency: usize,
+    download_jobs: usize,
 ) -> Result<Installer, Error> {
     if !root.exists() {
         fs::create_dir_all(root).map_err(|e| {
@@ -462,7 +470,8 @@ pub fn create_installer(
     let locks_dir = root.join("locks");
     fs::create_dir_all(&locks_dir).map_err(Error::store("failed to create locks directory"))?;
 
-    let parallel_downloader = ParallelDownloader::with_concurrency(blob_cache, concurrency);
+    let parallel_downloader =
+        ParallelDownloader::with_limits(blob_cache, download_jobs, concurrency);
 
     Ok(Installer {
         api_client,
@@ -543,6 +552,35 @@ mod test_support {
         assert!(status.success(), "failed to create test DMG");
 
         fs::read(dmg_path).unwrap()
+    }
+
+    /// An installer whose formula API is served by `server` under `/formula`.
+    pub fn make_installer(
+        root: &std::path::Path,
+        prefix: &std::path::Path,
+        server: &wiremock::MockServer,
+    ) -> crate::Installer {
+        use crate::network::api::ApiClient;
+        use crate::{BlobCache, Cellar, Database, Linker, Store};
+
+        std::fs::create_dir_all(root.join("db")).unwrap();
+        let api_client = ApiClient::with_base_url(format!("{}/formula", server.uri())).unwrap();
+        let blob_cache = BlobCache::new(&root.join("cache")).unwrap();
+        let store = Store::new(root).unwrap();
+        let cellar = Cellar::new(root).unwrap();
+        let linker = Linker::new(prefix).unwrap();
+        let db = Database::open(&root.join("db/brew.sqlite3")).unwrap();
+
+        crate::Installer::new(
+            api_client,
+            blob_cache,
+            store,
+            cellar,
+            linker,
+            db,
+            prefix.to_path_buf(),
+            root.join("locks"),
+        )
     }
 
     /// Deliberately an old tag: mock formulas go through the real
@@ -665,31 +703,6 @@ mod tests {
                     }}
                 }}
             }}"#
-        )
-    }
-
-    fn make_installer(
-        root: &std::path::Path,
-        prefix: &std::path::Path,
-        server: &MockServer,
-    ) -> Installer {
-        fs::create_dir_all(root.join("db")).unwrap();
-        let api_client = ApiClient::with_base_url(format!("{}/formula", server.uri())).unwrap();
-        let blob_cache = BlobCache::new(&root.join("cache")).unwrap();
-        let store = Store::new(root).unwrap();
-        let cellar = Cellar::new(root).unwrap();
-        let linker = Linker::new(prefix).unwrap();
-        let db = Database::open(&root.join("db/brew.sqlite3")).unwrap();
-
-        Installer::new(
-            api_client,
-            blob_cache,
-            store,
-            cellar,
-            linker,
-            db,
-            prefix.to_path_buf(),
-            root.join("locks"),
         )
     }
 

@@ -22,6 +22,18 @@ const CHUNKED_DOWNLOAD_THRESHOLD: u64 = 10 * 1024 * 1024;
 /// (npm uses 20-50, we use a conservative 20 for HTTP/1.1 compatibility).
 const GLOBAL_DOWNLOAD_CONCURRENCY: usize = 20;
 
+/// Default number of packages (bottles) downloaded at the same time.
+///
+/// This is a separate limit from [`GLOBAL_DOWNLOAD_CONCURRENCY`]: a package
+/// holds one job slot for its whole download, while each HTTP connection it
+/// opens (one, or several chunks for large bottles) takes a connection permit.
+/// Keeping the two apart is what lets a large bottle start its chunks while
+/// other packages hold job slots.
+pub const DEFAULT_DOWNLOAD_JOBS: usize = 5;
+
+/// Upper bound for the number of packages downloaded at the same time.
+pub const MAX_DOWNLOAD_JOBS: usize = 10;
+
 /// Maximum concurrent chunk downloads per file
 /// Chosen to divide GLOBAL_DOWNLOAD_CONCURRENCY among multiple large file downloads.
 /// With 20 global concurrency, we can have 3-4 large files downloading concurrently.
@@ -38,5 +50,5 @@ pub struct DownloadResult {
     pub index: usize,
 }
 
-pub use parallel::{DownloadRequest, ParallelDownloader};
+pub use parallel::{DownloadOutcome, DownloadRequest, ParallelDownloader};
 pub use single::Downloader;

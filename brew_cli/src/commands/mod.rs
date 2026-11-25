@@ -8,6 +8,7 @@ pub mod init;
 pub mod install;
 pub mod list;
 pub mod outdated;
+pub mod prefetch;
 pub mod reset;
 pub mod run;
 pub mod search;

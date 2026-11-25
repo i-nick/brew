@@ -149,6 +149,10 @@ impl Downloader {
             .unwrap_or_else(|_| reqwest::Client::new())
     }
 
+    pub fn has_blob(&self, sha256: &str) -> bool {
+        self.blob_cache.has_blob(sha256)
+    }
+
     pub fn remove_blob(&self, sha256: &str) -> bool {
         self.blob_cache.remove_blob(sha256).unwrap_or(false)
     }
@@ -263,6 +267,20 @@ impl Downloader {
                 "chunked download failed; falling back to single-connection download"
             );
         }
+
+        // A racing download streams its body over one connection at a time
+        // (`body_download_gate`), so it counts as one connection. Taken only
+        // here, after any chunked attempt has released its chunk permits, so a
+        // download never waits on the limit while already holding a permit.
+        let _connection = match &self.global_semaphore {
+            Some(semaphore) => Some(
+                semaphore
+                    .acquire()
+                    .await
+                    .map_err(Error::network("connection semaphore error"))?,
+            ),
+            None => None,
+        };
 
         let done = Arc::new(AtomicBool::new(false));
         let done_notify = Arc::new(Notify::new());

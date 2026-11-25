@@ -1,5 +1,6 @@
 use console::style;
 
+use super::prefetch;
 use crate::ui::StdUi;
 use crate::utils::{normalize_formula_name, resolve_installed_name};
 
@@ -50,6 +51,10 @@ pub async fn execute(
         style(package_names.join(", ")).bold()
     ))
     .map_err(ui_error)?;
+
+    // Packages are upgraded one at a time below, each with its own status
+    // line and link state; download their bottles concurrently first.
+    prefetch::prefetch_bottles(installer, &package_names, ui).await?;
 
     let mut upgraded_count = 0usize;
     let mut errors = Vec::new();
@@ -389,5 +394,88 @@ end
 
         let installed = installer.get_installed("jq").unwrap();
         assert_eq!(installed.version, "2.0.0");
+    }
+
+    /// Serves formula `name` at `version` and its bottle, which may be
+    /// downloaded only once. Returns the formula JSON.
+    async fn serve_formula(server: &MockServer, name: &str, version: &str) -> String {
+        let tag = get_test_bottle_tag();
+        let bottle = create_bottle_tarball(name, version);
+        let sha = sha256_hex(&bottle);
+        let bottle_path = format!("/bottles/{name}-{version}.{tag}.bottle.tar.gz");
+        let json = format!(
+            r#"{{"name":"{name}","versions":{{"stable":"{version}"}},"dependencies":[],"bottle":{{"stable":{{"files":{{"{tag}":{{"url":"{}{bottle_path}","sha256":"{sha}"}}}}}}}}}}"#,
+            server.uri()
+        );
+
+        Mock::given(method("GET"))
+            .and(path(format!("/formula/{name}.json")))
+            .respond_with(ResponseTemplate::new(200).set_body_string(json.clone()))
+            .mount(server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path(bottle_path))
+            .respond_with(ResponseTemplate::new(200).set_body_bytes(bottle))
+            .expect(1)
+            .mount(server)
+            .await;
+
+        json
+    }
+
+    #[tokio::test]
+    async fn upgrade_downloads_every_bottle_before_installing_any() {
+        let first_server = MockServer::start().await;
+        let second_server = MockServer::start().await;
+        let tmp = TempDir::new().unwrap();
+        let packages = ["alpha", "beta", "gamma"];
+        let names: Vec<String> = packages.iter().map(|name| name.to_string()).collect();
+
+        let mut bulk = Vec::new();
+        for name in packages {
+            serve_formula(&first_server, name, "1.0.0").await;
+            bulk.push(serve_formula(&second_server, name, "2.0.0").await);
+        }
+        Mock::given(method("GET"))
+            .and(path("/formula.json"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_string(format!("[{}]", bulk.join(","))),
+            )
+            .mount(&second_server)
+            .await;
+
+        let root = tmp.path().join("brew");
+        let prefix = tmp.path().join("homebrew");
+
+        let mut installer = make_installer(&root, &prefix, &first_server);
+        installer.install(&names, true).await.unwrap();
+
+        let mut installer = make_installer(&root, &prefix, &second_server);
+        let mut ui = Ui::new();
+        execute(&mut installer, Vec::new(), false, &mut ui)
+            .await
+            .unwrap();
+
+        for name in packages {
+            assert_eq!(installer.get_installed(name).unwrap().version, "2.0.0");
+        }
+
+        // Packages upgrade one at a time (alphabetically), each re-reading its
+        // formula right before installing. Without the prefetch, gamma's
+        // bottle would be requested after gamma's formula; with it, every
+        // bottle was already downloaded by then.
+        let requests = second_server.received_requests().await.unwrap();
+        let last_bottle = requests
+            .iter()
+            .rposition(|req| req.url.path().starts_with("/bottles/"))
+            .unwrap();
+        let last_formula = requests
+            .iter()
+            .rposition(|req| req.url.path() == "/formula/gamma.json")
+            .unwrap();
+        assert!(
+            last_bottle < last_formula,
+            "bottles were not downloaded ahead of the installs"
+        );
     }
 }

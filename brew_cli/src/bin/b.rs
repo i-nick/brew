@@ -114,7 +114,7 @@ async fn run(cli: Cli) -> Result<(), brew_core::Error> {
         ensure_init(&root, &prefix, cli.auto_init, &mut ui)?;
     }
 
-    let mut installer = create_installer(&root, &prefix, cli.concurrency)?;
+    let mut installer = create_installer(&root, &prefix, cli.concurrency, cli.jobs)?;
 
     match cli.command {
         Commands::Init { .. } => unreachable!(),

@@ -325,7 +325,7 @@
         <pre class="mermaid">
 flowchart LR
   User["User shell<br/>b, bx"] --> CLI["brew_cli<br/>argument parsing, UI, command routing"]
-  CLI --> Init["init and runtime context<br/>root, prefix, concurrency"]
+  CLI --> Init["init and runtime context<br/>root, prefix, concurrency, jobs"]
   CLI --> Installer["brew_io::Installer<br/>orchestrates planning and execution"]
   CLI --> RunCmd["commands::run<br/>temporary install plus exec"]
 
@@ -339,7 +339,7 @@ flowchart LR
 
   subgraph IO["brew_io"]
     Api["ApiClient<br/>Homebrew JSON, tap Ruby, search, cache"]
-    Downloader["ParallelDownloader<br/>blob cache, chunked, racing, mirrors"]
+    Downloader["ParallelDownloader<br/>job + connection limits, chunked, racing, mirrors"]
     Store["Store<br/>content-addressed extracted entries"]
     Cellar["Cellar<br/>materialized kegs"]
     Linker["Linker<br/>shared bin, opt, isolated links"]
@@ -803,11 +803,11 @@ flowchart TD
   Hash --> Match{"Matches expected SHA?"}
   Match -- "yes" --> Reuse["Reuse blob"]
   Match -- "no" --> Delete["Delete corrupt blob"]
-  Exists -- "no" --> Download["Download"]
+  Exists -- "no" --> Download["Download<br/>one job slot per package"]
   Delete --> Download
   Download --> Strategy{"Large and range-capable?"}
-  Strategy -- "yes" --> Chunked["Chunked download with global concurrency"]
-  Strategy -- "no" --> Racing["Racing single-connection download<br/>primary plus mirrors"]
+  Strategy -- "yes" --> Chunked["Chunked download<br/>one connection permit per chunk"]
+  Strategy -- "no" --> Racing["Racing single-connection download<br/>primary plus mirrors, one connection permit"]
   Chunked --> Verify["Verify SHA and complete blob"]
   Racing --> Verify
           </pre>
